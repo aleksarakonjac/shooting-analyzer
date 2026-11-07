@@ -25,6 +25,8 @@ export interface ParsedSiusResult {
   discipline: string;
   disciplineId?: DisciplineId;
   reportTime?: Date;
+  /** True when day and month could be swapped (both <= 12, different) and the order was only assumed. */
+  reportTimeAmbiguous?: boolean;
   total: number;
   totalDecimal?: number;
   innerTens?: number;

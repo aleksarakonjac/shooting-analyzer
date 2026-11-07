@@ -27,13 +27,33 @@ function parseGroupMm(row: string[]): number | undefined {
   return m ? Number(m[1]) : undefined;
 }
 
-function parseReportTime(row: string[]): Date | undefined {
+export interface SiusCsvOptions {
+  /** Time zone of the laptop that wrote the report (default Europe/Belgrade). */
+  tz?: string;
+  /** Order of day and month in the report time. Detected from the numbers when omitted. */
+  dateOrder?: 'dmy' | 'mdy';
+}
+
+function parseReportTime(
+  row: string[],
+  opts: SiusCsvOptions,
+): { time: Date; ambiguous: boolean } | undefined {
   for (const c of row) {
     const m = /^(\d{1,2})\/(\d{1,2})\/(\d{4}) (\d{1,2}):(\d{2}):(\d{2})$/.exec(c);
-    if (m) {
-      const [d, mo, y, h, mi, s] = m.slice(1).map(Number);
-      return new Date(zonedWallTimeToUtcMs(y, mo, d, h, mi, s, 0, REPORT_TZ));
+    if (!m) continue;
+    const [a, b, y, h, mi, s] = m.slice(1).map(Number);
+    let order = opts.dateOrder;
+    let ambiguous = false;
+    if (!order) {
+      if (a > 12) order = 'dmy';
+      else if (b > 12) order = 'mdy';
+      else {
+        order = 'dmy';
+        ambiguous = a !== b;
+      }
     }
+    const [d, mo] = order === 'dmy' ? [a, b] : [b, a];
+    return { time: new Date(zonedWallTimeToUtcMs(y, mo, d, h, mi, s, 0, opts.tz ?? REPORT_TZ)), ambiguous };
   }
   return undefined;
 }
@@ -45,7 +65,7 @@ export class NotSiusCsvError extends Error {
   }
 }
 
-export function parseSiusCsv(text: string): ParsedSiusResult {
+export function parseSiusCsv(text: string, opts: SiusCsvOptions = {}): ParsedSiusResult {
   const lines = text.split(/\r?\n/).map(cells);
   const result: ParsedSiusResult = { discipline: '', total: 0, series: [] };
   let current: ParsedSeries | null = null;
@@ -57,7 +77,9 @@ export function parseSiusCsv(text: string): ParsedSiusResult {
     if (!result.discipline && row[0] && !/^results$/i.test(row[0]) && !row[1]) {
       result.discipline = row[0];
       result.disciplineId = disciplineFromSiusName(row[0]);
-      result.reportTime = parseReportTime(row);
+      const rt = parseReportTime(row, opts);
+      result.reportTime = rt?.time;
+      result.reportTimeAmbiguous = rt?.ambiguous;
       continue;
     }
     if (/^Total:$/i.test(row[1] ?? '')) {

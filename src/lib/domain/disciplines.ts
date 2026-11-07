@@ -55,7 +55,8 @@ export function disciplineFromSiusName(name: string): DisciplineId | undefined {
   if (n.includes('air rifle')) return 'air_rifle';
   if (n.includes('air pistol')) return 'air_pistol';
   if (/\b(50m|50 m) rifle\b/.test(n) && /3x(20|40)/.test(n)) return 'smallbore_3p';
-  if (/\b(50|25) ?m pistol\b/.test(n)) return 'smallbore_pistol';
+  // any other pistol (25m sport/rapid/standard, 50m free) is small-bore
+  if (/\bpistol\b/.test(n)) return 'smallbore_pistol';
   return undefined;
 }
 

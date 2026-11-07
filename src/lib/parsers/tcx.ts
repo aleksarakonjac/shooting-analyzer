@@ -55,16 +55,21 @@ export interface ParsedTcx {
 export function parseTcx(xml: string): ParsedTcx {
   const points = rawPoints(xml);
   const samples: HrSample[] = [];
+  const written = new Map<HrSample, string>();
   let missingOffset = false;
   for (const p of points) {
     const hasOffset = HAS_OFFSET.test(p.time);
     if (!hasOffset) missingOffset = true;
     // Date.parse of an offset-less time uses the device zone; pin it to UTC instead.
     const tMs = Date.parse(hasOffset ? p.time : `${p.time}Z`);
-    if (Number.isFinite(tMs) && valid(p.bpm)) samples.push({ tMs, bpm: p.bpm });
+    if (Number.isFinite(tMs) && valid(p.bpm)) {
+      const sample = { tMs, bpm: p.bpm };
+      samples.push(sample);
+      written.set(sample, p.time);
+    }
   }
   samples.sort(bySampleTime);
-  return { samples, startLocalAsWritten: points[0]?.time ?? '', missingOffset };
+  return { samples, startLocalAsWritten: samples[0] ? written.get(samples[0])! : '', missingOffset };
 }
 
 const WALL = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})(?:\.(\d+))?/;

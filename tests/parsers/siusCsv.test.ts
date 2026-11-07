@@ -79,3 +79,35 @@ describe('parseSiusCsv rejects non-SIUS input', () => {
     },
   );
 });
+
+describe('parseSiusCsv report time options', () => {
+  const csv = Buffer.from(bytes).toString('latin1');
+  const withDate = (d: string) => csv.replace('21/10/2026 19:03:09', d);
+
+  it('uses the given time zone', () => {
+    const r = parseSiusCsv(csv, { tz: 'UTC' });
+    expect(r.reportTime?.toISOString()).toBe('2026-10-21T19:03:09.000Z');
+  });
+
+  it('does not flag a date whose day exceeds 12 as ambiguous', () => {
+    expect(parseSiusCsv(csv).reportTimeAmbiguous).toBe(false);
+  });
+
+  it('reads a month-first date when the second number cannot be a month', () => {
+    const r = parseSiusCsv(withDate('10/21/2026 19:03:09'));
+    expect(r.reportTime?.toISOString()).toBe('2026-10-21T17:03:09.000Z');
+    expect(r.reportTimeAmbiguous).toBe(false);
+  });
+
+  it('flags 05/11/2026 as ambiguous and defaults to day-first', () => {
+    const r = parseSiusCsv(withDate('05/11/2026 19:03:09'));
+    expect(r.reportTime?.toISOString()).toBe('2026-11-05T18:03:09.000Z');
+    expect(r.reportTimeAmbiguous).toBe(true);
+  });
+
+  it('honours an explicit dateOrder', () => {
+    const r = parseSiusCsv(withDate('05/11/2026 19:03:09'), { dateOrder: 'mdy' });
+    expect(r.reportTime?.toISOString()).toBe('2026-05-11T17:03:09.000Z');
+    expect(r.reportTimeAmbiguous).toBe(false);
+  });
+});

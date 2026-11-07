@@ -95,3 +95,9 @@ describe('parseTcx without a UTC offset', () => {
     expect(parseTcx(real).missingOffset).toBe(false);
   });
 });
+
+describe('startLocalAsWritten', () => {
+  it('is the written time of the earliest sample, even when the file is unsorted', () => {
+    expect(parseTcx(small).startLocalAsWritten).toBe('2026-11-04T10:00:00.000+01:00');
+  });
+});

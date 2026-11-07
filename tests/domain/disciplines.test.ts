@@ -14,6 +14,10 @@ describe('disciplineFromSiusName', () => {
     ['10m Air Pistol 60', 'air_pistol'],
     ['25m Pistol', 'smallbore_pistol'],
     ['50m Pistol', 'smallbore_pistol'],
+    ['25m Sport Pistol', 'smallbore_pistol'],
+    ['25m Rapid Fire Pistol', 'smallbore_pistol'],
+    ['50m Free Pistol', 'smallbore_pistol'],
+    ['10m Air Pistol 60', 'air_pistol'],
   ])('%s -> %s', (name, id) => {
     expect(disciplineFromSiusName(name)).toBe(id);
   });
