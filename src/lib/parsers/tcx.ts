@@ -43,15 +43,28 @@ const valid = (bpm: number | undefined): bpm is number => bpm !== undefined && N
 const bySampleTime = (a: HrSample, b: HrSample) => a.tMs - b.tMs;
 
 /** Parses a TCX file honouring the written UTC offset. */
-export function parseTcx(xml: string): { samples: HrSample[]; startLocalAsWritten: string } {
+const HAS_OFFSET = /(?:Z|[+-]\d{2}:?\d{2})$/i;
+
+export interface ParsedTcx {
+  samples: HrSample[];
+  startLocalAsWritten: string;
+  /** True when some <Time> carried no UTC offset; those were read as UTC, so the UI should offer zone reinterpretation. */
+  missingOffset: boolean;
+}
+
+export function parseTcx(xml: string): ParsedTcx {
   const points = rawPoints(xml);
   const samples: HrSample[] = [];
+  let missingOffset = false;
   for (const p of points) {
-    const tMs = Date.parse(p.time);
+    const hasOffset = HAS_OFFSET.test(p.time);
+    if (!hasOffset) missingOffset = true;
+    // Date.parse of an offset-less time uses the device zone; pin it to UTC instead.
+    const tMs = Date.parse(hasOffset ? p.time : `${p.time}Z`);
     if (Number.isFinite(tMs) && valid(p.bpm)) samples.push({ tMs, bpm: p.bpm });
   }
   samples.sort(bySampleTime);
-  return { samples, startLocalAsWritten: points[0]?.time ?? '' };
+  return { samples, startLocalAsWritten: points[0]?.time ?? '', missingOffset };
 }
 
 const WALL = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})(?:\.(\d+))?/;

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { parseSiusCsv } from '@/lib/parsers/siusCsv';
+import { NotSiusCsvError, parseSiusCsv } from '@/lib/parsers/siusCsv';
 import { decodeText } from '@/lib/parsers/decode';
 
 const bytes = new Uint8Array(readFileSync(join(__dirname, '../fixtures/2026-10-21T190309.csv')));
@@ -56,4 +56,26 @@ describe('decodeText', () => {
   it('falls back to windows-1252 when UTF-8 is invalid', () => {
     expect(decodeText(new Uint8Array([0xd8, 0x20, 0x6f, 0x6b]))).toBe('Ø ok');
   });
+});
+
+describe('decodeText UTF-16', () => {
+  const text = 'Air Rifle 80\r\n,Total:,841.1';
+  it('decodes UTF-16 LE with BOM', () => {
+    const bytes = new Uint8Array(Buffer.concat([Buffer.from([0xff, 0xfe]), Buffer.from(text, 'utf16le')]));
+    expect(decodeText(bytes)).toBe(text);
+  });
+  it('decodes UTF-16 BE with BOM', () => {
+    const le = Buffer.from(text, 'utf16le');
+    const be = Buffer.from(le).swap16();
+    expect(decodeText(new Uint8Array(Buffer.concat([Buffer.from([0xfe, 0xff]), be])))).toBe(text);
+  });
+});
+
+describe('parseSiusCsv rejects non-SIUS input', () => {
+  it.each([['empty string', ''], ['unrelated CSV', 'a,b,c\n1,2,3'], ['semicolon text', 'a;b;c\n1;2;3']])(
+    '%s',
+    (_n, input) => {
+      expect(() => parseSiusCsv(input)).toThrow(NotSiusCsvError);
+    },
+  );
 });

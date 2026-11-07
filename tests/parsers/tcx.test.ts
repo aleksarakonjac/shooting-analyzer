@@ -81,3 +81,17 @@ describe('hrWindow', () => {
     expect(hrWindow(samples, t0 + 100000, t0 + 200000, 0)).toEqual([]);
   });
 });
+
+describe('parseTcx without a UTC offset', () => {
+  const noOffset = small.replaceAll('+01:00', '');
+
+  it('treats offset-less times as UTC (never the device zone) and flags it', () => {
+    const r = parseTcx(noOffset);
+    expect(new Date(r.samples[0].tMs).toISOString()).toBe('2026-11-04T10:00:00.000Z');
+    expect(r.missingOffset).toBe(true);
+  });
+
+  it('does not flag files that carry an offset', () => {
+    expect(parseTcx(real).missingOffset).toBe(false);
+  });
+});

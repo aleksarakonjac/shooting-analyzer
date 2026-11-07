@@ -38,6 +38,13 @@ function parseReportTime(row: string[]): Date | undefined {
   return undefined;
 }
 
+export class NotSiusCsvError extends Error {
+  constructor(message = 'Not a SIUS CSV report') {
+    super(message);
+    this.name = 'NotSiusCsvError';
+  }
+}
+
 export function parseSiusCsv(text: string): ParsedSiusResult {
   const lines = text.split(/\r?\n/).map(cells);
   const result: ParsedSiusResult = { discipline: '', total: 0, series: [] };
@@ -76,5 +83,6 @@ export function parseSiusCsv(text: string): ParsedSiusResult {
       current.groupMm = parseGroupMm(row);
     }
   }
+  if (!result.discipline || result.series.length === 0) throw new NotSiusCsvError();
   return result;
 }

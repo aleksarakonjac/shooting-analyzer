@@ -51,14 +51,18 @@ export async function readScatt(data: Uint8Array, opts: ReadScattOptions = {}): 
       throw new NotScattFileError();
     }
     const rows = (shotRows[0]?.values ?? []) as number[][];
-    if (rows.length === 0) throw new NotScattFileError('SCATT file contains no shots');
-    const first = rows[0];
+    // Session of the earliest shot; with no shots, the earliest session. The sample holds one session.
+    const meta =
+      rows[0]?.slice(3, 6) ??
+      (db.exec('SELECT timer, distance, caliber FROM sessions ORDER BY timer ASC LIMIT 1')[0]?.values[0] as
+        | number[]
+        | undefined);
+    if (!meta) throw new NotScattFileError('SCATT file contains no session');
     return {
-      // Session of the earliest shot; the sample holds a single session.
-      sessionStartMs: first[3],
-      distanceM: first[4],
-      caliberMm: first[5],
-      shots: rows.map((r) => ({ id: r[0], tMs: r[1], flaggedMatch: r[2] === 1 })),
+      sessionStartMs: meta[0],
+      distanceM: meta[1],
+      caliberMm: meta[2],
+      shots: rows.map((r) => ({ id: r[0], tMs: r[1], flaggedMatch: r[2] !== 0 })),
     };
   } finally {
     db.close();

@@ -12,7 +12,8 @@ export class UnrecognisedLayoutError extends Error {
 
 const REPORT_TZ = 'Europe/Belgrade';
 const POSITIONS: Record<string, Position> = { Kneeling: 'kneeling', Prone: 'prone', Standing: 'standing' };
-const SHOT = /^(\d+)(x)?\s*(\S+)?$/;
+// value, optional inner-ten 'x', optional direction arrow (U+2190-21FF)
+const SHOT = /^(\d+(?:\.\d+)?)(x)?\s*([\u2190-\u21ff]+)?$/;
 
 async function extractTokens(data: Uint8Array): Promise<string[]> {
   // pdfjs transfers the buffer; hand it a copy so the caller's bytes survive.
@@ -50,11 +51,16 @@ export async function parseSiusPdf(data: Uint8Array): Promise<ParsedSiusResult> 
   } catch (e) {
     throw new UnrecognisedLayoutError(`Cannot read PDF: ${(e as Error).message}`);
   }
+  return parseSiusTokens(tokens);
+}
 
+/** Layout logic on the extracted text tokens (exported so edge cases can be tested without a PDF). */
+export function parseSiusTokens(tokens: string[]): ParsedSiusResult {
   const series: ParsedSeries[] = [];
   let position: Position | undefined;
   let current: ParsedSeries | null = null;
   let expectTotal = false;
+  let closed = false; // series total already read: later tokens are not shots
 
   for (let i = 0; i < tokens.length; i++) {
     const t = tokens[i];
@@ -67,6 +73,7 @@ export async function parseSiusPdf(data: Uint8Array): Promise<ParsedSiusResult> 
       current = { index: series.length + 1, position, shots: [], total: 0 };
       series.push(current);
       expectTotal = false;
+      closed = false;
       continue;
     }
     if (!current) continue;
@@ -80,6 +87,7 @@ export async function parseSiusPdf(data: Uint8Array): Promise<ParsedSiusResult> 
         current.total = Number(m[1]);
         if (m[2]) current.totalDecimal = Number(m[2]);
         expectTotal = false;
+        closed = true;
         continue;
       }
     }
@@ -87,7 +95,7 @@ export async function parseSiusPdf(data: Uint8Array): Promise<ParsedSiusResult> 
     const y = /^Y (-?\d+(?:\.\d+)?)$/.exec(t);
     if (x) current.mpi = { x: Number(x[1]), y: current.mpi?.y ?? 0 };
     else if (y) current.mpi = { x: current.mpi?.x ?? 0, y: Number(y[1]) };
-    else if (current.total === 0 && !expectTotal) {
+    else if (!closed && !expectTotal) {
       const m = SHOT.exec(t);
       if (m) {
         const shot: ParsedShot = { value: Number(m[1]) };

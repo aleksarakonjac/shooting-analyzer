@@ -56,3 +56,30 @@ describe('readScatt (invalid input)', () => {
     await expect(readScatt(bytes)).rejects.toBeInstanceOf(NotScattFileError);
   });
 });
+
+describe('readScatt (valid file with no shots)', () => {
+  it('returns session metadata and an empty shot list instead of failing', async () => {
+    const initSqlJs = (await import('sql.js')).default;
+    const SQL = await initSqlJs();
+    const db = new SQL.Database(file);
+    db.run('DELETE FROM shots');
+    const bytes = db.export();
+    db.close();
+    const r = await readScatt(bytes);
+    expect(r.shots).toEqual([]);
+    expect(r.sessionStartMs).toBe(1792596582905);
+    expect(r.distanceM).toBe(10);
+    expect(r.caliberMm).toBe(4.5);
+  });
+
+  it('treats any non-zero match_shot as a match shot', async () => {
+    const initSqlJs = (await import('sql.js')).default;
+    const SQL = await initSqlJs();
+    const db = new SQL.Database(file);
+    db.run('UPDATE shots SET match_shot = 2 WHERE shot_id = 1');
+    const bytes = db.export();
+    db.close();
+    const { shots } = await readScatt(bytes);
+    expect(shots[0].flaggedMatch).toBe(true);
+  });
+});

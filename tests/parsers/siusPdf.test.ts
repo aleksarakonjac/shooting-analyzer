@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { parseSiusPdf, UnrecognisedLayoutError } from '@/lib/parsers/siusPdf';
+import { parseSiusPdf, parseSiusTokens, UnrecognisedLayoutError } from '@/lib/parsers/siusPdf';
 
 const pdf = new Uint8Array(readFileSync(join(__dirname, '../fixtures/50m Rifle 3x20.pdf')));
 
@@ -53,5 +53,25 @@ describe('parseSiusPdf (50m Rifle 3x20 sample)', () => {
 describe('parseSiusPdf (unrecognised)', () => {
   it('throws UnrecognisedLayoutError for a PDF without series blocks', async () => {
     await expect(parseSiusPdf(EMPTY_PDF)).rejects.toBeInstanceOf(UnrecognisedLayoutError);
+  });
+});
+
+describe('parseSiusTokens', () => {
+  it('keeps decimal shot values and their direction', () => {
+    const r = parseSiusTokens(['50m Rifle 3x20', 'Kneeling', 'Series: 1', '10.3 \u2191', '9.8x \u2198', 'Total:', '20 20.1']);
+    expect(r.series[0].shots).toEqual([
+      { value: 10.3, direction: '\u2191' },
+      { value: 9.8, inner: true, direction: '\u2198' },
+    ]);
+  });
+
+  it('a zero-total series does not swallow later tokens such as the page footer', () => {
+    const r = parseSiusTokens([
+      '50m Rifle 3x20', 'Prone', 'Series: 1', '0 \u2193', '0 \u2190', 'Total:', '0 0.0',
+      'MPI [mm]:', 'X 1.5', 'Y -2.0', 'Shots 2', '02.10.2026 12:52', '1/2',
+    ]);
+    expect(r.series[0].shots).toHaveLength(2);
+    expect(r.series[0].total).toBe(0);
+    expect(r.series[0].mpi).toEqual({ x: 1.5, y: -2.0 });
   });
 });
