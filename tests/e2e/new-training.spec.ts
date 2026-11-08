@@ -13,6 +13,13 @@ const fx = (n: string) => join(__dirname, '../fixtures', n);
 
 let page: Page;
 
+/** Opens the form and waits until React is live (the default name appears once a discipline is chosen). */
+async function openForm(): Promise<void> {
+  await page.goto('/trening/novi');
+  await page.getByLabel('Disciplina').selectOption({ label: 'Vazdušna puška' });
+  await expect(page.getByLabel('Naziv')).toHaveAttribute('placeholder', /Vazdušna puška$/);
+}
+
 test.beforeAll(async ({ browser }) => {
   page = await (await browser.newContext()).newPage();
   await page.goto('/register');
@@ -55,8 +62,9 @@ test('the default name is dd.mm. plus the discipline for today', async () => {
 });
 
 test('CSV + SCATT propose last 80 (orange), mismatch 0, "Potvrdi" turns it black; first 80 shows another first shot', async () => {
-  await page.goto('/trening/novi');
+  await openForm();
   await page.getByLabel('SIUS fajl (CSV ili PDF)').setInputFiles(fx('2026-10-21T190309.csv'));
+  await expect(page.getByText('Učitano: 2026-10-21T190309.csv')).toBeVisible();
   await page.getByLabel('SCATT fajl').setInputFiles(fx('export_2026-10-22_14.11.scatt-expert'));
 
   const badge = page.locator('.flag-badge');
@@ -75,11 +83,11 @@ test('CSV + SCATT propose last 80 (orange), mismatch 0, "Potvrdi" turns it black
   await page.getByRole('button', { name: 'Potvrdi' }).click();
   await page.getByRole('button', { name: 'Sačuvaj trening' }).click();
   await expect(page.getByText('Trening je sačuvan')).toBeVisible();
-  await expect(page.getByRole('alert')).toHaveCount(0); // saved, and every source file uploaded
+  await expect(page.getByText('nije otpremljeno')).toHaveCount(0); // every source file uploaded (Next's own empty alert is ignored)
 });
 
 test('the PDF fixture creates three position groups', async () => {
-  await page.goto('/trening/novi');
+  await openForm();
   await page.getByLabel('SIUS fajl (CSV ili PDF)').setInputFiles(fx('50m Rifle 3x20.pdf'));
   await expect(page.getByTestId('position-group')).toHaveCount(3);
 });
