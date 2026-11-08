@@ -1,5 +1,5 @@
 begin;
-select plan(86);
+select plan(91);
 
 -- Acting-user helper: runs q as role authenticated with auth.uid() = uid.
 -- Returns affected/returned row count, or -1 when the statement raised (permission/RLS).
@@ -104,6 +104,13 @@ insert into shares (shooter_id, scope, from_date, to_date) values (u(1), 'period
 select is(tap(u(3), format($$select 1 where has_context_share(%L, %L)$$, u(1), u(101))), 1::bigint, 'period share reveals context');
 select is(tap(u(3), format($$select 1 where has_context_share(%L, %L)$$, u(1), u(103))), 0::bigint, 'period share does not cover other date');
 select is(tap(u(1), format($$select 1 where has_context_share(%L, %L)$$, u(1), u(103))), 1::bigint, 'shooter always has context');
+
+-- Link state machine
+select is(tap(u(6), format($$update links set status = 'active' where coach_id = %L$$, u(6))), -1::bigint, 'ended link cannot be reactivated');
+select is(tap(u(1), format($$update links set status = 'active' where coach_id = %L$$, u(5))), -1::bigint, 'requester cannot confirm own request');
+select is(tap(u(5), format($$update links set status = 'active' where coach_id = %L$$, u(5))), 1::bigint, 'other side confirms a pending request');
+select is(tap(u(1), format($$insert into links (shooter_id, coach_id, requested_by) values (%L, %L, %L)$$, u(1), u(6), u(1))), 1::bigint, 're-link after ended is a new request');
+select is(tap(u(1), format($$insert into trainings (id, shooter_id, created_by, discipline, trained_on) values (%L, %L, %L, 'air_rifle', '2026-11-04')$$, u(999), u(1), u(1))), -1::bigint, 'client cannot choose training id');
 
 select * from finish();
 rollback;
