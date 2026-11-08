@@ -10,7 +10,7 @@ Use a separate **test** project, never one holding real data. Nothing below is c
    supabase link --project-ref <your-project-ref>
    supabase db push
    ```
-4. Copy `.env.example` to `.env.local` and fill `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+4. Copy `.env.example` to `.env.local` and fill `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`
    (Project settings → API). Never put the service-role key in the repo.
 5. Create the admin: Authentication → Users → Add user (email + password, auto-confirm), then in the SQL editor:
    ```sql
