@@ -1,4 +1,5 @@
 'use client';
+import Link from 'next/link';
 import { useMemo, useState, type ChangeEvent } from 'react';
 import { proposeSelection, selectMatchShots, type MatchSelection } from '@/lib/alignment/align';
 import { DISCIPLINES } from '@/lib/domain/disciplines';
@@ -11,6 +12,7 @@ import { decodeText } from '@/lib/parsers/decode';
 import type { ScattData } from '@/lib/parsers/scatt';
 import { parseSiusCsv } from '@/lib/parsers/siusCsv';
 import { parseTcx, reinterpretAsZone, type HrSample } from '@/lib/parsers/tcx';
+import { zoneShiftMs } from '@/lib/report/derive';
 import { FlagBadge } from './FlagBadge';
 import { MatchSelector } from './MatchSelector';
 import { MismatchNotice } from './MismatchNotice';
@@ -44,6 +46,8 @@ export function NewTrainingForm({ userId, tz, today }: { userId: string; tz: str
   const [hrLoaded, setHrLoaded] = useState<Loaded<HrData> | null>(null);
   const [hrOffsetS, setHrOffsetS] = useState(0);
   const [hrZone, setHrZone] = useState(tz);
+  // Reinterpreting the TCX clock moves every sample; the shift is saved inside the heart-rate offset.
+  const [hrZoneShiftMs, setHrZoneShiftMs] = useState(0);
 
   const [selection, setSelection] = useState<MatchSelection | undefined>();
   const [ignored, setIgnored] = useState<number[]>([]);
@@ -157,6 +161,7 @@ export function NewTrainingForm({ userId, tz, today }: { userId: string; tz: str
       const xml = await file.text();
       const parsed = parseTcx(xml);
       setHrLoaded({ file, data: { samples: parsed.samples, xml } });
+      setHrZoneShiftMs(0);
       setErrors((e) => ({ ...e, hr: undefined }));
     } catch {
       setErrors((e) => ({ ...e, hr: t.unreadable }));
@@ -165,7 +170,10 @@ export function NewTrainingForm({ userId, tz, today }: { userId: string; tz: str
 
   const applyZone = () => {
     if (!hrLoaded) return;
-    setHrLoaded({ ...hrLoaded, data: { ...hrLoaded.data, samples: reinterpretAsZone(hrLoaded.data.xml, hrZone) } });
+    const original = parseTcx(hrLoaded.data.xml).samples;
+    const moved = reinterpretAsZone(hrLoaded.data.xml, hrZone);
+    setHrZoneShiftMs(zoneShiftMs(original, moved));
+    setHrLoaded({ ...hrLoaded, data: { ...hrLoaded.data, samples: moved } });
   };
 
   const removeScatt = () => {
@@ -194,7 +202,7 @@ export function NewTrainingForm({ userId, tz, today }: { userId: string; tz: str
       selection,
       ignoredScattIds: ignored,
       hr,
-      hrOffsetMs: hrOffsetS * 1000,
+      hrOffsetMs: hrOffsetS * 1000 + hrZoneShiftMs,
       confirmed,
     };
     try {
@@ -231,7 +239,9 @@ export function NewTrainingForm({ userId, tz, today }: { userId: string; tz: str
     return (
       <div role="status" className="saved" data-training-id={saved.id}>
         <h2>{t.savedTitle}</h2>
-        <p>{t.savedLink}</p>
+        <p>
+          <Link href={`/trening/${saved.id}`}>{t.savedLink}</Link>
+        </p>
         {saved.failedUploads > 0 && <p role="alert">{t.uploadsFailed(saved.failedUploads)}</p>}
       </div>
     );

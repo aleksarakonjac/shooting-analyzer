@@ -3,18 +3,19 @@ import { DISCIPLINES, validateSeries } from '@/lib/domain/disciplines';
 import type { DisciplineId, ParsedSeries, ParsedSiusResult, Position } from '@/lib/domain/types';
 import type { ScattData } from '@/lib/parsers/scatt';
 
-export interface PositionGroup {
+export interface PositionGroup<T = ParsedSeries> {
   position?: Position;
-  series: ParsedSeries[];
+  series: T[];
 }
 
 /** Contiguous series with the same position form one group (a 3x20 report gives kneeling, prone, standing). */
-export function groupByPosition(series: ParsedSeries[]): PositionGroup[] {
-  const groups: PositionGroup[] = [];
+export function groupByPosition<T extends { position?: Position | null }>(series: T[]): PositionGroup<T>[] {
+  const groups: PositionGroup<T>[] = [];
   for (const s of series) {
+    const position = s.position ?? undefined;
     const last = groups[groups.length - 1];
-    if (last && last.position === s.position) last.series.push(s);
-    else groups.push({ position: s.position, series: [s] });
+    if (last && last.position === position) last.series.push(s);
+    else groups.push({ position, series: [s] });
   }
   return groups;
 }
