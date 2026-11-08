@@ -10,7 +10,8 @@ select col_is_null('public', 'shots', 'scatt_metrics', 'shots.scatt_metrics is n
 
 insert into auth.users (id, email) values ('00000000-0000-0000-0000-0000000000a1', 'a@example.test');
 insert into profiles (id, display_name, role, status)
-  values ('00000000-0000-0000-0000-0000000000a1', 'Test', 'shooter', 'active');
+  values ('00000000-0000-0000-0000-0000000000a1', 'Test', 'shooter', 'active')
+  on conflict (id) do update set display_name = excluded.display_name, role = excluded.role, status = excluded.status;
 
 select throws_ok(
   $$insert into trainings (shooter_id, created_by, discipline, trained_on)

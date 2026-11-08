@@ -29,7 +29,8 @@ insert into profiles (id, display_name, role, status) values
   (u(3), 'C1', 'coach', 'active'), (u(4), 'C2', 'coach', 'active'),
   (u(5), 'C3', 'coach', 'active'), (u(6), 'C4', 'coach', 'active'),
   (u(7), 'A', 'admin', 'active'),
-  (u(8), 'P', 'shooter', 'pending'), (u(9), 'D', 'shooter', 'disabled');
+  (u(8), 'P', 'shooter', 'pending'), (u(9), 'D', 'shooter', 'disabled')
+  on conflict (id) do update set display_name = excluded.display_name, role = excluded.role, status = excluded.status;
 insert into links (shooter_id, coach_id, requested_by, status) values
   (u(1), u(3), u(1), 'active'), (u(1), u(4), u(4), 'active'),
   (u(1), u(5), u(1), 'pending'), (u(1), u(6), u(1), 'ended');
