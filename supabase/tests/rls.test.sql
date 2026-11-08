@@ -1,27 +1,6 @@
 begin;
 select plan(91);
 
--- Acting-user helper: runs q as role authenticated with auth.uid() = uid.
--- Returns affected/returned row count, or -1 when the statement raised (permission/RLS).
-create function tap(uid uuid, q text) returns bigint language plpgsql as $$
-declare n bigint;
-begin
-  perform set_config('request.jwt.claim.sub', uid::text, true);
-  begin
-    perform set_config('role', 'authenticated', true);
-    execute q;
-    get diagnostics n = row_count;
-  exception when others then
-    n := -1;
-  end;
-  execute 'reset role';
-  perform set_config('request.jwt.claim.sub', '', true);
-  return n;
-end $$;
-
--- Fixture ids
-create function u(n int) returns uuid language sql immutable as
-$$ select ('00000000-0000-0000-0000-' || lpad(n::text, 12, '0'))::uuid $$;
 -- users: 1 S1, 2 S2, 3 C1, 4 C2, 5 C3 (pending link), 6 C4 (ended link), 7 A, 8 P pending, 9 D disabled
 insert into auth.users (id, email) select u(n), 'u' || n || '@example.test' from generate_series(1, 9) n;
 insert into profiles (id, display_name, role, status) values

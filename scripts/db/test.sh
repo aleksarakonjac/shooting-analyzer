@@ -20,6 +20,7 @@ PSQL+=(-d app)
 for f in "$ROOT"/supabase/migrations/*.sql; do "${PSQL[@]}" -f "$f"; done
 out="$("$PGBIN/pg_prove" --version >/dev/null 2>&1 && echo prove || echo psql)"
 fail=0
+"${PSQL[@]}" -f "$ROOT/scripts/db/helpers.sql"
 for t in "$ROOT"/supabase/tests/*.sql; do
   res="$("${PSQL[@]}" -t -A -f "$t" 2>&1)" || fail=1
   echo "$res"
