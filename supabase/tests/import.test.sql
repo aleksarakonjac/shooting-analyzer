@@ -1,5 +1,5 @@
 begin;
-select plan(17);
+select plan(18);
 
 -- 1 S1 shooter, 2 S2 shooter, 3 C1 coach linked to S1 only
 insert into auth.users (id, email) select u(n), 'u' || n || '@example.test' from generate_series(1, 3) n;
@@ -22,7 +22,7 @@ create function payload_for(shooter uuid, align text default 'proposed') returns
     'loose_shots', jsonb_build_array(
       jsonb_build_object('kind', 'warmup', 't_ms', 1792596500000, 'scatt_shot_id', 1),
       jsonb_build_object('kind', 'attempt', 't_ms', 1792596550000, 'scatt_shot_id', 2)),
-    'hr_offset_ms', 1500);
+    'hr_offset_ms', 1500, 'hr_avg_bpm', 92);
 $$;
 
 select is(tap(u(1), format($$select save_training(%L::jsonb)$$, payload_for(u(1)))), 1::bigint, 'shooter saves a training');
@@ -32,6 +32,7 @@ select is((select count(*)::int from series), 2, 'two series');
 select is((select count(*)::int from shots where scatt_shot_id is not null), 3, 'three shots carry a scatt id');
 select is((select count(*)::int from loose_shots), 2, 'two loose shots');
 select is((select offset_ms from hr_samples_ref), 1500::bigint, 'heart-rate offset stored');
+select is((select avg_bpm from hr_samples_ref), 92, 'average heart rate over the shots is stored');
 select is((select created_by from trainings), u(1), 'created_by is the caller');
 
 select is(tap(u(3), format($$select save_training(%L::jsonb)$$, payload_for(u(1), 'confirmed'))), 1::bigint, 'coach saves for a linked shooter');

@@ -194,3 +194,19 @@ input[type='radio'], input[type='checkbox'] { min-height: 0; width: 1.1rem; heig
 .hr-chart svg { width: 100%; max-width: 40rem; height: auto; background: var(--ground-raised); border: 1px solid var(--rule); }
 .hr-chart__none { font-weight: 600; }
 .report__loose { display: flex; gap: var(--space-6); flex-wrap: wrap; font-weight: 600; }
+
+/* ---------- dashboard ---------- */
+.dash { display: grid; gap: var(--space-8); max-width: 64rem; }
+.dash__bar { display: flex; gap: var(--space-4); align-items: center; flex-wrap: wrap; }
+.dash__plates { display: grid; gap: var(--space-3); grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr)); }
+.dash__plates .lane-plate { min-width: 0; }
+.dash__trends { display: grid; gap: var(--space-6); grid-template-columns: repeat(auto-fit, minmax(20rem, 1fr)); }
+.trend { margin: 0; color: var(--data-ink); }
+.trend figcaption { color: var(--ink); font-weight: 700; margin-bottom: var(--space-2); }
+.trend svg { width: 100%; height: auto; background: var(--ground-raised); border: 1px solid var(--rule); }
+.dash__list { list-style: none; padding: 0; margin: 0; display: grid; gap: 0; border-top: 2px solid var(--ink); }
+.dash__list a { display: grid; grid-template-columns: 6.5rem 1fr auto; gap: var(--space-3); padding: var(--space-3) 0; border-bottom: 1px solid var(--rule); color: var(--ink); text-decoration: none; font-variant-numeric: tabular-nums; }
+.dash__list a:hover { background: var(--ground-raised); }
+.dash__list a:focus-visible { outline-offset: -2px; }
+.dash__list strong { font-family: var(--font-stencil); font-size: 1.25rem; }
+.dash__disc a { margin-right: var(--space-4); }

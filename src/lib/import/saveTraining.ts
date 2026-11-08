@@ -2,7 +2,8 @@ import { DISCIPLINES } from '@/lib/domain/disciplines';
 import type { DisciplineId, ParsedSiusResult } from '@/lib/domain/types';
 import { alignMatch, selectMatchShots, type MatchSelection } from '@/lib/alignment/align';
 import type { ScattData } from '@/lib/parsers/scatt';
-import type { HrSample } from '@/lib/parsers/tcx';
+import { hrWindow, type HrSample } from '@/lib/parsers/tcx';
+import { hrStats, shotWindow } from '@/lib/report/derive';
 import { createClient } from '@/lib/supabase/client';
 
 export interface TrainingDraft {
@@ -53,12 +54,21 @@ export interface SavePayload {
   } | null;
   loose_shots: { kind: 'warmup' | 'attempt'; t_ms: number; scatt_shot_id: number }[];
   hr_offset_ms: number | null;
+  /** Average heart rate over the match shots (samples are not stored, so it is computed once here). */
+  hr_avg_bpm: number | null;
 }
 
 export const defaultTrainingName = (trainedOn: string, disciplineId: DisciplineId) => {
   const [, mm, dd] = trainedOn.split('-');
   return `${dd}.${mm}. ${DISCIPLINES[disciplineId].nameSr}`;
 };
+
+function hrAverage(draft: TrainingDraft, match: SavePayload['match']): number | null {
+  if (!draft.hr || draft.hr.length === 0 || !match) return null;
+  const win = shotWindow(match.series.flatMap((s) => s.shots.map((x) => x.t_ms)), 0);
+  if (!win) return null;
+  return hrStats(hrWindow(draft.hr, win.fromMs, win.toMs, draft.hrOffsetMs))?.avg ?? null;
+}
 
 /** Pure: turns a draft into the rows the database function stores. */
 export function buildSavePayload(draft: TrainingDraft, userId: string): SavePayload {
@@ -125,6 +135,7 @@ export function buildSavePayload(draft: TrainingDraft, userId: string): SavePayl
     match,
     loose_shots,
     hr_offset_ms: draft.hr && draft.hr.length > 0 ? draft.hrOffsetMs : null,
+    hr_avg_bpm: hrAverage(draft, match),
   };
 }
 

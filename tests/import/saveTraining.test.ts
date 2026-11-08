@@ -101,6 +101,29 @@ describe('partial drafts', () => {
   });
 });
 
+describe('hr_avg_bpm (average heart rate over the match shots)', () => {
+  const times = buildSavePayload(base, 'u').match!.series.flatMap((x) => x.shots.map((y) => y.t_ms as number));
+  const first = Math.min(...times);
+  const last = Math.max(...times);
+
+  it('averages only the samples inside the shot window, shifted by the offset', () => {
+    const hr = [
+      { tMs: first - 600_000, bpm: 50 }, // before the first shot: ignored
+      { tMs: first - 1000, bpm: 80 }, // inside after a +2 s offset
+      { tMs: last - 3000, bpm: 100 },
+      { tMs: last + 600_000, bpm: 200 }, // after the last shot: ignored
+    ];
+    const p = buildSavePayload({ ...base, hr, hrOffsetMs: 2000 }, 'u');
+    expect(p.hr_avg_bpm).toBe(90);
+  });
+
+  it('is null without samples, without shot times, or when no sample falls in the window', () => {
+    expect(buildSavePayload(base, 'u').hr_avg_bpm).toBeNull();
+    expect(buildSavePayload({ ...base, hr: [{ tMs: first - 600_000, bpm: 70 }] }, 'u').hr_avg_bpm).toBeNull();
+    expect(buildSavePayload({ ...base, scatt: undefined, hr: [{ tMs: 1, bpm: 70 }] }, 'u').hr_avg_bpm).toBeNull();
+  });
+});
+
 describe('ignored SCATT shots', () => {
   it('moves an ignored shot out of the alignment and keeps it as a loose shot', () => {
     const sorted = [...scatt.shots].sort((a, b) => a.tMs - b.tMs);

@@ -46,3 +46,25 @@ describe('HrChart', () => {
     expect(out).not.toContain('nema pulsa');
   });
 });
+
+import { TrendChart } from '../../src/components/TrendChart';
+
+describe('TrendChart', () => {
+  const buckets = [
+    { label: 'pon', value: 100.5 },
+    { label: 'uto', value: null },
+    { label: 'sre', value: 102 },
+  ];
+  it('draws a marker only for buckets with data and labels the axis', () => {
+    const out = html(<TrendChart title="Prosek serije" buckets={buckets} />);
+    expect(out.match(/data-point=/g)).toHaveLength(2);
+    expect(out).toContain('pon');
+    expect(out).toContain('Prosek serije');
+    expect(out).toContain('role="img"');
+  });
+  it('is an empty state when no bucket has data', () => {
+    const out = html(<TrendChart title="Prosek serije" buckets={[{ label: 'pon', value: null }]} />);
+    expect(out).toContain('Nema podataka za ovaj period.');
+    expect(out).not.toContain('data-point');
+  });
+});

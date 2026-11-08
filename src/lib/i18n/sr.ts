@@ -174,6 +174,27 @@ export const sr = {
     notFound: 'Trening ne postoji ili nemate pristup.',
     sources: 'Izvorni fajlovi',
   },
+  dashboard: {
+    title: 'Moji treninzi',
+    trainings: 'Treninga',
+    shots: 'Pogodaka',
+    avgSeries: 'Prosek serije',
+    avgGroup: 'Prosečna grupa',
+    avgHr: 'Prosečan puls',
+    unitMm: 'mm',
+    unitBpm: 'otk/min',
+    noValue: '—',
+    trendSeries: 'Prosek serije po danima',
+    trendGroup: 'Prosečna grupa (mm)',
+    noData: 'Nema podataka za ovaj period.',
+    listTitle: 'Treninzi u periodu',
+    empty: 'U ovom periodu nema treninga.',
+    addFirst: 'Dodaj trening',
+    discipline: 'Disciplina',
+    hrNote: 'Puls se računa samo za potvrđena poravnanja.',
+    proposed: 'poravnanje nije potvrđeno',
+    coachHome: 'Pregled strelaca stiže uskoro.',
+  },
 } as const;
 
 export type SrKey = keyof typeof sr;
