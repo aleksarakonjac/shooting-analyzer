@@ -55,7 +55,7 @@ export interface SavePayload {
   hr_offset_ms: number | null;
 }
 
-const defaultName = (trainedOn: string, disciplineId: DisciplineId) => {
+export const defaultTrainingName = (trainedOn: string, disciplineId: DisciplineId) => {
   const [, mm, dd] = trainedOn.split('-');
   return `${dd}.${mm}. ${DISCIPLINES[disciplineId].nameSr}`;
 };
@@ -118,7 +118,7 @@ export function buildSavePayload(draft: TrainingDraft, userId: string): SavePayl
       shooter_id: draft.shooterId ?? userId,
       discipline: draft.disciplineId,
       trained_on: draft.trainedOn,
-      name: draft.name?.trim() || defaultName(draft.trainedOn, draft.disciplineId),
+      name: draft.name?.trim() || defaultTrainingName(draft.trainedOn, draft.disciplineId),
       place: draft.place ?? '',
       notes: draft.notes ?? '',
     },

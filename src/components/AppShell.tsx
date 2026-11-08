@@ -9,6 +9,7 @@ const icon = (d: string) => (
     strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round"><path d={d} /></svg>
 );
 const ICON = {
+  plus: icon('M12 5v14M5 12h14'),
   list: icon('M8 6h12M8 12h12M8 18h12M4 6h.01M4 12h.01M4 18h.01'),
   people: icon('M16 20v-1a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4v1M9.5 11a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7ZM21 20v-1a4 4 0 0 0-3-3.9M15.5 4.2a3.5 3.5 0 0 1 0 6.6'),
   link: icon('M10 14a4.5 4.5 0 0 0 6.4 0l3-3a4.5 4.5 0 0 0-6.4-6.4l-1 1M14 10a4.5 4.5 0 0 0-6.4 0l-3 3a4.5 4.5 0 0 0 6.4 6.4l1-1'),
@@ -20,6 +21,7 @@ const ICON = {
 const NAV: Record<Role, NavItem[]> = {
   shooter: [
     { href: '/', label: sr.nav.trainings, icon: ICON.list },
+    { href: '/trening/novi', label: sr.newTraining.nav, icon: ICON.plus },
     { href: '/profil/veze', label: sr.nav.links, icon: ICON.link },
     { href: '/profil/deljenje', label: sr.nav.sharing, icon: ICON.share },
   ],
