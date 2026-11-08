@@ -13,11 +13,13 @@ const shoulders = Big_Shoulders({
   subsets: ['latin', 'latin-ext'],
   variable: '--f-display',
   display: 'swap',
+  adjustFontFallback: false, // no metrics for this family; silences a build warning
 });
 const stencil = Big_Shoulders_Stencil({
   subsets: ['latin', 'latin-ext'],
   variable: '--f-stencil',
   display: 'swap',
+  adjustFontFallback: false,
 });
 
 export const metadata: Metadata = {
