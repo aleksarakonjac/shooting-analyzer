@@ -7,3 +7,5 @@ re/
 next-env.d.ts
 *.tsbuildinfo
 .DS_Store
+test-results/
+playwright-report/
