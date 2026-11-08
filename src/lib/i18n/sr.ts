@@ -36,6 +36,7 @@ export const sr = {
     requestSent: 'Ako nalog postoji i može da se poveže, zahtev je poslat.',
     empty: 'Nema aktivnih veza ni zahteva.',
     pendingOut: 'Čeka potvrdu druge strane',
+    outgoing: 'Zahtev poslat',
     pendingIn: 'Traži vašu potvrdu',
     active: 'Aktivna veza',
     confirm: 'Potvrdi',

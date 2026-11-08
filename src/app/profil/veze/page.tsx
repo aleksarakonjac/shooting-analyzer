@@ -6,8 +6,8 @@ import { linkDecisionForm, requestLinkForm } from '@/lib/links';
 interface MyLink {
   id: string;
   status: 'pending' | 'active';
-  other_name: string;
-  other_role: 'shooter' | 'coach' | 'admin';
+  other_name: string | null;
+  other_role: 'shooter' | 'coach' | 'admin' | null;
   i_requested: boolean;
 }
 
@@ -43,7 +43,7 @@ async function Body({ searchParams }: { searchParams: Promise<{ poslato?: string
       <ul style={{ listStyle: 'none', padding: 0, display: 'grid', gap: '1rem' }}>
         {links?.map((l) => (
           <li key={l.id}>
-            <strong>{l.other_name}</strong> ({l.other_role === 'coach' ? t.coach : t.shooter}) —{' '}
+            <strong>{l.other_name ?? t.outgoing}</strong>{l.other_role && ` (${l.other_role === 'coach' ? t.coach : t.shooter})`} —{' '}
             {l.status === 'active' ? t.active : l.i_requested ? t.pendingOut : t.pendingIn}
             <div style={{ display: 'flex', gap: '.5rem', marginTop: '.5rem' }}>
               {l.status === 'pending' && !l.i_requested && <Decision id={l.id} decision="confirm" label={t.confirm} />}

@@ -1,5 +1,5 @@
 begin;
-select plan(36);
+select plan(40);
 
 -- 1 S1, 2 S2, 3 C1 (coach), 4 C2 (coach), 5 P (pending shooter), 6 C3 (pending coach)
 insert into auth.users (id, email) select u(n), 'u' || n || '@example.test' from generate_series(1, 6) n;
@@ -30,6 +30,10 @@ select is((select requested_by from links where shooter_id = u(2) and coach_id =
 select is(tap(u(1), 'select 1 from my_links()'), 1::bigint, 'shooter sees the incoming request');
 select is((select other_name from my_links_for(u(1))), 'C1', 'request shows the requester name');
 select is(tap(u(3), 'select 1 from my_links()'), 1::bigint, 'coach sees own request');
+select is((select other_name from my_links_for(u(3))), null, 'outgoing pending hides the other side name');
+select is((select other_id from my_links_for(u(3))), null, 'outgoing pending hides the other side id');
+select is(tap(u(1), format($$insert into links (shooter_id, coach_id, requested_by) values (%L, %L, %L)$$, u(1), u(4), u(1))), -1::bigint, 'links cannot be inserted directly');
+select is(tap(u(1), format($$select 1 from links where coach_id = %L$$, u(4))), 0::bigint, 'direct insert created nothing');
 select is(tap(u(4), 'select 1 from my_links()'), 1::bigint, 'second coach sees only own link');
 select is(tap(u(5), 'select 1 from my_links()'), 0::bigint, 'unrelated user sees none');
 

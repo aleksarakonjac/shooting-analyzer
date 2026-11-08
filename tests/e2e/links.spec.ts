@@ -48,7 +48,7 @@ test('coach requests a link by email and the shooter confirms it', async () => {
   await coachPage.getByLabel('E-pošta osobe sa kojom se povezujete').fill(shooter.email);
   await coachPage.getByRole('button', { name: 'Pošalji zahtev' }).click();
   await expect(coachPage.getByText('Ako nalog postoji')).toBeVisible();
-  await expect(item(coachPage, shooter.name)).toContainText('Čeka potvrdu druge strane');
+  await expect(coachPage.getByRole('listitem').first()).toContainText('Čeka potvrdu druge strane');
 
   await shooterPage.goto('/profil/veze');
   await expect(item(shooterPage, coach.name)).toContainText('Traži vašu potvrdu');
