@@ -1,5 +1,5 @@
 begin;
-select plan(40);
+select plan(41);
 
 -- 1 S1, 2 S2, 3 C1 (coach), 4 C2 (coach), 5 P (pending shooter), 6 C3 (pending coach)
 insert into auth.users (id, email) select u(n), 'u' || n || '@example.test' from generate_series(1, 6) n;
@@ -33,16 +33,17 @@ select is(tap(u(3), 'select 1 from my_links()'), 1::bigint, 'coach sees own requ
 select is((select other_name from my_links_for(u(3))), null, 'outgoing pending hides the other side name');
 select is((select other_id from my_links_for(u(3))), null, 'outgoing pending hides the other side id');
 select is(tap(u(1), format($$insert into links (shooter_id, coach_id, requested_by) values (%L, %L, %L)$$, u(1), u(4), u(1))), -1::bigint, 'links cannot be inserted directly');
-select is(tap(u(1), format($$select 1 from links where coach_id = %L$$, u(4))), 0::bigint, 'direct insert created nothing');
+select is((select count(*)::int from links where shooter_id = u(1) and coach_id = u(4)), 0, 'direct insert created nothing');
 select is(tap(u(4), 'select 1 from my_links()'), 1::bigint, 'second coach sees only own link');
 select is(tap(u(5), 'select 1 from my_links()'), 0::bigint, 'unrelated user sees none');
 
 -- Confirm and effect
 select is(tap(u(3), 'select 1 from trainings'), 0::bigint, 'coach sees no trainings before confirmation');
-select is(tap(u(3), format($$update links set status = 'active' where shooter_id = %L and coach_id = %L$$, u(1), u(3))), -1::bigint, 'requester cannot confirm');
-select is(tap(u(1), format($$update links set status = 'active' where shooter_id = %L and coach_id = %L$$, u(1), u(3))), 1::bigint, 'shooter confirms');
+select is(tap(u(3), format($$select 1 where confirm_link(%L)$$, (select id from links where shooter_id = u(1) and coach_id = u(3) and status = 'pending'))), 0::bigint, 'requester cannot confirm');
+select is(tap(u(1), format($$select 1 where confirm_link(%L)$$, (select id from links where shooter_id = u(1) and coach_id = u(3) and status = 'pending'))), 1::bigint, 'shooter confirms');
 select is(tap(u(3), 'select 1 from trainings'), 1::bigint, 'coach sees the shooter training after confirmation');
-select is(tap(u(1), format($$update links set status = 'ended' where shooter_id = %L and coach_id = %L$$, u(1), u(3))), 1::bigint, 'shooter ends the link');
+select is(tap(u(5), format($$select 1 where end_link(%L)$$, (select id from links where shooter_id = u(1) and coach_id = u(3) and status = 'active'))), 0::bigint, 'a stranger cannot end the link');
+select is(tap(u(1), format($$select 1 where end_link(%L)$$, (select id from links where shooter_id = u(1) and coach_id = u(3) and status = 'active'))), 1::bigint, 'shooter ends the link');
 select is(tap(u(3), 'select 1 from trainings'), 0::bigint, 'coach sees nothing after the link ended');
 select is(tap(u(3), 'select 1 from my_links()'), 0::bigint, 'ended links are not listed');
 select is(tap(u(3), $$select request_link('u1@example.test')$$), 1::bigint, 're-request after ending');

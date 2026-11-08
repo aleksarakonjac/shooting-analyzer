@@ -11,13 +11,13 @@ export async function requestLink(email: string): Promise<void> {
 
 export async function confirmLink(linkId: string): Promise<void> {
   const supabase = await createClient();
-  await supabase.from('links').update({ status: 'active' }).eq('id', linkId);
+  await supabase.rpc('confirm_link', { link_id: linkId });
 }
 
 /** Ends an active link or withdraws/declines a pending one. */
 export async function endLink(linkId: string): Promise<void> {
   const supabase = await createClient();
-  await supabase.from('links').update({ status: 'ended' }).eq('id', linkId);
+  await supabase.rpc('end_link', { link_id: linkId });
 }
 
 export async function setShare(scope: ShareScope, args: ShareArgs): Promise<boolean> {

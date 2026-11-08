@@ -1,5 +1,5 @@
 begin;
-select plan(92);
+select plan(94);
 
 -- users: 1 S1, 2 S2, 3 C1, 4 C2, 5 C3 (pending link), 6 C4 (ended link), 7 A, 8 P pending, 9 D disabled
 insert into auth.users (id, email) select u(n), 'u' || n || '@example.test' from generate_series(1, 9) n;
@@ -86,9 +86,11 @@ select is(tap(u(3), format($$select 1 where has_context_share(%L, %L)$$, u(1), u
 select is(tap(u(1), format($$select 1 where has_context_share(%L, %L)$$, u(1), u(103))), 1::bigint, 'shooter always has context');
 
 -- Link state machine
-select is(tap(u(6), format($$update links set status = 'active' where coach_id = %L$$, u(6))), -1::bigint, 'ended link cannot be reactivated');
-select is(tap(u(1), format($$update links set status = 'active' where coach_id = %L$$, u(5))), -1::bigint, 'requester cannot confirm own request');
-select is(tap(u(5), format($$update links set status = 'active' where coach_id = %L$$, u(5))), 1::bigint, 'other side confirms a pending request');
+select is(tap(u(6), format($$select 1 where confirm_link(%L)$$, (select id from links where coach_id = u(6) and status = 'ended'))), 0::bigint, 'ended link cannot be reactivated');
+select is(tap(u(1), format($$select 1 where confirm_link(%L)$$, (select id from links where coach_id = u(5)))), 0::bigint, 'requester cannot confirm own request');
+select is(tap(u(5), format($$select 1 where confirm_link(%L)$$, (select id from links where coach_id = u(5)))), 1::bigint, 'other side confirms a pending request');
+select is(tap(u(1), 'select 1 from links'), -1::bigint, 'links cannot be read directly');
+select is(tap(u(1), $$update links set status = 'ended'$$), -1::bigint, 'links cannot be updated directly');
 select is(tap(u(1), $$select request_link('u6@example.test')$$), 1::bigint, 're-link after ended is a new request');
 select is((select count(*)::int from links where shooter_id = u(1) and coach_id = u(6) and status = 'pending'), 1, 're-link created a pending row');
 select is(tap(u(1), format($$insert into trainings (id, shooter_id, created_by, discipline, trained_on) values (%L, %L, %L, 'air_rifle', '2026-11-04')$$, u(999), u(1), u(1))), -1::bigint, 'client cannot choose training id');
