@@ -1,5 +1,5 @@
 begin;
-select plan(20);
+select plan(21);
 
 select has_table('public', t, t || ' exists') from unnest(array[
   'profiles','links','trainings','matches','series','shots',
@@ -35,6 +35,10 @@ select purge_trash();
 select is((select count(*)::int from trainings where id='00000000-0000-0000-0000-0000000000c1'), 0, 'purge removes 31-day-old');
 select is((select count(*)::int from trainings where id='00000000-0000-0000-0000-0000000000c2'), 1, 'purge keeps 29-day-old');
 select is((select count(*)::int from trainings where id='00000000-0000-0000-0000-0000000000b1'), 1, 'purge keeps fresh soft delete');
+
+select is((select count(*)::int from pg_class c join pg_namespace n on n.oid=c.relnamespace
+  where n.nspname='public' and c.relkind='r' and not c.relrowsecurity), 0,
+  'every public table has RLS enabled (deny by default)');
 
 select * from finish();
 rollback;

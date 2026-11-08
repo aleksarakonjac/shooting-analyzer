@@ -1,4 +1,6 @@
--- Core schema (Phase 1, Task 8). RLS comes in Task 9.
+-- Core schema (Phase 1, Task 8).
+-- RLS is enabled on every table at the end of this file (deny by default);
+-- the actual policies arrive in Task 9.
 
 create type user_role as enum ('shooter', 'coach', 'admin');
 create type account_status as enum ('pending', 'active', 'disabled');
@@ -173,3 +175,16 @@ begin
   get diagnostics n = row_count;
   return n;
 end $$;
+
+-- Deny by default until Task 9 adds policies. Owner/service role bypass RLS.
+alter table profiles enable row level security;
+alter table links enable row level security;
+alter table trainings enable row level security;
+alter table matches enable row level security;
+alter table series enable row level security;
+alter table shots enable row level security;
+alter table loose_shots enable row level security;
+alter table source_files enable row level security;
+alter table hr_samples_ref enable row level security;
+alter table shares enable row level security;
+alter table audit_log enable row level security;
