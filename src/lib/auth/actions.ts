@@ -23,7 +23,11 @@ export async function register(_: FormState, form: FormData): Promise<FormState>
     password,
     options: { data: { display_name: String(form.get('displayName') ?? '').trim() } },
   });
-  if (error) return { error: 'registerFailed' };
+  if (error) {
+    // Code and status only (no email/password) so a failing signup can be diagnosed from server logs.
+    console.error('signUp failed', error.status, error.code, error.message);
+    return { error: 'registerFailed' };
+  }
   redirect('/cekanje-odobrenja');
 }
 
