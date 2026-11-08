@@ -14,10 +14,11 @@ Use a separate **test** project, never one holding real data. Nothing below is c
    (Project settings → API). Never put the service-role key in the repo.
 5. Create the admin: Authentication → Users → Add user (email + password, auto-confirm), then in the SQL editor:
    ```sql
-   select admin_set_profile(id, 'admin', 'active') from auth.users where email = 'you@example.com';
+   update profiles set role = 'admin', status = 'active'
+   where id = (select id from auth.users where email = 'you@example.com');
    ```
-   (The SQL editor runs as a superuser; `admin_set_profile` is for the app, so if it refuses, run
-   `update profiles set role = 'admin', status = 'active' where id = (select id from auth.users where email = 'you@example.com');`)
+   Expect `UPDATE 1`. Do not use `admin_set_profile` here: it is for the app and fails in the SQL editor
+   ("admin only"), because the editor has no signed-in user (`auth.uid()` is null).
 6. Run the e2e tests:
    ```bash
    E2E_ADMIN_EMAIL=you@example.com E2E_ADMIN_PASSWORD='...' npm run test:e2e
