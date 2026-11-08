@@ -1,0 +1,145 @@
+/* Lane Board components. Tokens come from tokens.css; light ground only. */
+
+/* ---------- form controls (browser defaults themed) ---------- */
+label { display: block; font-weight: 600; font-size: 0.9rem; }
+label input, label select { margin-top: var(--space-1); font-weight: 400; font-size: 1rem; }
+input, select, textarea {
+  font: inherit;
+  color: var(--ink);
+  background: var(--ground-raised);
+  border: 2px solid var(--ink);
+  border-radius: var(--radius);
+  padding: 0.55rem 0.7rem;
+  min-height: 2.75rem;
+}
+input::placeholder { color: var(--ink-muted); }
+input:focus-visible, select:focus-visible { outline-offset: 0; }
+small { color: var(--ink-muted); font-weight: 400; }
+button {
+  font: inherit;
+  font-weight: 600;
+  min-height: 2.75rem;
+  padding: 0.5rem 1.1rem;
+  color: var(--on-ink);
+  background: var(--ink);
+  border: 2px solid var(--ink);
+  border-radius: var(--radius);
+  cursor: pointer;
+  transition: background 0.15s var(--ease-out), color 0.15s var(--ease-out);
+}
+button:hover:not(:disabled) { background: #2a3238; }
+button:active:not(:disabled) { background: #000; }
+button:disabled { opacity: 0.55; cursor: progress; }
+[role='alert'] {
+  background: var(--hazard);
+  color: var(--ink);
+  padding: var(--space-2) var(--space-3);
+  border: 2px solid var(--ink);
+  border-radius: var(--radius);
+  max-width: 70ch;
+}
+[role='status'] { color: var(--data-ink); font-weight: 600; }
+
+/* ---------- page container inside the shell ---------- */
+.page { padding: var(--space-6) var(--gutter) var(--space-12); max-width: 64rem; }
+.page--narrow { max-width: 40rem; }
+.page h1 { font-family: var(--font-display); font-size: clamp(2rem, 4vw + 1rem, 3.25rem); letter-spacing: 0.01em; text-transform: uppercase; margin: 0 0 var(--space-6); }
+.page h2 { font-size: 1.25rem; margin: var(--space-8) 0 var(--space-3); }
+
+/* ---------- app shell ---------- */
+.shell { min-height: 100dvh; display: grid; grid-template-columns: 15rem 1fr; }
+.shell__skip { position: absolute; left: -999px; top: 0; z-index: 20; background: var(--hazard); color: var(--ink); padding: var(--space-2) var(--space-4); font-weight: 700; }
+.shell__skip:focus { left: var(--space-2); top: var(--space-2); }
+.shell__rail {
+  position: sticky; top: 0; height: 100dvh;
+  display: flex; flex-direction: column; gap: var(--space-6);
+  background: var(--ink); color: var(--on-ink);
+  padding: var(--space-6) var(--space-4);
+}
+.shell__brand {
+  font-family: var(--font-stencil); font-weight: 800; text-transform: uppercase;
+  font-size: 1.6rem; line-height: 1; letter-spacing: 0.02em;
+  padding: var(--space-3) var(--space-3) var(--space-3) calc(var(--space-3) + 6px);
+  border-left: 6px solid var(--flag);
+}
+.shell__nav { display: flex; flex-direction: column; gap: var(--space-1); flex: 1; }
+.shell__link {
+  display: flex; align-items: center; gap: var(--space-3);
+  min-height: 2.75rem; padding: var(--space-2) var(--space-3);
+  color: var(--on-ink); text-decoration: none; font-weight: 600;
+  border: 0; border-radius: var(--radius); background: transparent;
+  transition: background 0.15s var(--ease-out);
+}
+.shell__link:hover:not(:disabled) { background: #2a3238; }
+.shell__link[aria-current='page'] { background: var(--ground); color: var(--ink); }
+.shell__link:focus-visible { outline-color: var(--hazard); }
+.shell__main { min-width: 0; }
+.shell__out button { width: 100%; }
+
+@media (max-width: 720px) {
+  .shell { display: block; padding-bottom: 4.5rem; }
+  .shell__rail {
+    position: fixed; left: 0; right: 0; bottom: 0; top: auto; height: auto; z-index: 10;
+    flex-direction: row; gap: 0; padding: 0; border-top: 3px solid var(--flag);
+  }
+  .shell__brand { display: none; }
+  .shell__nav { flex-direction: row; gap: 0; }
+  .shell__link {
+    flex: 1; flex-direction: column; justify-content: center; gap: 2px;
+    font-size: 0.7rem; min-height: 4rem; padding: var(--space-2) var(--space-1); border-radius: 0; text-align: center;
+  }
+  .shell__nav .shell__link { flex: 1 1 0; }
+  .shell__out { flex: 0 0 4.5rem; }
+  .shell__link[aria-current='page'] { box-shadow: inset 0 4px 0 var(--flag); }
+}
+
+/* ---------- lane plate ---------- */
+.lane-plate {
+  display: inline-grid; gap: 2px; min-width: 9rem;
+  background: var(--ink); color: var(--on-ink);
+  padding: var(--space-3) var(--space-4) var(--space-4);
+  border-radius: var(--radius); box-shadow: var(--shadow-plate);
+}
+.lane-plate__label { font-size: 0.75rem; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: #c3c9cd; }
+.lane-plate__value { font-family: var(--font-stencil); font-weight: 800; font-size: clamp(2.5rem, 6vw, 4.25rem); line-height: 1; }
+.lane-plate__unit { font-size: 0.85rem; color: #c3c9cd; }
+
+/* ---------- flag badge ---------- */
+.flag-badge {
+  display: inline-flex; align-items: center; gap: var(--space-2);
+  padding: 0.2rem 0.65rem 0.2rem 0.45rem; font-weight: 700; font-size: 0.85rem;
+  border: 2px solid var(--ink); border-radius: var(--radius);
+}
+.flag-badge[data-state='proposed'] { background: var(--flag); color: var(--on-flag); border-style: dashed; }
+.flag-badge[data-state='confirmed'] { background: var(--ink); color: var(--on-ink); border-style: solid; }
+
+/* ---------- state line ---------- */
+.state-line { display: inline-flex; align-items: center; gap: var(--space-2); font-weight: 600; font-size: 0.9rem; }
+.state-line__rule { display: inline-block; width: 2.25rem; height: 0; border-top: 4px solid currentColor; }
+.state-line[data-state='live'] { color: var(--data-ink); }
+.state-line[data-form='dashed'] .state-line__rule { border-top-style: dashed; }
+.state-line[data-state='pending'] { color: #a33c0a; }
+.state-line[data-form='half'] .state-line__rule { border-top-width: 2px; }
+.state-line[data-state='stale'], .state-line[data-state='disabled'] { color: var(--ink-muted); }
+.state-line[data-form='struck'] .state-line__word { text-decoration: line-through; }
+.state-line[data-form='struck'] .state-line__rule { border-top-width: 1px; }
+
+/* ---------- period tabs ---------- */
+.period-tabs { display: inline-flex; border: 2px solid var(--ink); border-radius: var(--radius); overflow: hidden; }
+.period-tabs a {
+  min-height: 2.75rem; display: inline-flex; align-items: center; padding: 0 var(--space-4);
+  color: var(--ink); text-decoration: none; font-weight: 600; background: var(--ground-raised);
+}
+.period-tabs a + a { border-left: 2px solid var(--ink); }
+.period-tabs a[aria-current='page'] { background: var(--ink); color: var(--on-ink); }
+
+/* One authored moment: a flag-orange rule under the page title draws in once.
+   The title itself is always visible. */
+.page h1::after {
+  content: ''; display: block; height: 6px; width: 4.5rem; margin-top: var(--space-2);
+  background: var(--flag); transform-origin: left;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .page h1::after { animation: rule-in 0.7s var(--ease-out) both; }
+  @keyframes rule-in { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+}

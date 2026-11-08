@@ -5,7 +5,7 @@ import { logout } from '@/lib/auth/actions';
 
 export default function WaitingPage() {
   return (
-    <main style={{ padding: 'var(--gutter)', maxWidth: '32rem' }}>
+    <main className="page page--narrow">
       <h1>{sr.waiting.title}</h1>
       <Suspense fallback={null}>
         <Message />

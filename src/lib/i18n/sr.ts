@@ -1,6 +1,18 @@
 // Serbian UI string table. Later tasks add keys; identifiers stay English.
 export const sr = {
   appName: 'Dnevnik streljaštva',
+  nav: {
+    label: 'Glavna navigacija',
+    skip: 'Preskoči na sadržaj',
+    trainings: 'Treninzi',
+    shooters: 'Strelci',
+    links: 'Veze',
+    sharing: 'Deljenje',
+    approvals: 'Odobrenja',
+  },
+  flag: { proposed: 'Predloženo', confirmed: 'Potvrđeno' },
+  stateLine: { live: 'Uživo', pending: 'Na čekanju', stale: 'Zastarelo', disabled: 'Isključeno' },
+  period: { label: 'Period', week: 'Nedelja', month: 'Mesec', year: 'Godina' },
   auth: {
     login: 'Prijava',
     register: 'Registracija',

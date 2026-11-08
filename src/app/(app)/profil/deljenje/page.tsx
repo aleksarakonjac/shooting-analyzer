@@ -5,13 +5,13 @@ import { addShareForm, removeShareForm } from '@/lib/links';
 
 export default function SharingPage({ searchParams }: { searchParams: Promise<{ greska?: string }> }) {
   return (
-    <main style={{ padding: 'var(--gutter)', maxWidth: '40rem' }}>
+    <div className="page page--narrow">
       <h1>{sr.sharing.title}</h1>
       <p>{sr.sharing.intro}</p>
       <Suspense fallback={null}>
         <Body searchParams={searchParams} />
       </Suspense>
-    </main>
+    </div>
   );
 }
 

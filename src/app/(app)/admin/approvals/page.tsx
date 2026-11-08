@@ -5,12 +5,12 @@ import { setProfile } from '@/lib/auth/actions';
 
 export default function ApprovalsPage() {
   return (
-    <main style={{ padding: 'var(--gutter)' }}>
+    <div className="page">
       <h1>{sr.admin.approvalsTitle}</h1>
       <Suspense fallback={null}>
         <PendingList />
       </Suspense>
-    </main>
+    </div>
   );
 }
 

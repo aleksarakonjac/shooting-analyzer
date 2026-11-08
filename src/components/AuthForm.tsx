@@ -14,7 +14,7 @@ export function AuthForm({ mode, action }: Props) {
   const t = sr.auth;
   const login = mode === 'login';
   return (
-    <main style={{ padding: 'var(--gutter)', maxWidth: '26rem' }}>
+    <main className="page page--narrow">
       <h1>{login ? t.login : t.register}</h1>
       <form action={run} style={{ display: 'grid', gap: '1rem' }}>
         {!login && (

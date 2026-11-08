@@ -13,12 +13,12 @@ interface MyLink {
 
 export default function LinksPage({ searchParams }: { searchParams: Promise<{ poslato?: string }> }) {
   return (
-    <main style={{ padding: 'var(--gutter)', maxWidth: '40rem' }}>
+    <div className="page page--narrow">
       <h1>{sr.links.title}</h1>
       <Suspense fallback={null}>
         <Body searchParams={searchParams} />
       </Suspense>
-    </main>
+    </div>
   );
 }
 
