@@ -2,6 +2,7 @@
 import { redirect } from 'next/navigation';
 import { revalidatePath } from 'next/cache';
 import { createClient } from '@/lib/supabase/server';
+import { purgeTraining } from '@/lib/trash/purge';
 
 /** Edits the free-text fields of a training. RLS decides who may. */
 export async function updateTrainingForm(form: FormData): Promise<void> {
@@ -43,12 +44,28 @@ export async function restoreTrainingForm(form: FormData): Promise<void> {
 export async function purgeTrainingForm(form: FormData): Promise<void> {
   const id = String(form.get('id') ?? '');
   const supabase = await createClient();
-  // Storage first: its policy needs the training row, which the next call removes.
   const bucket = supabase.storage.from('source-files');
-  const { data: files } = await bucket.list(id);
-  if (files?.length) await bucket.remove(files.map((f) => `${id}/${f.name}`));
-  const { error } = await supabase.rpc('delete_training_forever', { tid: id });
-  if (error) throw new Error(error.message);
+  await purgeTraining(
+    {
+      async isTrashed(tid) {
+        const { data } = await supabase.from('trainings').select('id').eq('id', tid).not('deleted_at', 'is', null).maybeSingle();
+        return data !== null;
+      },
+      async listFiles(tid) {
+        const { data } = await bucket.list(tid, { limit: 1000 });
+        return (data ?? []).map((f) => `${tid}/${f.name}`);
+      },
+      async removeFiles(paths) {
+        const { error } = await bucket.remove(paths);
+        if (error) throw new Error(error.message);
+      },
+      async deleteForever(tid) {
+        const { error } = await supabase.rpc('delete_training_forever', { tid });
+        if (error) throw new Error(error.message);
+      },
+    },
+    id,
+  );
   revalidatePath('/korpa');
   redirect('/korpa');
 }

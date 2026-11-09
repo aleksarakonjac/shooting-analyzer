@@ -52,3 +52,18 @@ export function zoneShiftMs(original: HrSample[], reinterpreted: HrSample[]): nu
   if (original.length === 0 || reinterpreted.length === 0) return 0;
   return reinterpreted[0].tMs - original[0].tMs;
 }
+
+/**
+ * How many heart-rate samples fall inside the shot window (widened by a minute, offset applied).
+ * Zero means the watch clock and the shots do not meet: wrong zone or offset. Null without shot times.
+ */
+export function hrCoverage(
+  samples: HrSample[],
+  shotTimes: (number | null | undefined)[],
+  offsetMs: number,
+): { inside: number; total: number } | null {
+  const win = shotWindow(shotTimes, 60_000);
+  if (!win) return null;
+  const inside = samples.filter((s) => s.tMs + offsetMs >= win.fromMs && s.tMs + offsetMs <= win.toMs).length;
+  return { inside, total: samples.length };
+}

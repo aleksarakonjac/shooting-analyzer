@@ -35,6 +35,11 @@ async function saveWithFixtures(withHr: boolean, confirm = true): Promise<string
   }
   if (confirm) await page.getByRole('button', { name: 'Potvrdi', exact: true }).click();
   await page.getByRole('button', { name: 'Sačuvaj trening' }).click();
+  // The same sample files are imported more than once in this spec: accept the duplicate warning.
+  const again = page.getByRole('button', { name: 'Sačuvaj ipak' });
+  const link = page.getByRole('link', { name: 'Otvori izveštaj o treningu' });
+  await expect(again.or(link)).toBeVisible();
+  if (await again.isVisible()) await again.click();
   await page.getByRole('link', { name: 'Otvori izveštaj o treningu' }).click();
   await expect(page).toHaveURL(/\/trening\/[0-9a-f-]{36}$/);
   return page.url();

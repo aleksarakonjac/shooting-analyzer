@@ -135,3 +135,15 @@ test('date and from-to time are chosen in one picker and saved with the training
   await page.getByRole('button', { name: 'Sačuvaj prazan trening' }).click();
   await expect(page.getByText('Trening je sačuvan')).toBeVisible();
 });
+
+test('importing the same file again asks first and names the earlier training', async () => {
+  await openForm();
+  await page.getByLabel('SIUS fajl (CSV ili PDF)').setInputFiles(fx('2026-10-21T190309.csv'));
+  await expect(page.getByText('Učitano: 2026-10-21T190309.csv')).toBeVisible();
+  await page.getByRole('button', { name: 'Sačuvaj trening' }).click();
+  const ask = page.getByRole('alertdialog', { name: 'Ovaj fajl je već uvezen:' });
+  await expect(ask).toContainText('2026-10-21T190309.csv');
+  await ask.getByRole('button', { name: 'Nazad' }).click();
+  await expect(page.getByRole('alertdialog')).toHaveCount(0);
+  await expect(page.getByText('Trening je sačuvan')).toHaveCount(0);
+});

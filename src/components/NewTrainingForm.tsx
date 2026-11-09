@@ -7,12 +7,13 @@ import type { DisciplineId, ParsedSiusResult } from '@/lib/domain/types';
 import { sr } from '@/lib/i18n/sr';
 import { buildPreview, groupByPosition, parseManualSeries } from '@/lib/import/draft';
 import { defaultTrainingName, saveTraining, type TrainingDraft } from '@/lib/import/saveTraining';
-import { MAX_UPLOAD_BYTES, uploadSource, type SourceKind } from '@/lib/import/uploadSource';
+import { findImported, type ImportedMatch } from '@/lib/import/duplicates';
+import { MAX_UPLOAD_BYTES, sha256Hex, uploadSource, type SourceKind } from '@/lib/import/uploadSource';
 import { decodeText } from '@/lib/parsers/decode';
 import type { ScattData } from '@/lib/parsers/scatt';
 import { parseSiusCsv } from '@/lib/parsers/siusCsv';
 import { parseTcx, reinterpretAsZone, type HrSample } from '@/lib/parsers/tcx';
-import { zoneShiftMs } from '@/lib/report/derive';
+import { hrCoverage, zoneShiftMs } from '@/lib/report/derive';
 import { toInstantRange } from '@/lib/import/times';
 import { ManualEntry } from './entry/ManualEntry';
 import { PasteEntry } from './entry/PasteEntry';
@@ -35,10 +36,14 @@ const ZONES = ['Europe/Belgrade', 'UTC', 'Europe/London', 'America/New_York'];
 interface Loaded<T> {
   file: File;
   data: T;
+  /** Content hash, to find an earlier import of the same file. */
+  sha: string;
 }
 interface HrData {
   samples: HrSample[];
   xml: string;
+  /** The file's clock carried no zone; times were read as UTC. */
+  missingOffset: boolean;
 }
 
 export function NewTrainingForm({
@@ -80,6 +85,7 @@ export function NewTrainingForm({
 
   const [errors, setErrors] = useState<{ sius?: string; scatt?: string; hr?: string; save?: string }>({});
   const [askEmpty, setAskEmpty] = useState(false);
+  const [dupes, setDupes] = useState<ImportedMatch[] | null>(null);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState<{ id: string; failedUploads: number } | null>(null);
 
@@ -113,8 +119,8 @@ export function NewTrainingForm({
     setSelection(s && sc ? proposeSelection(s, sc.shots) : undefined);
   };
 
-  const applySius = (s: ParsedSiusResult, file: File | null) => {
-    setSiusFile(file ? { file, data: s } : null);
+  const applySius = (s: ParsedSiusResult, file: File | null, sha = '') => {
+    setSiusFile(file ? { file, data: s, sha } : null);
     setManual(file ? null : s);
     setErrors((e) => ({ ...e, sius: undefined }));
     if (!disciplineId && s.disciplineId) setDisciplineId(s.disciplineId);
@@ -135,6 +141,7 @@ export function NewTrainingForm({
     if (!file || tooLarge(file, 'sius')) return;
     try {
       const bytes = new Uint8Array(await file.arrayBuffer());
+      const sha = await sha256Hex(bytes);
       let parsed: ParsedSiusResult;
       if (/\.pdf$/i.test(file.name) || String.fromCharCode(...bytes.slice(0, 4)) === '%PDF') {
         const [{ parseSiusPdf }, { configurePdfWorker }] = await Promise.all([
@@ -146,7 +153,7 @@ export function NewTrainingForm({
       } else {
         parsed = parseSiusCsv(decodeText(bytes), { tz });
       }
-      applySius(parsed, file);
+      applySius(parsed, file, sha);
     } catch {
       setErrors((e) => ({ ...e, sius: t.unreadable }));
     }
@@ -160,8 +167,9 @@ export function NewTrainingForm({
         import('@/lib/parsers/scatt'),
         import('@/lib/parsers/browser'),
       ]);
-      const data = await readScatt(new Uint8Array(await file.arrayBuffer()), scattBrowserOptions);
-      setScattLoaded({ file, data });
+      const bytes = new Uint8Array(await file.arrayBuffer());
+      const data = await readScatt(bytes, scattBrowserOptions);
+      setScattLoaded({ file, data, sha: await sha256Hex(bytes) });
       setErrors((e) => ({ ...e, scatt: undefined }));
       repropose(sius, data);
     } catch {
@@ -175,7 +183,7 @@ export function NewTrainingForm({
     try {
       const xml = await file.text();
       const parsed = parseTcx(xml);
-      setHrLoaded({ file, data: { samples: parsed.samples, xml } });
+      setHrLoaded({ file, data: { samples: parsed.samples, xml, missingOffset: parsed.missingOffset }, sha: await sha256Hex(new TextEncoder().encode(xml)) });
       setHrZoneShiftMs(0);
       setErrors((e) => ({ ...e, hr: undefined }));
     } catch {
@@ -205,6 +213,7 @@ export function NewTrainingForm({
     if (!disciplineId) return;
     setSaving(true);
     setAskEmpty(false);
+    setDupes(null);
     setErrors((e) => ({ ...e, save: undefined }));
     const range = toInstantRange(trainedOn, timeFrom, timeTo, tz);
     const draft: TrainingDraft = {
@@ -247,10 +256,25 @@ export function NewTrainingForm({
     }
   };
 
+  /** Before saving files: has the same content been imported already? Then ask first. */
+  const checkThenSave = async () => {
+    const picked = [siusFile, scattLoaded, hrLoaded]
+      .filter((x): x is NonNullable<typeof x> => x !== null)
+      .map((x) => ({ fileName: x.file.name, sha: x.sha }));
+    let found: ImportedMatch[] = [];
+    try {
+      found = await findImported(userId, picked);
+    } catch {
+      found = []; // the check is a courtesy; a failed lookup must not block saving
+    }
+    if (found.length) setDupes(found);
+    else void doSave();
+  };
+
   const onSave = () => {
     if (!disciplineId) return;
     if (!sius && !scatt && !hr) setAskEmpty(true);
-    else void doSave();
+    else void checkThenSave();
   };
 
   if (saved) {
@@ -269,6 +293,9 @@ export function NewTrainingForm({
 
   const timeFmt = new Intl.DateTimeFormat('en-GB', { timeStyle: 'medium', timeZone: tz });
   const aligned = preview?.shots ?? [];
+  // Do the watch samples meet the shots? (SCATT times when aligned, else times from a paste.)
+  const shotTimes = aligned.length ? aligned.map((a) => a.scatt?.tMs) : (sius?.series.flatMap((x) => x.shots.map((sh) => sh.tMs)) ?? []);
+  const coverage = hr ? hrCoverage(hr, shotTimes, hrOffsetS * 1000) : null;
   const cfg = disciplineId ? DISCIPLINES[disciplineId] : null;
   const shotTotal = sius ? sius.series.reduce((a, s) => a + s.shots.length, 0) : 0;
   const backwards = Boolean(timeFrom && timeTo && timeTo < timeFrom);
@@ -288,7 +315,21 @@ export function NewTrainingForm({
         />
       )}
       <div className="ws__strip-end">
-        {askEmpty ? (
+        {dupes ? (
+          <div role="alertdialog" aria-label={t.dupTitle} className="strip-confirm">
+            <p>
+              {t.dupTitle}{' '}
+              {dupes.map((d, i) => (
+                <span key={d.fileName}>
+                  {i > 0 && ', '}
+                  {d.fileName} → <Link href={`/trening/${d.trainingId}`}>{d.trainingName}</Link>
+                </span>
+              ))}
+            </p>
+            <button type="button" onClick={() => void doSave()}>{t.dupYes}</button>
+            <button type="button" className="button--quiet" onClick={() => setDupes(null)}>{t.emptyNo}</button>
+          </div>
+        ) : askEmpty ? (
           <div role="alertdialog" aria-label={t.emptyConfirm} className="strip-confirm">
             <p>{t.emptyConfirm}</p>
             <button type="button" onClick={() => void doSave()}>{t.emptyYes}</button>
@@ -433,6 +474,9 @@ export function NewTrainingForm({
             <p className="source-card__loaded">
               {t.loaded}: {hrLoaded.file.name} — {t.hrSamples(hrLoaded.data.samples.length)}
             </p>
+            {coverage && coverage.inside > 0 && <p role="status">{t.hrCoverage(coverage.inside, coverage.total)}</p>}
+            {coverage && coverage.inside === 0 && <p role="alert">{t.hrNoOverlap}</p>}
+            {hrLoaded.data.missingOffset && <small>{t.hrMissingZone}</small>}
             <NumberStepper label={t.hrOffset} value={hrOffsetS} onChange={setHrOffsetS} min={-600} max={600} />
             <div className="new-training__zone">
               <Select

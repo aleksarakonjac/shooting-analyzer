@@ -175,6 +175,11 @@ export const sr = {
     needBoth: 'Poravnanje se pojavljuje kada su učitani rezultat i SCATT fajl.',
     fromShotNo: 'Od pogotka broj',
     totalOnly: 'Uneta je samo suma serije.',
+    dupTitle: 'Ovaj fajl je već uvezen:',
+    dupYes: 'Sačuvaj ipak',
+    hrCoverage: (inside: number, total: number) => `U vremenu pogodaka: ${inside} od ${total} uzoraka pulsa.`,
+    hrNoOverlap: 'Puls ne pada u vreme pogodaka. Proverite zonu sata ili pomeranje pre čuvanja; posle čuvanja se ne može menjati.',
+    hrMissingZone: 'Fajl nema vremensku zonu; vremena su pročitana kao UTC.',
   },
   report: {
     total: 'Ukupno',
