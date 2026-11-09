@@ -51,14 +51,15 @@ export async function linkDecisionForm(form: FormData) {
 export async function addShareForm(form: FormData) {
   const scope = String(form.get('scope')) as ShareScope;
   const ok = await setShare(scope, {
+    coachId: String(form.get('coachId') ?? '') || undefined,
     trainingId: String(form.get('trainingId') ?? '') || undefined,
     from: String(form.get('from') ?? '') || undefined,
     to: String(form.get('to') ?? '') || undefined,
   });
-  redirect(ok ? '/profil/deljenje' : '/profil/deljenje?greska=1');
+  redirect(ok ? '/profil/veze' : '/profil/veze?greska=1');
 }
 
 export async function removeShareForm(form: FormData) {
   await removeShare(String(form.get('id')));
-  redirect('/profil/deljenje');
+  redirect('/profil/veze');
 }

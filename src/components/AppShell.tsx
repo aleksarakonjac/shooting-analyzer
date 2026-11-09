@@ -1,4 +1,5 @@
-import type { ReactNode } from 'react';
+'use client';
+import { useSyncExternalStore, type ReactNode } from 'react';
 import { sr } from '@/lib/i18n/sr';
 import { NavLinks, type NavItem } from './NavLinks';
 
@@ -17,6 +18,8 @@ const ICON = {
   shield: icon('M12 3 4 6v6c0 4.5 3.4 8 8 9 4.6-1 8-4.5 8-9V6l-8-3ZM8.5 12l2.5 2.5L15.5 10'),
   trash: icon('M4 7h16M10 11v6M14 11v6M6 7l1 12a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1l1-12M9 7V4h6v3'),
   clock: icon('M12 7v5l3 2M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z'),
+  user: icon('M20 21v-1a5 5 0 0 0-5-5H9a5 5 0 0 0-5 5v1M12 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8Z'),
+  rail: icon('M4 4h16v16H4zM9 4v16'),
   out: icon('M9 21H5a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h4M16 17l5-5-5-5M21 12H9'),
 };
 
@@ -24,25 +27,50 @@ const NAV: Record<Role, NavItem[]> = {
   shooter: [
     { href: '/', label: sr.nav.trainings, icon: ICON.list },
     { href: '/trening/novi', label: sr.newTraining.nav, icon: ICON.plus },
-    { href: '/profil/veze', label: sr.nav.links, icon: ICON.link },
-    { href: '/profil/deljenje', label: sr.nav.sharing, icon: ICON.share },
-    { href: '/korpa', label: sr.nav.trash, icon: ICON.trash },
-    { href: '/dnevnik', label: sr.nav.audit, icon: ICON.clock },
+    { href: '/nalog', label: sr.nav.account, icon: ICON.user },
   ],
   coach: [
     { href: '/strelci', label: sr.nav.shooters, icon: ICON.people },
-    { href: '/profil/veze', label: sr.nav.links, icon: ICON.link },
-    { href: '/korpa', label: sr.nav.trash, icon: ICON.trash },
-    { href: '/dnevnik', label: sr.nav.audit, icon: ICON.clock },
+    { href: '/nalog', label: sr.nav.account, icon: ICON.user },
   ],
   admin: [
     { href: '/admin/approvals', label: sr.nav.approvals, icon: ICON.shield },
-    { href: '/korpa', label: sr.nav.trash, icon: ICON.trash },
-    { href: '/dnevnik', label: sr.nav.audit, icon: ICON.clock },
+    { href: '/nalog', label: sr.nav.account, icon: ICON.user },
   ],
 };
 
-/** Side rail on desktop, bottom bar on phone widths (the same markup, restyled). */
+const KEY = 'rail-collapsed';
+const EVENT = 'rail-collapsed-change';
+
+// The collapsed rail is a per-browser preference: read from localStorage, expanded on the server.
+const readCollapsed = () => {
+  try {
+    return localStorage.getItem(KEY) === '1';
+  } catch {
+    return false;
+  }
+};
+const subscribe = (onChange: () => void) => {
+  window.addEventListener(EVENT, onChange);
+  window.addEventListener('storage', onChange);
+  return () => {
+    window.removeEventListener(EVENT, onChange);
+    window.removeEventListener('storage', onChange);
+  };
+};
+const setCollapsed = (value: boolean) => {
+  try {
+    localStorage.setItem(KEY, value ? '1' : '0');
+  } catch {
+    /* storage blocked: the toggle still works until the next page */
+  }
+  window.dispatchEvent(new Event(EVENT));
+};
+
+/**
+ * Side rail on desktop (collapsible to icons; remembered per browser), bottom bar on phone widths
+ * (the same markup, restyled).
+ */
 export function AppShell({
   role,
   signOutAction,
@@ -52,11 +80,25 @@ export function AppShell({
   signOutAction?: () => Promise<void>;
   children: ReactNode;
 }) {
+  const collapsed = useSyncExternalStore(subscribe, readCollapsed, () => false);
+  const toggle = () => setCollapsed(!collapsed);
   return (
-    <div className="shell">
+    <div className="shell" data-collapsed={collapsed || undefined}>
       <a className="shell__skip" href="#sadrzaj">{sr.nav.skip}</a>
       <aside className="shell__rail">
-        <div className="shell__brand">{sr.appName}</div>
+        <div className="shell__top">
+          <div className="shell__brand">{sr.appName}</div>
+          <button
+            type="button"
+            className="shell__toggle"
+            onClick={toggle}
+            aria-expanded={!collapsed}
+            aria-label={collapsed ? sr.nav.expand : sr.nav.collapse}
+            title={collapsed ? sr.nav.expand : sr.nav.collapse}
+          >
+            {ICON.rail}
+          </button>
+        </div>
         <nav className="shell__nav" aria-label={sr.nav.label}>
           <NavLinks items={NAV[role]} />
         </nav>

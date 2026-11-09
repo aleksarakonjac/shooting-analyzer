@@ -5,21 +5,21 @@ describe('buildShareRow', () => {
   it('builds an all-trainings share', () => {
     expect(buildShareRow('s1', 'all', {})).toEqual({
       ok: true,
-      row: { shooter_id: 's1', scope: 'all', training_id: null, from_date: null, to_date: null },
+      row: { shooter_id: 's1', coach_id: null, scope: 'all', training_id: null, from_date: null, to_date: null },
     });
   });
 
   it('builds a period share', () => {
     expect(buildShareRow('s1', 'period', { from: '2026-10-01', to: '2026-10-31' })).toEqual({
       ok: true,
-      row: { shooter_id: 's1', scope: 'period', training_id: null, from_date: '2026-10-01', to_date: '2026-10-31' },
+      row: { shooter_id: 's1', coach_id: null, scope: 'period', training_id: null, from_date: '2026-10-01', to_date: '2026-10-31' },
     });
   });
 
   it('builds a single-training share', () => {
     expect(buildShareRow('s1', 'training', { trainingId: 't1' })).toEqual({
       ok: true,
-      row: { shooter_id: 's1', scope: 'training', training_id: 't1', from_date: null, to_date: null },
+      row: { shooter_id: 's1', coach_id: null, scope: 'training', training_id: 't1', from_date: null, to_date: null },
     });
   });
 
@@ -37,5 +37,9 @@ describe('buildShareRow', () => {
     ['impossible date', 'period', { from: '2026-02-30', to: '2026-03-31' }],
   ] as const)('rejects %s', (_label, scope, args) => {
     expect(buildShareRow('s1', scope, args)).toEqual({ ok: false });
+  });
+
+  it('names the coach the share is for', () => {
+    expect(buildShareRow('s1', 'all', { coachId: 'c1' })).toMatchObject({ ok: true, row: { coach_id: 'c1' } });
   });
 });

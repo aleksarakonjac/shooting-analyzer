@@ -1,11 +1,14 @@
 export type ShareScope = 'all' | 'training' | 'period';
 export interface ShareArgs {
+  /** The coach this share is for; without one it applies to every linked coach. */
+  coachId?: string;
   trainingId?: string;
   from?: string;
   to?: string;
 }
 export interface ShareRow {
   shooter_id: string;
+  coach_id: string | null;
   scope: ShareScope;
   training_id: string | null;
   from_date: string | null;
@@ -24,7 +27,7 @@ export function buildShareRow(
   scope: ShareScope,
   args: ShareArgs,
 ): { ok: true; row: ShareRow } | { ok: false } {
-  const base = { shooter_id: shooterId, scope, training_id: null, from_date: null, to_date: null };
+  const base = { shooter_id: shooterId, coach_id: args.coachId ?? null, scope, training_id: null, from_date: null, to_date: null };
   if (scope === 'all') return { ok: true, row: base };
   if (scope === 'training') {
     return args.trainingId ? { ok: true, row: { ...base, training_id: args.trainingId } } : { ok: false };

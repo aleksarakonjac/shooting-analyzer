@@ -27,15 +27,15 @@ const clock = (tz: string) => (ms: number) =>
 const axisCommon = {
   axisLine: { lineStyle: { color: CHART.rule } },
   axisTick: { lineStyle: { color: CHART.rule } },
-  axisLabel: { color: CHART.faint, fontFamily: CHART.font },
+  axisLabel: { color: CHART.muted, fontFamily: CHART.font, fontSize: 12 },
   splitLine: { lineStyle: { color: CHART.rule, type: 'dashed' as const } },
-  nameTextStyle: { color: CHART.muted, fontFamily: CHART.font },
+  nameTextStyle: { color: CHART.muted, fontFamily: CHART.font, fontSize: 12 },
 };
 
 const tooltipCommon = {
   backgroundColor: CHART.select,
   borderColor: CHART.select,
-  textStyle: { color: '#0b1530', fontFamily: CHART.font, fontSize: 12 },
+  textStyle: { color: '#0b1530', fontFamily: CHART.font, fontSize: 13 },
   extraCssText: 'border-radius:2px;box-shadow:0 8px 24px -8px rgba(0,0,0,.6);',
 };
 
@@ -96,7 +96,7 @@ export function timelineOption(v: ReportView, sel: Selection, tz: string, hr?: H
           name: `S${s.idx}`,
           xAxis: Math.min(...t),
           itemStyle: { color: on ? 'rgba(255,255,255,0.08)' : s.idx % 2 ? 'rgba(57,198,240,0.04)' : 'rgba(57,198,240,0.07)' },
-          label: { color: on ? CHART.ink : CHART.faint, fontFamily: CHART.font, fontWeight: on ? 700 : 400 },
+          label: { color: on ? CHART.ink : CHART.muted, fontFamily: CHART.font, fontSize: 12, fontWeight: on ? 700 : 500 },
         },
         { xAxis: Math.max(...t) },
       ];

@@ -4,7 +4,7 @@ import type { Bucket } from './periodStats';
 const axis = {
   axisLine: { lineStyle: { color: CHART.rule } },
   axisTick: { show: false },
-  axisLabel: { color: CHART.faint, fontFamily: CHART.font },
+  axisLabel: { color: CHART.muted, fontFamily: CHART.font, fontSize: 12 },
   splitLine: { lineStyle: { color: CHART.rule, type: 'dashed' as const } },
   nameTextStyle: { color: CHART.muted, fontFamily: CHART.font },
 };
@@ -23,7 +23,7 @@ export function trendOption(buckets: Bucket[], decimal: boolean): any {
       data: ['Prosek serije', 'Prosečna grupa'],
       top: 4,
       left: 0,
-      textStyle: { color: CHART.muted, fontFamily: CHART.font },
+      textStyle: { color: CHART.muted, fontFamily: CHART.font, fontSize: 13 },
       itemWidth: 14,
       itemHeight: 8,
     },

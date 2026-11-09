@@ -67,18 +67,35 @@ test('requesting an unknown email shows the same message and creates nothing', a
   await expect(coachPage.getByRole('listitem')).toHaveCount(1);
 });
 
-test('shooter shares a period, revokes it, then ends the link', async () => {
+test('shooter shares a period with that coach, revokes it, then ends the link', async () => {
   await shooterPage.goto('/profil/deljenje');
+  await expect(shooterPage).toHaveURL(/\/profil\/veze$/); // sharing lives on the coach link now
+  const link = item(shooterPage, coach.name).first();
+  const box = link.locator('details.share-box');
+  await box.locator('summary').click();
   await typeDate(shooterPage, 'Od', '2026-10-01');
   await typeDate(shooterPage, 'Do', '2026-10-31');
-  await shooterPage.getByRole('button', { name: 'Podeli za period' }).click();
-  await expect(item(shooterPage, 'Period: 2026-10-01 – 2026-10-31')).toBeVisible();
-  await item(shooterPage, 'Period').getByRole('button', { name: 'Ukini' }).click();
-  await expect(shooterPage.getByText('Ništa dodatno nije podeljeno.')).toBeVisible();
+  await box.getByRole('button', { name: 'Podeli za period' }).click();
+  const share = box.locator('.share-box__list li').filter({ hasText: 'Period: 2026-10-01 – 2026-10-31' });
+  await expect(share).toBeVisible();
+  await share.getByRole('button', { name: 'Ukini' }).click();
+  await expect(shooterPage.getByText('Period: 2026-10-01 – 2026-10-31')).toHaveCount(0);
 
   await shooterPage.goto('/profil/veze');
-  await item(shooterPage, coach.name).getByRole('button', { name: 'Prekini vezu' }).click();
+  await item(shooterPage, coach.name).first().getByRole('button', { name: 'Prekini vezu' }).click();
   await expect(shooterPage.getByText('Nema aktivnih veza ni zahteva.')).toBeVisible();
   await coachPage.goto('/profil/veze');
   await expect(coachPage.getByText('Nema aktivnih veza ni zahteva.')).toBeVisible();
+});
+
+test('the account page changes the name and refuses an unknown time zone', async () => {
+  await shooterPage.goto('/nalog');
+  await shooterPage.getByLabel('Ime i prezime').fill(`${shooter.name} R`);
+  await shooterPage.getByRole('button', { name: 'Sačuvaj profil' }).click();
+  await expect(shooterPage.getByText('Profil je sačuvan.')).toBeVisible();
+  await expect(shooterPage.getByLabel('Ime i prezime')).toHaveValue(`${shooter.name} R`);
+
+  await shooterPage.getByRole('combobox', { name: 'Vremenska zona' }).fill('Mars/Olympus');
+  await shooterPage.getByRole('button', { name: 'Sačuvaj profil' }).click();
+  await expect(shooterPage.getByText('Ime ili zona nisu ispravni.')).toBeVisible();
 });

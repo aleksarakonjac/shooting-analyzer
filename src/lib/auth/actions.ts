@@ -45,3 +45,14 @@ export async function setProfile(form: FormData) {
   await supabase.rpc('admin_set_profile', { pid: String(form.get('id')), new_role: role, new_status: status });
   redirect('/admin/approvals');
 }
+
+/** The signed-in user's own name and default time zone (the database rejects an unknown zone). */
+export async function updateOwnProfile(form: FormData): Promise<void> {
+  const name = String(form.get('displayName') ?? '').trim();
+  const tz = String(form.get('tz') ?? '').trim();
+  const supabase = await createClient();
+  const { data: auth } = await supabase.auth.getUser();
+  if (!auth.user || !name || !tz) redirect('/nalog?greska=1');
+  const { error } = await supabase.from('profiles').update({ display_name: name, tz }).eq('id', auth.user.id);
+  redirect(error ? '/nalog?greska=1' : '/nalog?sacuvano=1');
+}
