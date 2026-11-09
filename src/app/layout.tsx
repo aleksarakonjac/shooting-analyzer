@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from 'next';
-import { Barlow, Big_Shoulders } from 'next/font/google';
+import { Barlow } from 'next/font/google';
+import localFont from 'next/font/local';
 import { sr } from '@/lib/i18n/sr';
 import './globals.css';
 
@@ -9,11 +10,14 @@ const barlow = Barlow({
   variable: '--f-body',
   display: 'swap',
 });
-const shoulders = Big_Shoulders({
-  subsets: ['latin', 'latin-ext'],
+// Self-hosted (OFL, src/fonts/OFL-BigShoulders.txt): Latin + Latin Extended-A subset of the variable font.
+// Local files let Next measure the font and build a matching fallback, which it cannot do for this Google family.
+const shoulders = localFont({
+  src: '../fonts/BigShoulders-latin.woff2',
+  weight: '100 900',
   variable: '--f-display',
   display: 'swap',
-  adjustFontFallback: false, // no metrics for this family; silences a build warning
+  adjustFontFallback: 'Arial',
 });
 
 export const metadata: Metadata = {
