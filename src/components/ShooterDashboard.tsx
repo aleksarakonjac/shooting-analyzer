@@ -24,7 +24,10 @@ export async function ShooterDashboard({
   base,
   newHref,
   search,
+  back,
 }: {
+  /** A link back to where the viewer came from (the coach's list). */
+  back?: { href: string; label: string };
   shooterId: string;
   tz: string;
   title: string;
@@ -50,7 +53,7 @@ export async function ShooterDashboard({
     .order('trained_on', { ascending: false })
     .order('created_at', { ascending: false });
   const all = ((data ?? []) as unknown as SummaryRow[]).map(toSummary);
-  return <DashboardView all={all} period={period} now={now} tz={tz} title={title} base={base} newHref={newHref} wanted={sp.d} />;
+  return <DashboardView all={all} period={period} now={now} tz={tz} title={title} base={base} newHref={newHref} wanted={sp.d} back={back} />;
 }
 
 /** The dashboard for already-loaded trainings of the period (pure; the loader above fetches them). */
@@ -63,7 +66,9 @@ export function DashboardView({
   base,
   newHref,
   wanted,
+  back,
 }: {
+  back?: { href: string; label: string };
   all: TrainingSummary[];
   period: Period;
   now: Date;
@@ -87,6 +92,7 @@ export function DashboardView({
   const strip = (
     <>
       <div className="ws__head">
+        {back && <Link className="ws__back" href={back.href}>{back.label}</Link>}
         <h1 className="ws__title">{title}</h1>
         {discipline && <p className="ws__meta">{DISCIPLINES[discipline].nameSr}</p>}
       </div>

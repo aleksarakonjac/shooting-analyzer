@@ -1,5 +1,4 @@
 import { Suspense } from 'react';
-import Link from 'next/link';
 import { notFound, redirect } from 'next/navigation';
 import { connection } from 'next/server';
 import { ShooterDashboard, type DashboardSearch } from '@/components/ShooterDashboard';
@@ -15,11 +14,9 @@ export default function ShooterPage({
   searchParams: Promise<DashboardSearch>;
 }) {
   return (
-    <div className="page">
-      <Suspense fallback={null}>
-        <Body params={params} searchParams={searchParams} />
-      </Suspense>
-    </div>
+    <Suspense fallback={null}>
+      <Body params={params} searchParams={searchParams} />
+    </Suspense>
   );
 }
 
@@ -32,10 +29,8 @@ async function Body({ params, searchParams }: { params: Promise<{ shooterId: str
   if (!shooter) notFound();
   return (
     <>
-      <p>
-        <Link href="/strelci">{sr.coach.back}</Link>
-      </p>
       <ShooterDashboard
+        back={{ href: '/strelci', label: sr.coach.back }}
         shooterId={shooter.id}
         tz={profile.tz}
         title={shooter.name}

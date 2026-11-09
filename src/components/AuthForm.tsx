@@ -14,18 +14,20 @@ export function AuthForm({ mode, action }: Props) {
   const t = sr.auth;
   const login = mode === 'login';
   return (
-    <main className="page page--narrow">
-      <h1>{login ? t.login : t.register}</h1>
-      <form action={run} style={{ display: 'grid', gap: '1rem' }}>
+    <main className="auth">
+      <div className="auth__brand" aria-hidden="true">{sr.appName}</div>
+      <section className="auth__card" aria-labelledby="auth-title">
+      <h1 id="auth-title" className="auth__title">{login ? t.login : t.register}</h1>
+      <form action={run} className="stack">
         {!login && (
           <label>
             {t.displayName}
-            <input name="displayName" autoComplete="name" required style={{ display: 'block', width: '100%' }} />
+            <input name="displayName" autoComplete="name" required />
           </label>
         )}
         <label>
           {t.email}
-          <input name="email" type="email" autoComplete="email" required style={{ display: 'block', width: '100%' }} />
+          <input name="email" type="email" autoComplete="email" required />
         </label>
         <label>
           {t.password}
@@ -35,17 +37,18 @@ export function AuthForm({ mode, action }: Props) {
             minLength={8}
             autoComplete={login ? 'current-password' : 'new-password'}
             required
-            style={{ display: 'block', width: '100%' }}
+           
           />
           {!login && <small>{t.passwordHint}</small>}
         </label>
         {state?.error && <p role="alert">{t[state.error as 'badCredentials' | 'registerFailed']}</p>}
         <button type="submit" disabled={pending}>{login ? t.submitLogin : t.submitRegister}</button>
       </form>
-      <p>
+      <p className="auth__switch">
         {login ? t.noAccount : t.haveAccount}{' '}
         <Link href={login ? '/register' : '/login'}>{login ? t.register : t.login}</Link>
       </p>
+      </section>
     </main>
   );
 }

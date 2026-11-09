@@ -13,3 +13,10 @@ export async function pickToday(page: Page): Promise<void> {
   await page.getByRole('button', { name: 'Danas' }).click();
   await page.getByRole('button', { name: 'Gotovo' }).click();
 }
+
+/** Types an ISO date into the custom date field labelled `label` (segments in Serbian order: day, month, year). */
+export async function typeDate(page: Page, label: string, iso: string): Promise<void> {
+  const [y, m, d] = iso.split('-');
+  await page.getByRole('group', { name: label, exact: true }).getByRole('spinbutton', { name: /dan/ }).click();
+  await page.keyboard.type(`${d}${m}${y}`);
+}

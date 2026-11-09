@@ -7,11 +7,9 @@ import { sr } from '@/lib/i18n/sr';
 
 export default function Home({ searchParams }: { searchParams: Promise<DashboardSearch> }) {
   return (
-    <div className="page">
-      <Suspense fallback={null}>
-        <Body searchParams={searchParams} />
-      </Suspense>
-    </div>
+    <Suspense fallback={null}>
+      <Body searchParams={searchParams} />
+    </Suspense>
   );
 }
 
@@ -19,8 +17,8 @@ async function Body({ searchParams }: { searchParams: Promise<DashboardSearch> }
   await connection();
   const profile = await getSessionProfile();
   if (profile?.role === 'coach') redirect('/strelci');
-  // The admin's own screens (approvals, trash, audit log) have their own routes.
-  if (!profile || profile.role !== 'shooter') return <h1>{sr.appName}</h1>;
+  if (profile?.role === 'admin') redirect('/admin/approvals');
+  if (!profile || profile.role !== 'shooter') return <h1 className="sr-only">{sr.appName}</h1>;
   return (
     <ShooterDashboard
       shooterId={profile.id}

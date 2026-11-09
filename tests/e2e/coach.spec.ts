@@ -49,7 +49,7 @@ test('a coach and three shooters register and the admin approves them', async ({
   await admin.getByLabel('E-pošta').fill(adminEmail!);
   await admin.getByLabel('Lozinka').fill(adminPassword!);
   await admin.getByRole('button', { name: 'Prijavi se' }).click();
-  await expect(admin).toHaveURL(/\/$/);
+  await expect(admin).toHaveURL(/\/(admin\/approvals)?$/);
   await admin.goto('/admin/approvals');
   for (const s of [alpha, beta, gamma]) {
     await item(admin, s.name).getByRole('button', { name: 'Odobri kao strelca' }).click();

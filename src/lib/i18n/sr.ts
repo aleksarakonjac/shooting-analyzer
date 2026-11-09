@@ -42,6 +42,7 @@ export const sr = {
     approveCoach: 'Odobri kao trenera',
     reject: 'Isključi nalog',
     registered: 'Registrovan',
+    pendingTitle: 'Na čekanju',
   },
   links: {
     title: 'Veze trener–strelac',
@@ -59,6 +60,8 @@ export const sr = {
     shooter: 'strelac',
     coach: 'trener',
     sharingLink: 'Podešavanja deljenja',
+    requestTitle: 'Novi zahtev',
+    listTitle: 'Veze i zahtevi',
   },
   sharing: {
     title: 'Deljenje podataka sa trenerom',
@@ -77,6 +80,7 @@ export const sr = {
     choose: 'Izaberite trening',
     revoke: 'Ukini',
     invalid: 'Podaci za deljenje nisu ispravni.',
+    addTitle: 'Podeli još',
   },
   newTraining: {
     nav: 'Novi trening',
@@ -273,6 +277,7 @@ export const sr = {
     purgeYes: 'Obriši zauvek',
     cancel: 'Odustani',
     shooter: 'Strelac',
+    listTitle: 'Obrisani treninzi',
   },
   audit: {
     title: 'Dnevnik izmena',
@@ -288,6 +293,7 @@ export const sr = {
     soft_delete: 'Trening prebačen u korpu',
     restore: 'Trening vraćen iz korpe',
     delete: 'Trening trajno obrisan',
+    listTitle: 'Zapisi',
   },
   finals: {
     title: 'Finale',

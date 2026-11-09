@@ -30,7 +30,7 @@ test('admin sees the registration, approves it, and the user can then open the a
   await page.getByLabel('E-pošta').fill(adminEmail!);
   await page.getByLabel('Lozinka').fill(adminPassword!);
   await page.getByRole('button', { name: 'Prijavi se' }).click();
-  await expect(page).toHaveURL(/\/$/);
+  await expect(page).toHaveURL(/\/(admin\/approvals)?$/);
   await page.goto('/admin/approvals');
   const row = page.getByRole('listitem').filter({ hasText: name });
   await expect(row).toBeVisible();

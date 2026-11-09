@@ -45,7 +45,7 @@ test.beforeAll(async ({ browser }) => {
   await admin.getByLabel('E-pošta').fill(adminEmail!);
   await admin.getByLabel('Lozinka').fill(adminPassword!);
   await admin.getByRole('button', { name: 'Prijavi se' }).click();
-  await expect(admin).toHaveURL(/\/$/);
+  await expect(admin).toHaveURL(/\/(admin\/approvals)?$/);
   await admin.goto('/admin/approvals');
   const row = admin.getByRole('listitem').filter({ hasText: shooter.name });
   await row.getByRole('button', { name: 'Odobri kao strelca' }).click();

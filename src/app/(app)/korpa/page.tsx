@@ -1,4 +1,5 @@
 import { Suspense } from 'react';
+import { Workspace } from '@/components/Workspace';
 import { connection } from 'next/server';
 import { PurgeTrainingButton } from '@/components/PurgeTrainingButton';
 import { getSessionProfile } from '@/lib/auth/session';
@@ -9,12 +10,9 @@ import { createClient } from '@/lib/supabase/server';
 
 export default function TrashPage() {
   return (
-    <div className="page">
-      <h1>{sr.trash.title}</h1>
-      <Suspense fallback={null}>
-        <Body />
-      </Suspense>
-    </div>
+    <Suspense fallback={null}>
+      <Body />
+    </Suspense>
   );
 }
 
@@ -39,11 +37,10 @@ async function Body() {
   }
   const now = new Date();
 
-  return (
+  const body = (
     <>
-      <p>{t.intro}</p>
       {rows.length === 0 ? (
-        <p>{t.empty}</p>
+        <p className="panel__empty dash__empty">{t.empty}</p>
       ) : (
         <ul className="trash__list">
           {rows.map((r) => (
@@ -68,5 +65,13 @@ async function Body() {
         </ul>
       )}
     </>
+  );
+  return (
+    <Workspace
+      label={t.title}
+      rows={1}
+      strip={<div className="ws__head"><h1 className="ws__title">{t.title}</h1><p className="ws__meta">{t.intro}</p></div>}
+      panels={[{ id: 'trash', title: t.listTitle, range: rows.length ? String(rows.length) : undefined, col: '1 / 13', row: '1 / 2', flush: true, children: body }]}
+    />
   );
 }

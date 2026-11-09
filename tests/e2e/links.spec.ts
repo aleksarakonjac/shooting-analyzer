@@ -1,4 +1,5 @@
 import { expect, test, type Browser, type Page } from '@playwright/test';
+import { typeDate } from './helpers';
 
 // Needs the Supabase TEST project with all migrations applied (see docs/supabase-setup.md).
 const adminEmail = process.env.E2E_ADMIN_EMAIL;
@@ -35,7 +36,7 @@ test('shooter and coach register and the admin approves both', async ({ browser 
   await admin.getByLabel('E-pošta').fill(adminEmail!);
   await admin.getByLabel('Lozinka').fill(adminPassword!);
   await admin.getByRole('button', { name: 'Prijavi se' }).click();
-  await expect(admin).toHaveURL(/\/$/);
+  await expect(admin).toHaveURL(/\/(admin\/approvals)?$/);
   await admin.goto('/admin/approvals');
   await item(admin, shooter.name).getByRole('button', { name: 'Odobri kao strelca' }).click();
   await expect(item(admin, shooter.name)).toHaveCount(0);
@@ -68,8 +69,8 @@ test('requesting an unknown email shows the same message and creates nothing', a
 
 test('shooter shares a period, revokes it, then ends the link', async () => {
   await shooterPage.goto('/profil/deljenje');
-  await shooterPage.getByLabel('Od').fill('2026-10-01');
-  await shooterPage.getByLabel('Do').fill('2026-10-31');
+  await typeDate(shooterPage, 'Od', '2026-10-01');
+  await typeDate(shooterPage, 'Do', '2026-10-31');
   await shooterPage.getByRole('button', { name: 'Podeli za period' }).click();
   await expect(item(shooterPage, 'Period: 2026-10-01 – 2026-10-31')).toBeVisible();
   await item(shooterPage, 'Period').getByRole('button', { name: 'Ukini' }).click();

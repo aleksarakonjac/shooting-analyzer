@@ -1,4 +1,5 @@
 import { Suspense } from 'react';
+import { Workspace } from '@/components/Workspace';
 import { connection } from 'next/server';
 import { getSessionProfile } from '@/lib/auth/session';
 import { describeAudit } from '@/lib/audit/describe';
@@ -7,12 +8,9 @@ import { createClient } from '@/lib/supabase/server';
 
 export default function AuditPage() {
   return (
-    <div className="page">
-      <h1>{sr.audit.title}</h1>
-      <Suspense fallback={null}>
-        <Body />
-      </Suspense>
-    </div>
+    <Suspense fallback={null}>
+      <Body />
+    </Suspense>
   );
 }
 
@@ -47,11 +45,10 @@ async function Body() {
   }
   const who = (id: string | null) => (id === null ? t.unknown : id === profile?.id ? t.you : (names.get(id) ?? t.unknown));
 
-  return (
+  const body = (
     <>
-      <p>{t.intro}</p>
       {rows.length === 0 ? (
-        <p>{t.empty}</p>
+        <p className="panel__empty dash__empty">{t.empty}</p>
       ) : (
         <table className="audit__table">
           <thead>
@@ -79,5 +76,13 @@ async function Body() {
         </table>
       )}
     </>
+  );
+  return (
+    <Workspace
+      label={t.title}
+      rows={1}
+      strip={<div className="ws__head"><h1 className="ws__title">{t.title}</h1><p className="ws__meta">{t.intro}</p></div>}
+      panels={[{ id: 'audit', title: t.listTitle, col: '1 / 13', row: '1 / 2', flush: true, children: body }]}
+    />
   );
 }
