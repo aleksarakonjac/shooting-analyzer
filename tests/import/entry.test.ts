@@ -10,12 +10,13 @@ describe('toInstantRange', () => {
     expect(toInstantRange('2026-11-09', '17:00', '18:30', TZ)).toEqual({
       startedAt: '2026-11-09T16:00:00.000Z',
       endedAt: '2026-11-09T17:30:00.000Z',
+      endsNextDay: false,
     });
   });
 
   it('keeps a missing time as null, and a summer date uses summer time', () => {
-    expect(toInstantRange('2026-07-01', '09:15', '', TZ)).toEqual({ startedAt: '2026-07-01T07:15:00.000Z', endedAt: null });
-    expect(toInstantRange('2026-07-01', '', '', TZ)).toEqual({ startedAt: null, endedAt: null });
+    expect(toInstantRange('2026-07-01', '09:15', '', TZ)).toEqual({ startedAt: '2026-07-01T07:15:00.000Z', endedAt: null, endsNextDay: false });
+    expect(toInstantRange('2026-07-01', '', '', TZ)).toEqual({ startedAt: null, endedAt: null, endsNextDay: false });
   });
 });
 

@@ -3,19 +3,14 @@ import { useMemo, useState } from 'react';
 import { ComboField } from '@/components/ui/ComboField';
 import { updateOwnProfile } from '@/lib/auth/actions';
 import { sr } from '@/lib/i18n/sr';
+import { zoneNames } from '@/lib/time/zone';
 
 const t = sr.account;
 
 /** Name and default zone; the zone field searches the IANA zone list. */
 export function ProfileForm({ name, tz }: { name: string; tz: string }) {
   const [zone, setZone] = useState(tz);
-  const zones = useMemo(() => {
-    try {
-      return Intl.supportedValuesOf('timeZone');
-    } catch {
-      return [tz];
-    }
-  }, [tz]);
+  const zones = useMemo(() => zoneNames(tz), [tz]);
   return (
     <form action={updateOwnProfile} className="stack">
       <label>

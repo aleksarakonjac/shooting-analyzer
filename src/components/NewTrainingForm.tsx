@@ -1,20 +1,26 @@
 'use client';
 import Link from 'next/link';
-import { useMemo, useState, type ChangeEvent } from 'react';
+import { useCallback, useMemo, useState, type ChangeEvent } from 'react';
 import { proposeSelection, selectMatchShots, type MatchSelection } from '@/lib/alignment/align';
 import { DISCIPLINES } from '@/lib/domain/disciplines';
 import type { DisciplineId, ParsedSiusResult } from '@/lib/domain/types';
 import { sr } from '@/lib/i18n/sr';
-import { buildPreview, groupByPosition, parseManualSeries } from '@/lib/import/draft';
-import { defaultTrainingName, saveTraining, type TrainingDraft } from '@/lib/import/saveTraining';
+import { buildPreview, groupByPosition } from '@/lib/import/draft';
+import { defaultTrainingName, saveTraining, type SessionKind, type SessionStage, type TrainingDraft } from '@/lib/import/saveTraining';
 import { findImported, type ImportedMatch } from '@/lib/import/duplicates';
 import { MAX_UPLOAD_BYTES, sha256Hex, uploadSource, type SourceKind } from '@/lib/import/uploadSource';
 import { decodeText } from '@/lib/parsers/decode';
 import type { ScattData } from '@/lib/parsers/scatt';
 import { parseSiusCsv } from '@/lib/parsers/siusCsv';
 import { parseTcx, reinterpretAsZone, type HrSample } from '@/lib/parsers/tcx';
-import { hrCoverage, zoneShiftMs } from '@/lib/report/derive';
-import { toInstantRange } from '@/lib/import/times';
+import { hrCoverage } from '@/lib/report/derive';
+import { zoneNames } from '@/lib/time/zone';
+import { isRepeatedHour, toInstantRange, type Fold } from '@/lib/import/times';
+import { isFinalDiscipline } from '@/lib/finals/format';
+import { createClient } from '@/lib/supabase/client';
+import type { EventOption } from '@/lib/events';
+import { FinalEntry, type FinalDraft } from './FinalEntry';
+import { Segmented } from './ui/Segmented';
 import { ManualEntry } from './entry/ManualEntry';
 import { PasteEntry } from './entry/PasteEntry';
 import { FlagBadge } from './FlagBadge';
@@ -52,7 +58,10 @@ export function NewTrainingForm({
   today,
   places = [],
   title = sr.newTraining.title,
+  events = [],
 }: {
+  /** The shooter's events, offered when the session belongs to a competition or control match. */
+  events?: EventOption[];
   userId: string;
   tz: string;
   today: string;
@@ -66,6 +75,16 @@ export function NewTrainingForm({
   const [timeFrom, setTimeFrom] = useState('');
   const [timeTo, setTimeTo] = useState('');
   const [tab, setTab] = useState('file');
+  const [kind, setKind] = useState<SessionKind>('trening');
+  const [stage, setStage] = useState<SessionStage>('slobodno');
+  const [eventName, setEventName] = useState('');
+  const [venueTz, setVenueTz] = useState(tz);
+  const zones = useMemo(() => zoneNames(tz), [tz]);
+  const [foldFrom, setFoldFrom] = useState<Fold>('earlier');
+  const [foldTo, setFoldTo] = useState<Fold>('earlier');
+  const [finalDraft, setFinalDraft] = useState<FinalDraft | null>(null);
+  const onFinalDraft = useCallback((d: FinalDraft) => setFinalDraft(d), []);
+  const [hrZoneChosen, setHrZoneChosen] = useState<string | null>(null);
   const [name, setName] = useState('');
   const [place, setPlace] = useState('');
   const [notes, setNotes] = useState('');
@@ -76,8 +95,6 @@ export function NewTrainingForm({
   const [hrLoaded, setHrLoaded] = useState<Loaded<HrData> | null>(null);
   const [hrOffsetS, setHrOffsetS] = useState(0);
   const [hrZone, setHrZone] = useState(tz);
-  // Reinterpreting the TCX clock moves every sample; the shift is saved inside the heart-rate offset.
-  const [hrZoneShiftMs, setHrZoneShiftMs] = useState(0);
 
   const [selection, setSelection] = useState<MatchSelection | undefined>();
   const [ignored, setIgnored] = useState<number[]>([]);
@@ -184,7 +201,7 @@ export function NewTrainingForm({
       const xml = await file.text();
       const parsed = parseTcx(xml);
       setHrLoaded({ file, data: { samples: parsed.samples, xml, missingOffset: parsed.missingOffset }, sha: await sha256Hex(new TextEncoder().encode(xml)) });
-      setHrZoneShiftMs(0);
+      setHrZoneChosen(null);
       setErrors((e) => ({ ...e, hr: undefined }));
     } catch {
       setErrors((e) => ({ ...e, hr: t.unreadable }));
@@ -193,9 +210,9 @@ export function NewTrainingForm({
 
   const applyZone = () => {
     if (!hrLoaded) return;
-    const original = parseTcx(hrLoaded.data.xml).samples;
+    // The zone is stored and applied sample by sample on the report, so a clock change inside the file holds.
     const moved = reinterpretAsZone(hrLoaded.data.xml, hrZone);
-    setHrZoneShiftMs(zoneShiftMs(original, moved));
+    setHrZoneChosen(hrZone);
     setHrLoaded({ ...hrLoaded, data: { ...hrLoaded.data, samples: moved } });
   };
 
@@ -215,9 +232,22 @@ export function NewTrainingForm({
     setAskEmpty(false);
     setDupes(null);
     setErrors((e) => ({ ...e, save: undefined }));
-    const range = toInstantRange(trainedOn, timeFrom, timeTo, tz);
+    const range = toInstantRange(trainedOn, timeFrom, timeTo, venueTz, { from: foldFrom, to: foldTo });
+    let eventId: string | null = null;
+    try {
+      eventId = kind === 'trening' ? null : await resolveEvent();
+    } catch {
+      setErrors((e) => ({ ...e, save: t.saveFailed }));
+      setSaving(false);
+      return;
+    }
     const draft: TrainingDraft = {
       disciplineId,
+      kind,
+      stage,
+      tz: venueTz,
+      eventId,
+      hrZone: hrZoneChosen,
       trainedOn,
       startedAt: range.startedAt,
       endedAt: range.endedAt,
@@ -229,11 +259,15 @@ export function NewTrainingForm({
       selection,
       ignoredScattIds: ignored,
       hr,
-      hrOffsetMs: hrOffsetS * 1000 + hrZoneShiftMs,
+      hrOffsetMs: hrOffsetS * 1000,
       confirmed,
     };
     try {
       const { trainingId } = await saveTraining(draft, userId);
+      if (stage === 'finale' && finalDraft?.ok) {
+        const { error } = await createClient().rpc('save_final', { payload: { training_id: trainingId, ...finalDraft.payload } });
+        if (error) throw new Error(error.message);
+      }
       const files: [File | undefined, SourceKind][] = [
         [siusFile?.file, siusFile && /pdf/i.test(siusFile.file.type + siusFile.file.name) ? 'sius_pdf' : 'sius_csv'],
         [scattLoaded?.file, 'scatt'],
@@ -256,6 +290,21 @@ export function NewTrainingForm({
     }
   };
 
+  /** The event named in the form: an existing one of this kind by name, or a new one on the session's day. */
+  async function resolveEvent(): Promise<string | null> {
+    const wanted = eventName.trim();
+    if (!wanted) return null;
+    const hit = events.find((e) => e.kind === kind && e.name.toLocaleLowerCase('sr') === wanted.toLocaleLowerCase('sr'));
+    if (hit) return hit.id;
+    const { data, error } = await createClient()
+      .from('events')
+      .insert({ shooter_id: userId, kind, name: wanted, place, starts_on: trainedOn, ends_on: trainedOn })
+      .select('id')
+      .single();
+    if (error) throw new Error(error.message);
+    return data.id as string;
+  }
+
   /** Before saving files: has the same content been imported already? Then ask first. */
   const checkThenSave = async () => {
     const picked = [siusFile, scattLoaded, hrLoaded]
@@ -273,7 +322,8 @@ export function NewTrainingForm({
 
   const onSave = () => {
     if (!disciplineId) return;
-    if (!sius && !scatt && !hr) setAskEmpty(true);
+    const hasFinal = stage === 'finale' && finalDraft?.ok === true;
+    if (!sius && !scatt && !hr && !hasFinal) setAskEmpty(true);
     else void checkThenSave();
   };
 
@@ -291,7 +341,7 @@ export function NewTrainingForm({
     );
   }
 
-  const timeFmt = new Intl.DateTimeFormat('en-GB', { timeStyle: 'medium', timeZone: tz });
+  const timeFmt = new Intl.DateTimeFormat('en-GB', { timeStyle: 'medium', timeZone: venueTz });
   const aligned = preview?.shots ?? [];
   // Do the watch samples meet the shots? (SCATT times when aligned, else times from a paste.)
   const shotTimes = aligned.length ? aligned.map((a) => a.scatt?.tMs) : (sius?.series.flatMap((x) => x.shots.map((sh) => sh.tMs)) ?? []);
@@ -358,6 +408,33 @@ export function NewTrainingForm({
         />
       </div>
       <div className="span-2">
+        <Segmented
+          label={t.kind}
+          value={kind}
+          onChange={setKind}
+          options={(['trening', 'kontrolni', 'takmicenje'] as const).map((id) => ({ id, label: t.kinds[id] }))}
+        />
+      </div>
+      <div className="span-2">
+        <Segmented
+          label={t.stage}
+          value={stage}
+          onChange={setStage}
+          options={(['slobodno', 'eliminacije', 'kvalifikacije', 'finale'] as const).map((id) => ({ id, label: t.stages[id] }))}
+        />
+      </div>
+      {kind !== 'trening' && (
+        <div className="span-2">
+          <ComboField
+            label={t.event}
+            value={eventName}
+            onChange={setEventName}
+            suggestions={events.filter((e) => e.kind === kind).map((e) => e.name)}
+            description={t.eventHint}
+          />
+        </div>
+      )}
+      <div className="span-2">
         <DateTimeRange
           label={t.dateTime}
           name="trained"
@@ -370,6 +447,21 @@ export function NewTrainingForm({
             setTimeTo(v.to);
           }}
         />
+      </div>
+      {(isRepeatedHour(trainedOn, timeFrom, venueTz) || isRepeatedHour(trainedOn, timeTo, venueTz)) && (
+        <div className="span-2 ui-fold">
+          {isRepeatedHour(trainedOn, timeFrom, venueTz) && (
+            <Segmented label={t.foldFrom} value={foldFrom} onChange={setFoldFrom}
+              options={[{ id: 'earlier', label: t.foldEarlier }, { id: 'later', label: t.foldLater }]} />
+          )}
+          {isRepeatedHour(trainedOn, timeTo, venueTz) && (
+            <Segmented label={t.foldTo} value={foldTo} onChange={setFoldTo}
+              options={[{ id: 'earlier', label: t.foldEarlier }, { id: 'later', label: t.foldLater }]} />
+          )}
+        </div>
+      )}
+      <div className="span-2">
+        <ComboField label={t.venueTz} value={venueTz} onChange={setVenueTz} suggestions={zones} description={t.venueTzHint} />
       </div>
       <label>
         {t.name}
@@ -391,7 +483,14 @@ export function NewTrainingForm({
     </p>
   );
 
-  const results = (
+  const finaleResults =
+    stage !== 'finale' ? null : disciplineId && isFinalDiscipline(disciplineId) ? (
+      <FinalEntry key={disciplineId} discipline={disciplineId} tz={venueTz} onDraft={onFinalDraft} />
+    ) : (
+      <p className="panel__empty">{t.finaleNoDiscipline}</p>
+    );
+
+  const results = finaleResults ?? (
     <div className="results">
       <SegTabs
         label={t.resultSource}
@@ -547,7 +646,7 @@ export function NewTrainingForm({
           {
             id: 'results',
             title: t.results,
-            range: sius ? `${sius.series.length} serija · ${shotTotal} pogodaka` : cfg?.nameSr,
+            range: stage === 'finale' ? t.stages.finale : sius ? `${sius.series.length} serija · ${shotTotal} pogodaka` : cfg?.nameSr,
             col: '5 / 9',
             row: '1 / 7',
             children: results,

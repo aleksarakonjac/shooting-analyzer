@@ -43,7 +43,7 @@ test('admin sees the registration, approves it, and the user can then open the a
   await user.getByLabel('Lozinka').fill(password);
   await user.getByRole('button', { name: 'Prijavi se' }).click();
   await expect(user).toHaveURL('http://localhost:3100/');
-  await expect(user.getByRole('heading', { name: 'Moji treninzi' })).toBeVisible();
+  await expect(user.getByRole('heading', { name: 'Moje sesije' })).toBeVisible();
 
   // A non-admin is redirected away from the admin pages.
   await user.goto('http://localhost:3100/admin/approvals');

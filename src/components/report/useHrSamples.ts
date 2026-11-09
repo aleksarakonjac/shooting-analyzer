@@ -1,7 +1,7 @@
 'use client';
 import { useEffect, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
-import { hrWindow, parseTcx, type HrSample } from '@/lib/parsers/tcx';
+import { hrWindow, samplesFromTcx, type HrSample } from '@/lib/parsers/tcx';
 
 export type HrState = { status: 'none' } | { status: 'loading' } | { status: 'ready'; samples: HrSample[] };
 
@@ -10,6 +10,8 @@ export function useHrSamples(
   tcxPath: string | null,
   offsetMs: number,
   win: { fromMs: number; toMs: number } | null,
+  /** Zone the file's clock is read in, sample by sample (null: the file's own clock). */
+  zone: string | null = null,
 ): HrState {
   const [samples, setSamples] = useState<HrSample[] | null>(null);
   const from = win?.fromMs;
@@ -24,8 +26,8 @@ export function useHrSamples(
       .then(async ({ data }) => {
         if (!alive) return;
         try {
-          const parsed = data ? parseTcx(await data.text()) : { samples: [] };
-          setSamples(hrWindow(parsed.samples, from, to, offsetMs));
+          const samples = data ? samplesFromTcx(await data.text(), zone) : [];
+          setSamples(hrWindow(samples, from, to, offsetMs));
         } catch {
           setSamples([]);
         }
@@ -34,7 +36,7 @@ export function useHrSamples(
     return () => {
       alive = false;
     };
-  }, [tcxPath, offsetMs, from, to]);
+  }, [tcxPath, offsetMs, from, to, zone]);
 
   if (tcxPath === null || win === null) return { status: 'none' };
   if (samples === null) return { status: 'loading' };

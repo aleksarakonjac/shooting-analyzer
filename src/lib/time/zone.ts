@@ -25,3 +25,32 @@ export function zonedWallTimeToUtcMs(
   utc = naive - tzOffsetMs(utc, tz);
   return utc;
 }
+
+/**
+ * Every UTC instant at which the wall clock in `tz` reads `date` `hh:mm`, earliest first.
+ * Usually one; two in the repeated hour when clocks go back (summer reading first);
+ * none in the skipped hour, where the nearest valid instant is returned instead.
+ */
+export function wallTimeCandidates(date: string, hhmm: string, tz: string): number[] {
+  const [y, mo, d] = date.split('-').map(Number);
+  const [h, mi] = hhmm.split(':').map(Number);
+  const naive = Date.UTC(y, mo - 1, d, h, mi, 0, 0);
+  const DAY = 86_400_000;
+  const found = new Set<number>();
+  for (const probe of [naive - DAY, naive + DAY]) {
+    const off = tzOffsetMs(probe, tz);
+    const candidate = naive - off;
+    if (tzOffsetMs(candidate, tz) === off) found.add(candidate);
+  }
+  const list = [...found].sort((a, b) => a - b);
+  return list.length ? list : [zonedWallTimeToUtcMs(y, mo, d, h, mi, 0, 0, tz)];
+}
+
+/** Every IANA zone the runtime knows, for zone pickers; falls back to the given zone alone. */
+export function zoneNames(fallback: string): string[] {
+  try {
+    return Intl.supportedValuesOf('timeZone');
+  } catch {
+    return [fallback];
+  }
+}

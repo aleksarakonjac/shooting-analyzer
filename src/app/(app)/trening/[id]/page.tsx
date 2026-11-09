@@ -15,14 +15,22 @@ import { sr } from '@/lib/i18n/sr';
 import { shotWindow } from '@/lib/report/derive';
 import { buildReportView, type RawSeries } from '@/lib/report/viewModel';
 import { createClient } from '@/lib/supabase/server';
-import { confirmAlignmentForm, updateTrainingForm } from '@/lib/trainings';
+import { confirmAlignmentForm } from '@/lib/trainings';
+import { SessionEditor } from '@/components/SessionEditor';
+import { Workspace } from '@/components/Workspace';
+import { shooterEvents } from '@/lib/events';
+import { recentPlaces } from '@/lib/import/places';
 
 interface TrainingRow {
-  id: string; name: string; discipline: DisciplineId; trained_on: string; place: string; notes: string;
+  id: string; shooter_id: string; name: string; discipline: DisciplineId; trained_on: string; place: string; notes: string;
   started_at: string | null; ended_at: string | null;
+  kind: 'trening' | 'kontrolni' | 'takmicenje';
+  stage: 'slobodno' | 'eliminacije' | 'kvalifikacije' | 'finale';
+  tz: string;
+  events: { id: string; name: string } | null;
   matches: { id: string; label: string; align_state: 'proposed' | 'confirmed'; series: RawSeries[] }[];
   loose_shots: { kind: 'warmup' | 'attempt'; t_ms: number }[];
-  hr_samples_ref: { offset_ms: number } | { offset_ms: number }[] | null;
+  hr_samples_ref: { offset_ms: number; zone: string | null } | { offset_ms: number; zone: string | null }[] | null;
   source_files: { kind: string; storage_path: string }[];
   finals: FinalRow[];
 }
@@ -32,7 +40,7 @@ export default function ReportPage({
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ izmena?: string }>;
+  searchParams: Promise<{ izmena?: string; greska?: string }>;
 }) {
   return (
     <Suspense fallback={null}>
@@ -43,17 +51,17 @@ export default function ReportPage({
 
 const SOURCE_LABEL: Record<string, string> = { sius_csv: 'SIUS CSV', sius_pdf: 'SIUS PDF', scatt: 'SCATT', tcx: 'Puls (TCX)' };
 
-async function Body({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ izmena?: string }> }) {
-  const [{ id }, { izmena }] = await Promise.all([params, searchParams]);
+async function Body({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ izmena?: string; greska?: string }> }) {
+  const [{ id }, { izmena, greska }] = await Promise.all([params, searchParams]);
   const profile = await getSessionProfile();
   const supabase = await createClient();
   if (!/^[0-9a-f-]{36}$/i.test(id)) notFound();
   const { data } = await supabase
     .from('trainings')
     .select(
-      'id,name,discipline,trained_on,place,notes,started_at,ended_at,' +
+      'id,shooter_id,name,discipline,trained_on,place,notes,started_at,ended_at,kind,stage,tz,events(id,name),' +
         'matches(id,label,align_state,series(id,idx,position,total,total_decimal,mpi_x,mpi_y,group_mm,shots(idx,value,inner,t_ms))),' +
-        'loose_shots(kind,t_ms),hr_samples_ref(offset_ms),source_files(kind,storage_path),' +
+        'loose_shots(kind,t_ms),hr_samples_ref(offset_ms,zone),source_files(kind,storage_path),' +
         'finals(id,placement,eliminated_after_shot,created_at,final_shots(idx,stage_idx,value))',
     )
     .eq('id', id)
@@ -64,7 +72,10 @@ async function Body({ params, searchParams }: { params: Promise<{ id: string }>;
 
   const t = sr.report;
   const cfg = DISCIPLINES[tr.discipline];
-  const tz = profile?.tz ?? 'Europe/Belgrade';
+  // Clock times read in the venue's zone; the zone is named when it is not the viewer's own.
+  const tz = tr.tz;
+  const viewerTz = profile?.tz ?? tz;
+  const nt = sr.newTraining;
   // A training holds one match in practice; a second match would follow the first in the same board.
   const match = tr.matches[0] ?? null;
   const view = buildReportView(tr.matches.flatMap((m) => m.series), tr.discipline);
@@ -79,6 +90,52 @@ async function Body({ params, searchParams }: { params: Promise<{ id: string }>;
   const hm = (iso: string | null) =>
     iso ? new Intl.DateTimeFormat('sr-Latn-RS', { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: tz }).format(new Date(iso)) : null;
   const clock = tr.started_at || tr.ended_at ? `${hm(tr.started_at) ?? '—'}–${hm(tr.ended_at) ?? '—'}` : null;
+  const sessionLabel = [tr.kind !== 'trening' ? nt.kinds[tr.kind] : null, tr.stage !== 'slobodno' ? nt.stages[tr.stage] : null]
+    .filter(Boolean)
+    .join(', ');
+
+  if (canEdit && izmena) {
+    const [events, places] = await Promise.all([shooterEvents(tr.shooter_id), recentPlaces(tr.shooter_id)]);
+    const wall = (iso: string | null) => hm(iso) ?? '';
+    return (
+      <Workspace
+        label={t.editTitle}
+        rows={1}
+        strip={
+          <div className="ws__head">
+            <Link className="ws__back" href={`/trening/${tr.id}`}>{tr.name}</Link>
+            <h1 className="ws__title">{t.editTitle}</h1>
+          </div>
+        }
+        panels={[
+          {
+            id: 'edit',
+            title: t.editTitle,
+            col: '1 / 9',
+            row: '1 / 2',
+            children: (
+              <SessionEditor
+                invalid={Boolean(greska)}
+                events={events}
+                places={places}
+                value={{
+                  id: tr.id,
+                  name: tr.name,
+                  place: tr.place,
+                  notes: tr.notes,
+                  kind: tr.kind,
+                  stage: tr.stage,
+                  tz: tr.tz,
+                  eventName: tr.events?.name ?? '',
+                  when: { date: tr.trained_on, from: wall(tr.started_at), to: wall(tr.ended_at) },
+                }}
+              />
+            ),
+          },
+        ]}
+      />
+    );
+  }
 
   const strip = (
     <>
@@ -88,7 +145,10 @@ async function Body({ params, searchParams }: { params: Promise<{ id: string }>;
           {!tr.name.includes(cfg.nameSr) && <>{cfg.nameSr} · </>}
           <span className="num">{date}</span>
           {clock && <> · <span className="num">{clock}</span></>}
+          {clock && tz !== viewerTz && <span className="rows__muted"> ({tz})</span>}
           {tr.place && ` · ${tr.place}`}
+          {sessionLabel && ` · ${sessionLabel}`}
+          {tr.events && ` · ${tr.events.name}`}
         </p>
       </div>
       {view.series.length > 0 && <LanePlate label={t.total} value={view.total.toFixed(cfg.decimal ? 1 : 0)} variant="score" />}
@@ -112,22 +172,10 @@ async function Body({ params, searchParams }: { params: Promise<{ id: string }>;
           )}
         </div>
       )}
-      {canEdit && !izmena && (
+      {canEdit && (
         <div className="ws__strip-end hide-phone">
           <Link className="button button--quiet" href={`/trening/${tr.id}?izmena=1`}>{t.edit}</Link>
         </div>
-      )}
-      {canEdit && izmena && (
-        <form action={updateTrainingForm} className="ws__edit">
-          <input type="hidden" name="id" value={tr.id} />
-          <label>{sr.newTraining.name}<input name="name" defaultValue={tr.name} /></label>
-          <label>{sr.newTraining.place}<input name="place" defaultValue={tr.place} /></label>
-          <label>{sr.newTraining.notes}<input name="notes" defaultValue={tr.notes} /></label>
-          <div className="ws__edit-actions">
-            <button type="submit">{t.save}</button>
-            <Link className="button button--quiet" href={`/trening/${tr.id}`}>{t.cancel}</Link>
-          </div>
-        </form>
       )}
     </>
   );
@@ -170,13 +218,14 @@ async function Body({ params, searchParams }: { params: Promise<{ id: string }>;
     </div>
   );
 
-  const finals = isFinalDiscipline(tr.discipline) ? (
+  // Finals belong to a finale session only.
+  const finals = tr.stage === 'finale' && isFinalDiscipline(tr.discipline) ? (
     <div className="finals">
       <FinalsList trainingId={tr.id} discipline={tr.discipline} finals={tr.finals} canEdit={canEdit} />
       {canEdit && profile && (
         <details className="finals__add">
           <summary className="button button--quiet">{sr.finals.add}</summary>
-          <FinalEntry trainingId={tr.id} discipline={tr.discipline} tz={profile.tz} />
+          <FinalEntry trainingId={tr.id} discipline={tr.discipline} tz={tz} />
         </details>
       )}
     </div>
@@ -188,7 +237,7 @@ async function Body({ params, searchParams }: { params: Promise<{ id: string }>;
       view={view}
       discipline={tr.discipline}
       tz={tz}
-      hr={{ tcxPath: tcx, offsetMs: Number(hrRef?.offset_ms ?? 0), window: win }}
+      hr={{ tcxPath: tcx, offsetMs: Number(hrRef?.offset_ms ?? 0), zone: hrRef?.zone ?? null, window: win }}
       finals={finals}
       other={other}
     />

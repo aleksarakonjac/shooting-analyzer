@@ -36,7 +36,6 @@ export async function ShooterDashboard({
   newHref: string;
   search: DashboardSearch;
 }) {
-  const t = sr.dashboard;
   const sp = search;
   const period: Period = sp.p === 'week' || sp.p === 'year' ? sp.p : 'month';
   const now = new Date();

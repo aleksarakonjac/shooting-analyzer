@@ -129,3 +129,23 @@ describe('parseTimestamps', () => {
     expect(parseTimestamps(lines, TZ, 24)).toEqual({ ok: false, error: 'toomany' });
   });
 });
+
+import { buildFinalPayload } from '@/lib/finals/format';
+
+describe('buildFinalPayload', () => {
+  it('turns typed cells into shots with stage indexes and times, ignoring trailing blanks', () => {
+    const cells = ['10.1', '10,2', '10.3', '10.4', '10.5', '9.9', '', ...Array(17).fill('')];
+    const r = buildFinalPayload('air_rifle', cells, '3', '', [1000, 2000]);
+    if (!r.ok) throw new Error('expected ok');
+    expect(r.payload.placement).toBe(3);
+    expect(r.payload.eliminated_after_shot).toBeNull();
+    expect(r.payload.shots.map((s) => [s.idx, s.stage_idx, s.value, s.t_ms])).toEqual([
+      [1, 0, 10.1, 1000], [2, 0, 10.2, 2000], [3, 0, 10.3, null], [4, 0, 10.4, null], [5, 0, 10.5, null], [6, 1, 9.9, null],
+    ]);
+  });
+
+  it('reports the first problem', () => {
+    expect(buildFinalPayload('air_rifle', ['10.95'], '', '', [])).toEqual({ ok: false, error: 'decimals' });
+    expect(buildFinalPayload('air_rifle', [], '', '', [])).toEqual({ ok: false, error: 'empty' });
+  });
+});

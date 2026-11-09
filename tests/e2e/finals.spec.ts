@@ -1,8 +1,7 @@
 import { expect, test, type Page } from '@playwright/test';
-import { join } from 'node:path';
 import { pickDiscipline } from './helpers';
 
-// Needs the Supabase TEST project with migrations 0001-0011 applied (see docs/supabase-setup.md).
+// Needs the Supabase TEST project with migrations 0001-0016 applied (see docs/supabase-setup.md).
 const adminEmail = process.env.E2E_ADMIN_EMAIL;
 const adminPassword = process.env.E2E_ADMIN_PASSWORD;
 test.skip(!adminEmail || !adminPassword, 'E2E_ADMIN_EMAIL / E2E_ADMIN_PASSWORD not set');
@@ -10,7 +9,6 @@ test.describe.configure({ mode: 'serial' });
 
 const stamp = Date.now();
 const shooter = { name: `E2E Finale ${stamp}`, email: `e2e-f-${stamp}@example.com`, password: `Pw-${stamp}-fK9` };
-const fx = (n: string) => join(__dirname, '../fixtures', n);
 
 let page: Page;
 let reportUrl = '';
@@ -51,13 +49,15 @@ test.beforeAll(async ({ browser }) => {
   await row.getByRole('button', { name: 'Odobri kao strelca' }).click();
   await expect(row).toHaveCount(0);
 
+  // A finale session: the results panel becomes the final entry; saved empty, the finals are entered on the report.
   await page.goto('/trening/novi');
   await pickDiscipline(page, 'Vazdušna puška');
   await expect(page.getByLabel('Naziv')).toHaveAttribute('placeholder', /Vazdušna puška$/);
-  await page.getByLabel('SIUS fajl (CSV ili PDF)').setInputFiles(fx('2026-10-21T190309.csv'));
-  await expect(page.getByText('Učitano: 2026-10-21T190309.csv')).toBeVisible();
-  await page.getByRole('button', { name: 'Sačuvaj trening' }).click();
-  await page.getByRole('link', { name: 'Otvori izveštaj o treningu' }).click();
+  await page.getByRole('radio', { name: 'Finale' }).check({ force: true });
+  await expect(page.getByLabel('Pogodak 1', { exact: true })).toBeVisible();
+  await page.getByRole('button', { name: 'Sačuvaj sesiju' }).click();
+  await page.getByRole('button', { name: 'Sačuvaj praznu sesiju' }).click();
+  await page.getByRole('link', { name: 'Otvori izveštaj o sesiji' }).click();
   await expect(page).toHaveURL(/\/trening\/[0-9a-f-]{36}$/);
   reportUrl = page.url();
 });

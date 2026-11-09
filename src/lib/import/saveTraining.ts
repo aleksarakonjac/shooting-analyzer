@@ -6,8 +6,18 @@ import { hrWindow, type HrSample } from '@/lib/parsers/tcx';
 import { hrStats, shotWindow } from '@/lib/report/derive';
 import { createClient } from '@/lib/supabase/client';
 
+export type SessionKind = 'trening' | 'kontrolni' | 'takmicenje';
+export type SessionStage = 'slobodno' | 'eliminacije' | 'kvalifikacije' | 'finale';
+
 export interface TrainingDraft {
   disciplineId: DisciplineId;
+  kind?: SessionKind;
+  stage?: SessionStage;
+  /** Venue time zone; the database falls back to the owner's zone. */
+  tz?: string | null;
+  eventId?: string | null;
+  /** Zone the heart-rate file's clock was read in, when the user reinterpreted it. */
+  hrZone?: string | null;
   trainedOn: string; // YYYY-MM-DD
   /** UTC instants of the training's start and end clock time, when entered. */
   startedAt?: string | null;
@@ -57,6 +67,10 @@ export interface SavePayload {
     notes: string;
     started_at: string | null;
     ended_at: string | null;
+    kind: SessionKind;
+    stage: SessionStage;
+    tz: string | null;
+    event_id: string | null;
   };
   match: {
     label: string;
@@ -68,6 +82,7 @@ export interface SavePayload {
   hr_offset_ms: number | null;
   /** Average heart rate over the match shots (samples are not stored, so it is computed once here). */
   hr_avg_bpm: number | null;
+  hr_zone: string | null;
 }
 
 export const defaultTrainingName = (trainedOn: string, disciplineId: DisciplineId) => {
@@ -146,11 +161,16 @@ export function buildSavePayload(draft: TrainingDraft, userId: string): SavePayl
       notes: draft.notes ?? '',
       started_at: draft.startedAt ?? null,
       ended_at: draft.endedAt ?? null,
+      kind: draft.kind ?? 'trening',
+      stage: draft.stage ?? 'slobodno',
+      tz: draft.tz ?? null,
+      event_id: draft.eventId ?? null,
     },
     match,
     loose_shots,
     hr_offset_ms: draft.hr && draft.hr.length > 0 ? draft.hrOffsetMs : null,
     hr_avg_bpm: hrAverage(draft, match),
+    hr_zone: draft.hr && draft.hr.length > 0 ? (draft.hrZone ?? null) : null,
   };
 }
 

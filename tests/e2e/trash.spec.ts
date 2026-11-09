@@ -58,8 +58,8 @@ test('a deleted training appears in the trash and restore returns it to the list
   await page.getByLabel('Naziv').fill(TRAINING);
   await page.getByLabel('SIUS fajl (CSV ili PDF)').setInputFiles(fx('2026-10-21T190309.csv'));
   await expect(page.getByText('Učitano: 2026-10-21T190309.csv')).toBeVisible();
-  await page.getByRole('button', { name: 'Sačuvaj trening' }).click();
-  await page.getByRole('link', { name: 'Otvori izveštaj o treningu' }).click();
+  await page.getByRole('button', { name: 'Sačuvaj sesiju' }).click();
+  await page.getByRole('link', { name: 'Otvori izveštaj o sesiji' }).click();
   await expect(page).toHaveURL(/\/trening\/[0-9a-f-]{36}$/);
   reportUrl = page.url();
 

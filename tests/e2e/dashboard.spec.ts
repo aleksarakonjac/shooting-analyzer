@@ -54,8 +54,8 @@ test('after saving the fixtures the year view shows counts, averages, trends and
   await page.getByLabel('SCATT fajl').setInputFiles(fx('export_2026-10-22_14.11.scatt-expert'));
   await expect(page.locator('.flag-badge')).toHaveAttribute('data-state', 'proposed');
   await page.getByRole('button', { name: 'Potvrdi' }).click();
-  await page.getByRole('button', { name: 'Sačuvaj trening' }).click();
-  await expect(page.getByText('Trening je sačuvan')).toBeVisible();
+  await page.getByRole('button', { name: 'Sačuvaj sesiju' }).click();
+  await expect(page.getByText('Sesija je sačuvana')).toBeVisible();
 
   await page.goto('/?p=year');
   await expect(plate('Treninga').locator('.lane-plate__value')).toHaveText('1');

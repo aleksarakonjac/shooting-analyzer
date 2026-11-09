@@ -196,9 +196,10 @@ describe('DateTimeRange', () => {
     expect(onChange).toHaveBeenLastCalledWith({ date: '2026-11-12', from: '17:00', to: '19:30' });
   });
 
-  it('says when the end is before the start', async () => {
-    sr(<DateTimeRange label="Datum i vreme" value={{ date: '2026-11-09', from: '18:00', to: '17:00' }} onChange={() => {}} />);
-    expect(screen.getByText('Kraj je pre početka.')).toBeInTheDocument();
+  it('marks an end before the start as the next day, not an error', async () => {
+    sr(<DateTimeRange label="Datum i vreme" value={{ date: '2026-11-09', from: '23:00', to: '01:00' }} onChange={() => {}} />);
+    expect(screen.getByRole('button', { name: /Datum i vreme/ })).toHaveTextContent('+1 dan');
+    expect(screen.queryByText('Kraj je pre početka.')).not.toBeInTheDocument();
   });
 
   it('shows only the date when no time is set', () => {

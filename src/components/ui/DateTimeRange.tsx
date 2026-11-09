@@ -49,13 +49,13 @@ export function DateTimeRange({
 }) {
   const { locale } = useLocale();
   const labelId = useId();
-  const errId = useId();
   const date = safeDate(value.date);
   const dateText = date
     ? new DateFormatter(locale, { day: 'numeric', month: 'numeric', year: 'numeric' }).format(date.toDate('UTC'))
     : 'Izaberite datum';
   const timeText = value.from || value.to ? `${value.from || '—'}–${value.to || '—'}` : 'bez vremena';
-  const backwards = Boolean(value.from && value.to && value.to < value.from);
+  // An end before the start is the next day (a session across midnight).
+  const nextDay = Boolean(value.from && value.to && value.to < value.from);
 
   return (
     <div className="ui-control">
@@ -64,13 +64,12 @@ export function DateTimeRange({
         <Button
           className="ui-trigger ui-dtr"
           aria-labelledby={labelId}
-          aria-describedby={backwards ? errId : undefined}
-          data-invalid={backwards || undefined}
         >
           <span className="ui-dtr__text">
             <span className="num">{dateText}</span>
             <span className="ui-dtr__sep" aria-hidden="true">·</span>
             <span className="num ui-dtr__time">{timeText}</span>
+            {nextDay && <span className="ui-dtr__next">+1 dan</span>}
           </span>
           <CalendarIcon />
         </Button>
@@ -105,7 +104,6 @@ export function DateTimeRange({
           </Dialog>
         </Popover>
       </DialogTrigger>
-      {backwards && <span className="ui-error" id={errId}>Kraj je pre početka.</span>}
       {name && (
         <>
           <input type="hidden" name={`${name}_date`} value={value.date} />

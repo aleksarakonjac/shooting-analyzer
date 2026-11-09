@@ -102,8 +102,8 @@ test('the coach creates a training for the shooter and it shows on the card and 
   await coachPage.getByRole('button', { name: 'Potvrdi' }).click();
   // The files carry October dates; train "today" so the card's month figures include it.
   await pickToday(coachPage);
-  await coachPage.getByRole('button', { name: 'Sačuvaj trening' }).click();
-  await expect(coachPage.getByText('Trening je sačuvan')).toBeVisible();
+  await coachPage.getByRole('button', { name: 'Sačuvaj sesiju' }).click();
+  await expect(coachPage.getByText('Sesija je sačuvana')).toBeVisible();
 
   await coachPage.goto('/strelci');
   const card = coachPage.getByTestId('shooter-card').filter({ hasText: alpha.name });

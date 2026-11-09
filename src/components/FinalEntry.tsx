@@ -1,13 +1,15 @@
 'use client';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import {
+  buildFinalPayload,
   FINAL_FORMATS,
   maxFinalShots,
   parseTimestamps,
   stageTotals,
-  validateFinal,
   type FinalDiscipline,
+  type FinalError,
+  type FinalPayload,
 } from '@/lib/finals/format';
 import { sr } from '@/lib/i18n/sr';
 import { createClient } from '@/lib/supabase/client';
@@ -20,7 +22,23 @@ const toValue = (raw: string): number | null => {
   return s === '' ? null : Number(s);
 };
 
-export function FinalEntry({ trainingId, discipline, tz }: { trainingId: string; discipline: FinalDiscipline; tz: string }) {
+export type FinalDraft = { ok: true; payload: FinalPayload } | { ok: false; error: FinalError };
+
+/**
+ * The finals entry grid. With `trainingId` it saves on its own (report page). With `onDraft` it is part of
+ * a larger form (a new finale session): it reports the current payload and has no save button of its own.
+ */
+export function FinalEntry({
+  trainingId,
+  discipline,
+  tz,
+  onDraft,
+}: {
+  trainingId?: string;
+  discipline: FinalDiscipline;
+  tz: string;
+  onDraft?: (draft: FinalDraft) => void;
+}) {
   const router = useRouter();
   const stages = FINAL_FORMATS[discipline];
   const max = maxFinalShots(discipline);
@@ -34,10 +52,13 @@ export function FinalEntry({ trainingId, discipline, tz }: { trainingId: string;
 
   const values = cells.map(toValue);
   // Trailing empty cells are not part of the final.
-  const lastFilled = values.reduce<number>((n, v, i) => (v === null ? n : i + 1), 0);
   const totals = stageTotals(discipline, values.map((v) => (v === null || Number.isNaN(v) ? null : v)));
 
   const setCell = (i: number, raw: string) => setCells((c) => c.map((x, j) => (j === i ? raw : x)));
+
+  useEffect(() => {
+    onDraft?.(buildFinalPayload(discipline, cells, placement, eliminated, tMs));
+  }, [onDraft, discipline, cells, placement, eliminated, tMs]);
 
   function applyStamps() {
     const r = parseTimestamps(stamps, tz, max);
@@ -50,27 +71,17 @@ export function FinalEntry({ trainingId, discipline, tz }: { trainingId: string;
   }
 
   async function save() {
+    if (!trainingId) return;
     setMessage(null);
-    const shotValues = values.slice(0, lastFilled);
-    const elim = eliminated.trim() === '' ? null : Number(eliminated);
-    const place = placement.trim() === '' ? null : Number(placement);
-    const check = validateFinal(discipline, shotValues, elim, place);
-    if (!check.ok) {
-      setMessage({ kind: 'error', text: t.errors[check.error] });
+    const built = buildFinalPayload(discipline, cells, placement, eliminated, tMs);
+    if (!built.ok) {
+      setMessage({ kind: 'error', text: t.errors[built.error] });
       return;
     }
-    // idx and stage of every shot follow the format; stage_idx is derived once here.
-    let stageIdx = 0;
-    let left = stages[0].shots;
-    const shots = shotValues.map((v, i) => {
-      while (left === 0) left = stages[++stageIdx].shots;
-      left -= 1;
-      return { idx: i + 1, stage_idx: stageIdx, value: v, t_ms: tMs[i] ?? null };
-    });
     setBusy(true);
     const supabase = createClient();
     const { error } = await supabase.rpc('save_final', {
-      payload: { training_id: trainingId, placement: place, eliminated_after_shot: elim, shots },
+      payload: { training_id: trainingId, ...built.payload },
     });
     setBusy(false);
     if (error) {
@@ -86,8 +97,13 @@ export function FinalEntry({ trainingId, discipline, tz }: { trainingId: string;
     router.refresh();
   }
 
+  // Inside a larger form (a new finale session) this must not be a <form> of its own.
+  const Root = onDraft ? 'div' : 'form';
   return (
-    <form className="final-entry" onSubmit={(e) => { e.preventDefault(); void save(); }}>
+    <Root
+      className="final-entry"
+      {...(onDraft ? {} : { onSubmit: (e: React.FormEvent) => { e.preventDefault(); void save(); } })}
+    >
       {stages.map((stage, si) => {
         const from = stages.slice(0, si).reduce((n, s) => n + s.shots, 0);
         const seriesNo = stages.slice(0, si + 1).filter((s) => s.kind === 'series').length;
@@ -133,9 +149,9 @@ export function FinalEntry({ trainingId, discipline, tz }: { trainingId: string;
       </label>
       <div>
         <button type="button" className="button--quiet" onClick={applyStamps}>{t.applyTimestamps}</button>{' '}
-        <button type="submit" disabled={busy}>{t.save}</button>
+        {!onDraft && <button type="submit" disabled={busy}>{t.save}</button>}
       </div>
       {message && <p role={message.kind === 'error' ? 'alert' : 'status'}>{message.text}</p>}
-    </form>
+    </Root>
   );
 }

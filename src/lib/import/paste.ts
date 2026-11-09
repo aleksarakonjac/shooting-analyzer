@@ -13,7 +13,8 @@ const INDEX = /^(#\d+|\d+\.)$/;
 const NUMBER = /^\d+([.,]\d+)?\*?$/;
 const CLOCK = /^(\d{1,2}):(\d{2}):(\d{2})(?:[.,](\d{1,3}))?$/;
 const DATE = /^(\d{4})-(\d{2})-(\d{2})$/;
-const ISO = /^\d{4}-\d{2}-\d{2}T[\d:.]+(Z|[+-]\d{2}:?\d{2})?$/;
+const ISO_ZONED = /^\d{4}-\d{2}-\d{2}T[\d:.]+(Z|[+-]\d{2}:?\d{2})$/;
+const ISO_WALL = /^(\d{4}-\d{2}-\d{2})T(\d{1,2}:\d{2}:\d{2}(?:[.,]\d{1,3})?)$/;
 
 function clockToMs(m: RegExpExecArray, date: string, tz: string): number {
   const [y, mo, d] = date.split('-').map(Number);
@@ -34,10 +35,15 @@ function parseLine(line: string, d: DisciplineId, date: string, tz: string): Par
     const day = before && DATE.test(before) ? before : date;
     tMs = clockToMs(clock, day, tz);
     tokens = tokens.slice(0, before && DATE.test(before) ? -2 : -1);
-  } else if (last && ISO.test(last)) {
+  } else if (last && ISO_ZONED.test(last)) {
     const parsed = Date.parse(last);
     if (Number.isNaN(parsed)) return null;
     tMs = parsed;
+    tokens = tokens.slice(0, -1);
+  } else if (last && ISO_WALL.test(last)) {
+    // No zone in the timestamp: it is wall time at the venue.
+    const [, day, time] = ISO_WALL.exec(last)!;
+    tMs = clockToMs(CLOCK.exec(time)!, day, tz);
     tokens = tokens.slice(0, -1);
   }
 

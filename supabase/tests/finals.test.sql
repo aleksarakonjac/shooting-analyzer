@@ -9,10 +9,10 @@ insert into profiles (id, display_name, role, status) values
   on conflict (id) do update set display_name = excluded.display_name, role = excluded.role, status = excluded.status;
 insert into links (shooter_id, coach_id, requested_by, status) values (u(1), u(3), u(1), 'active'), (u(1), u(4), u(1), 'ended');
 
-insert into trainings (id, shooter_id, created_by, discipline, trained_on) values
-  (u(101), u(1), u(1), 'air_rifle', '2026-11-01'),
-  (u(102), u(1), u(1), 'smallbore_3p', '2026-11-02'),
-  (u(103), u(1), u(1), 'smallbore_pistol', '2026-11-03');
+insert into trainings (id, shooter_id, created_by, discipline, trained_on, stage) values
+  (u(101), u(1), u(1), 'air_rifle', '2026-11-01', 'finale'),
+  (u(102), u(1), u(1), 'smallbore_3p', '2026-11-02', 'finale'),
+  (u(103), u(1), u(1), 'smallbore_pistol', '2026-11-03', 'finale');
 
 create function final_payload(tid uuid, n int, elim int default null) returns jsonb language sql as $$
   select jsonb_build_object('training_id', tid, 'placement', 3, 'eliminated_after_shot', elim,

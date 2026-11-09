@@ -4,6 +4,7 @@ import { connection } from 'next/server';
 import { NewTrainingForm } from '@/components/NewTrainingForm';
 import { getSessionProfile } from '@/lib/auth/session';
 import { recentPlaces } from '@/lib/import/places';
+import { shooterEvents } from '@/lib/events';
 
 export default function NewTrainingPage() {
   return (
@@ -19,5 +20,5 @@ async function Body() {
   // Coaches enter trainings for a linked shooter from /strelci/<id>/novi.
   if (!profile || profile.role !== 'shooter') redirect('/');
   const today = new Intl.DateTimeFormat('en-CA', { timeZone: profile.tz }).format(new Date());
-  return <NewTrainingForm userId={profile.id} tz={profile.tz} today={today} places={await recentPlaces(profile.id)} />;
+  return <NewTrainingForm userId={profile.id} tz={profile.tz} today={today} places={await recentPlaces(profile.id)} events={await shooterEvents(profile.id)} />;
 }

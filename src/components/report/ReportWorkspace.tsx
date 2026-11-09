@@ -27,14 +27,14 @@ export function ReportWorkspace({
   view: ReportView;
   discipline: DisciplineId;
   tz: string;
-  hr: { tcxPath: string | null; offsetMs: number; window: { fromMs: number; toMs: number } | null };
+  hr: { tcxPath: string | null; offsetMs: number; zone: string | null; window: { fromMs: number; toMs: number } | null };
   /** Server-rendered finals panel content, or null when the discipline has no finals. */
   finals: ReactNode | null;
   other: ReactNode;
 }) {
   const [sel, setSel] = useState<Selection>({ series: view.series[0]?.idx ?? null, shot: null });
   const group = 'report-time';
-  const hrState = useHrSamples(hr.tcxPath, hr.offsetMs, hr.window);
+  const hrState = useHrSamples(hr.tcxPath, hr.offsetMs, hr.window, hr.zone);
   const samples = hrState.status === 'ready' ? hrState.samples : undefined;
   const timeline = useMemo(() => (view.timedShots ? timelineOption(view, sel, tz, samples) : null), [view, sel, tz, samples]);
   const series = view.series.find((s) => s.idx === sel.series);

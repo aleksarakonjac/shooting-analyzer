@@ -48,10 +48,10 @@ test.beforeAll(async ({ browser }) => {
 test('a discipline alone asks for confirmation, then saves an empty training', async () => {
   await page.goto('/trening/novi');
   await pickDiscipline(page, 'Vazdušna puška');
-  await page.getByRole('button', { name: 'Sačuvaj trening' }).click();
-  await expect(page.getByRole('alertdialog')).toContainText('Sačuvati prazan trening?');
-  await page.getByRole('button', { name: 'Sačuvaj prazan trening' }).click();
-  await expect(page.getByText('Trening je sačuvan')).toBeVisible();
+  await page.getByRole('button', { name: 'Sačuvaj sesiju' }).click();
+  await expect(page.getByRole('alertdialog')).toContainText('Sačuvati praznu sesiju?');
+  await page.getByRole('button', { name: 'Sačuvaj praznu sesiju' }).click();
+  await expect(page.getByText('Sesija je sačuvana')).toBeVisible();
 });
 
 test('the default name is dd.mm. plus the discipline for today', async () => {
@@ -82,8 +82,8 @@ test('CSV + SCATT propose last 80 (orange), mismatch 0, "Potvrdi" turns it black
 
   await page.getByLabel('Poslednjih').check();
   await page.getByRole('button', { name: 'Potvrdi' }).click();
-  await page.getByRole('button', { name: 'Sačuvaj trening' }).click();
-  await expect(page.getByText('Trening je sačuvan')).toBeVisible();
+  await page.getByRole('button', { name: 'Sačuvaj sesiju' }).click();
+  await expect(page.getByText('Sesija je sačuvana')).toBeVisible();
   await expect(page.getByText('nije otpremljeno')).toHaveCount(0); // every source file uploaded (Next's own empty alert is ignored)
 });
 
@@ -131,19 +131,19 @@ test('date and from-to time are chosen in one picker and saved with the training
   await page.keyboard.type('30');
   await page.getByRole('button', { name: 'Gotovo' }).click();
   await expect(page.getByRole('button', { name: /^Datum i vreme/ })).toContainText('17:00–18:30');
-  await page.getByRole('button', { name: 'Sačuvaj trening' }).click();
-  await page.getByRole('button', { name: 'Sačuvaj prazan trening' }).click();
-  await expect(page.getByText('Trening je sačuvan')).toBeVisible();
+  await page.getByRole('button', { name: 'Sačuvaj sesiju' }).click();
+  await page.getByRole('button', { name: 'Sačuvaj praznu sesiju' }).click();
+  await expect(page.getByText('Sesija je sačuvana')).toBeVisible();
 });
 
 test('importing the same file again asks first and names the earlier training', async () => {
   await openForm();
   await page.getByLabel('SIUS fajl (CSV ili PDF)').setInputFiles(fx('2026-10-21T190309.csv'));
   await expect(page.getByText('Učitano: 2026-10-21T190309.csv')).toBeVisible();
-  await page.getByRole('button', { name: 'Sačuvaj trening' }).click();
+  await page.getByRole('button', { name: 'Sačuvaj sesiju' }).click();
   const ask = page.getByRole('alertdialog', { name: 'Ovaj fajl je već uvezen:' });
   await expect(ask).toContainText('2026-10-21T190309.csv');
   await ask.getByRole('button', { name: 'Nazad' }).click();
   await expect(page.getByRole('alertdialog')).toHaveCount(0);
-  await expect(page.getByText('Trening je sačuvan')).toHaveCount(0);
+  await expect(page.getByText('Sesija je sačuvana')).toHaveCount(0);
 });

@@ -175,3 +175,22 @@ describe('buildSavePayload: clock times and total-only series', () => {
     expect(p.match!.series[0]).toMatchObject({ total: 104, total_decimal: 104.5, shots: [] });
   });
 });
+
+describe('buildSavePayload: session fields', () => {
+  it('carries type, part, venue zone and event', () => {
+    const p = buildSavePayload({ ...base, kind: 'takmicenje', stage: 'kvalifikacije', tz: 'Asia/Tokyo', eventId: 'e1' }, 'u');
+    expect(p.training).toMatchObject({ kind: 'takmicenje', stage: 'kvalifikacije', tz: 'Asia/Tokyo', event_id: 'e1' });
+  });
+
+  it('defaults to a free training session with no event and lets the database pick the owner zone', () => {
+    const p = buildSavePayload(base, 'u');
+    expect(p.training).toMatchObject({ kind: 'trening', stage: 'slobodno', tz: null, event_id: null });
+  });
+
+  it('stores the heart-rate clock zone instead of folding it into the offset', () => {
+    const hr = [{ tMs: Date.parse('2026-10-21T17:03:00Z'), bpm: 90 }];
+    const p = buildSavePayload({ ...base, hr, hrOffsetMs: 2000, hrZone: 'Europe/Belgrade' }, 'u');
+    expect(p.hr_offset_ms).toBe(2000);
+    expect(p.hr_zone).toBe('Europe/Belgrade');
+  });
+});

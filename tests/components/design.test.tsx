@@ -60,8 +60,8 @@ describe('AppShell', () => {
     expect(out).not.toContain('Treninzi');
   });
 
-  it('shows Treninzi for a shooter', () => {
-    expect(nav('shooter')).toContain('Treninzi');
+  it('shows Sesije for a shooter', () => {
+    expect(nav('shooter')).toContain('Sesije');
   });
 
   it('shows Odobrenja for the admin', () => {

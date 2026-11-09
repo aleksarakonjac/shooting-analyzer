@@ -3,19 +3,40 @@ import { redirect } from 'next/navigation';
 import { revalidatePath } from 'next/cache';
 import { createClient } from '@/lib/supabase/server';
 import { purgeTraining } from '@/lib/trash/purge';
+import { parseSessionEdit } from '@/lib/sessions/edit';
 
-/** Edits the free-text fields of a training. RLS decides who may. */
+/**
+ * The session editor: name, place, notes, type, part, event, day, time and venue zone. RLS decides who may.
+ * The event is found by name among the shooter's events of the same type, or created on the session's day.
+ */
 export async function updateTrainingForm(form: FormData): Promise<void> {
   const id = String(form.get('id') ?? '');
+  const parsed = parseSessionEdit(form);
+  if (!parsed.ok) redirect(`/trening/${id}?izmena=1&greska=1`);
+  const { patch, eventName } = parsed;
   const supabase = await createClient();
-  const { error } = await supabase
-    .from('trainings')
-    .update({
-      name: String(form.get('name') ?? '').trim(),
-      place: String(form.get('place') ?? '').trim(),
-      notes: String(form.get('notes') ?? '').trim(),
-    })
-    .eq('id', id);
+  const { data: row } = await supabase.from('trainings').select('shooter_id').eq('id', id).maybeSingle();
+  if (!row) redirect('/');
+  let eventId: string | null = null;
+  if (eventName) {
+    const { data: found } = await supabase
+      .from('events')
+      .select('id, name')
+      .eq('shooter_id', row.shooter_id)
+      .eq('kind', patch.kind);
+    const hit = (found ?? []).find((e) => e.name.toLocaleLowerCase('sr') === eventName.toLocaleLowerCase('sr'));
+    if (hit) eventId = hit.id;
+    else {
+      const { data: made, error } = await supabase
+        .from('events')
+        .insert({ shooter_id: row.shooter_id, kind: patch.kind, name: eventName, place: patch.place, starts_on: patch.trained_on, ends_on: patch.trained_on })
+        .select('id')
+        .single();
+      if (error) throw new Error(error.message);
+      eventId = made.id;
+    }
+  }
+  const { error } = await supabase.from('trainings').update({ ...patch, event_id: eventId }).eq('id', id);
   if (error) throw new Error(error.message);
   revalidatePath(`/trening/${id}`);
   redirect(`/trening/${id}`);

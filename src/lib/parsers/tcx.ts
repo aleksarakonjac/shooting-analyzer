@@ -99,3 +99,8 @@ export function hrWindow(samples: HrSample[], fromMs: number, toMs: number, offs
   }
   return out;
 }
+
+/** The samples of a stored TCX: read in `zone` sample by sample when one was chosen, else on the file's own clock. */
+export function samplesFromTcx(xml: string, zone: string | null): HrSample[] {
+  return zone ? reinterpretAsZone(xml, zone) : parseTcx(xml).samples;
+}

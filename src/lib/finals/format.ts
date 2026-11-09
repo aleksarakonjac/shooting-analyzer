@@ -146,3 +146,38 @@ export function parseTimestamps(text: string, tz: string, maxShots: number): Tim
   if (tMs.length > maxShots) return { ok: false, error: 'toomany' };
   return { ok: true, tMs };
 }
+
+export interface FinalPayload {
+  placement: number | null;
+  eliminated_after_shot: number | null;
+  shots: { idx: number; stage_idx: number; value: number; t_ms: number | null }[];
+}
+
+/** Typed cells ("10,4" or "10.4", blank = not fired) into the save_final payload, or the first problem. */
+export function buildFinalPayload(
+  d: FinalDiscipline,
+  cells: string[],
+  placement: string,
+  eliminated: string,
+  tMs: number[],
+): { ok: true; payload: FinalPayload } | { ok: false; error: FinalError } {
+  const values = cells.map((raw) => {
+    const s = raw.trim().replace(',', '.');
+    return s === '' ? null : Number(s);
+  });
+  const lastFilled = values.reduce<number>((n, v, i) => (v === null ? n : i + 1), 0);
+  const shotValues = values.slice(0, lastFilled);
+  const elim = eliminated.trim() === '' ? null : Number(eliminated);
+  const place = placement.trim() === '' ? null : Number(placement);
+  const check = validateFinal(d, shotValues, elim, place);
+  if (!check.ok) return check;
+  const stages = FINAL_FORMATS[d];
+  let stageIdx = 0;
+  let left = stages[0].shots;
+  const shots = shotValues.map((v, i) => {
+    while (left === 0) left = stages[++stageIdx].shots;
+    left -= 1;
+    return { idx: i + 1, stage_idx: stageIdx, value: v as number, t_ms: tMs[i] ?? null };
+  });
+  return { ok: true, payload: { placement: place, eliminated_after_shot: elim, shots } };
+}
