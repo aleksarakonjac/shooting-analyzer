@@ -4,11 +4,14 @@ import Link from 'next/link';
 import { DeleteTrainingButton } from '@/components/DeleteTrainingButton';
 import { FlagBadge } from '@/components/FlagBadge';
 import { GroupPlot } from '@/components/GroupPlot';
+import { FinalEntry } from '@/components/FinalEntry';
+import { FinalsList, type FinalRow } from '@/components/FinalsList';
 import { HrOverlay } from '@/components/HrOverlay';
 import { LanePlate } from '@/components/LanePlate';
 import { ShotTimeline } from '@/components/ShotTimeline';
 import { getSessionProfile } from '@/lib/auth/session';
 import { DISCIPLINES } from '@/lib/domain/disciplines';
+import { isFinalDiscipline } from '@/lib/finals/format';
 import type { DisciplineId } from '@/lib/domain/types';
 import { sr } from '@/lib/i18n/sr';
 import { groupByPosition } from '@/lib/import/draft';
@@ -28,6 +31,7 @@ interface TrainingRow {
   loose_shots: { kind: 'warmup' | 'attempt'; t_ms: number }[];
   hr_samples_ref: { offset_ms: number } | { offset_ms: number }[] | null;
   source_files: { kind: string; storage_path: string }[];
+  finals: FinalRow[];
 }
 
 export default function ReportPage({
@@ -56,7 +60,8 @@ async function Body({ params, searchParams }: { params: Promise<{ id: string }>;
     .select(
       'id,name,discipline,trained_on,place,notes,' +
         'matches(id,label,align_state,series(id,idx,position,total,total_decimal,mpi_x,mpi_y,group_mm,shots(idx,value,t_ms))),' +
-        'loose_shots(kind,t_ms),hr_samples_ref(offset_ms),source_files(kind,storage_path)',
+        'loose_shots(kind,t_ms),hr_samples_ref(offset_ms),source_files(kind,storage_path),' +
+        'finals(id,placement,eliminated_after_shot,created_at,final_shots(idx,stage_idx,value))',
     )
     .eq('id', id)
     .is('deleted_at', null)
@@ -142,6 +147,19 @@ async function Body({ params, searchParams }: { params: Promise<{ id: string }>;
           </section>
         );
       })}
+
+      {isFinalDiscipline(tr.discipline) && (
+        <section aria-labelledby="finals-title">
+          <h2 id="finals-title">{sr.finals.title}</h2>
+          <FinalsList trainingId={tr.id} discipline={tr.discipline} finals={tr.finals} canEdit={canEdit} />
+          {canEdit && profile && (
+            <>
+              <h3>{sr.finals.add}</h3>
+              <FinalEntry trainingId={tr.id} discipline={tr.discipline} tz={profile.tz} />
+            </>
+          )}
+        </section>
+      )}
 
       <section aria-labelledby="hr-title">
         <h2 id="hr-title">{t.hr}</h2>

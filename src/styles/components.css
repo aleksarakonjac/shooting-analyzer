@@ -224,3 +224,13 @@ input[type='radio'], input[type='checkbox'] { min-height: 0; width: 1.1rem; heig
 .audit__table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
 .audit__table th { text-align: left; border-bottom: 2px solid var(--ink); padding: var(--space-2) var(--space-3) var(--space-2) 0; }
 .audit__table td { border-bottom: 1px solid var(--rule); padding: var(--space-2) var(--space-3) var(--space-2) 0; vertical-align: top; }
+
+/* ---------- finals ---------- */
+.final-entry { display: grid; gap: var(--space-4); max-width: 40rem; }
+.final-entry__stage { border: 1px solid var(--rule); padding: var(--space-3); margin: 0; }
+.final-entry__cells { display: flex; flex-wrap: wrap; gap: var(--space-2); }
+.final-entry__cells input { width: 4.5rem; font-variant-numeric: tabular-nums; }
+.final-entry label { display: grid; gap: var(--space-1); }
+.finals__list, .finals__stages { list-style: none; padding: 0; margin: 0; }
+.finals__item { border-top: 2px solid var(--ink); padding: var(--space-3) 0 var(--space-6); }
+.finals__stages li { display: flex; justify-content: space-between; gap: var(--space-4); padding: var(--space-2) 0; border-bottom: 1px solid var(--rule); font-variant-numeric: tabular-nums; }
