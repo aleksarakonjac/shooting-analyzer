@@ -1,5 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
 import { join } from 'node:path';
+import { pickDiscipline } from './helpers';
 
 // Needs the Supabase TEST project with migrations 0001-0009 applied (see docs/supabase-setup.md).
 const adminEmail = process.env.E2E_ADMIN_EMAIL;
@@ -46,7 +47,7 @@ test('a new shooter sees an empty period with a way to add a training', async ()
 
 test('after saving the fixtures the year view shows counts, averages, trends and the list', async () => {
   await page.goto('/trening/novi');
-  await page.getByLabel('Disciplina').selectOption({ label: 'Vazdušna puška' });
+  await pickDiscipline(page, 'Vazdušna puška');
   await expect(page.getByLabel('Naziv')).toHaveAttribute('placeholder', /Vazdušna puška$/);
   await page.getByLabel('SIUS fajl (CSV ili PDF)').setInputFiles(fx('2026-10-21T190309.csv'));
   await expect(page.getByText('Učitano: 2026-10-21T190309.csv')).toBeVisible();

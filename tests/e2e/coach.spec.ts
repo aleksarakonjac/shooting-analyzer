@@ -1,5 +1,6 @@
 import { expect, test, type Browser, type Page } from '@playwright/test';
 import { join } from 'node:path';
+import { pickDiscipline, pickToday } from './helpers';
 
 // Needs the Supabase TEST project with migrations 0001-0009 applied (see docs/supabase-setup.md).
 const adminEmail = process.env.E2E_ADMIN_EMAIL;
@@ -92,7 +93,7 @@ test('opening a shooter shows their (still empty) trainings', async () => {
 test('the coach creates a training for the shooter and it shows on the card and the latest list', async () => {
   await coachPage.getByRole('link', { name: 'Dodaj trening' }).click();
   await expect(coachPage.getByRole('heading', { level: 1 })).toContainText(alpha.name);
-  await coachPage.getByLabel('Disciplina').selectOption({ label: 'Vazdušna puška' });
+  await pickDiscipline(coachPage, 'Vazdušna puška');
   await expect(coachPage.getByLabel('Naziv')).toHaveAttribute('placeholder', /Vazdušna puška$/);
   await coachPage.getByLabel('SIUS fajl (CSV ili PDF)').setInputFiles(fx('2026-10-21T190309.csv'));
   await expect(coachPage.getByText('Učitano: 2026-10-21T190309.csv')).toBeVisible();
@@ -100,7 +101,7 @@ test('the coach creates a training for the shooter and it shows on the card and 
   await expect(coachPage.locator('.flag-badge')).toHaveAttribute('data-state', 'proposed');
   await coachPage.getByRole('button', { name: 'Potvrdi' }).click();
   // The files carry October dates; train "today" so the card's month figures include it.
-  await coachPage.getByLabel('Datum').fill(new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Belgrade' }).format(new Date()));
+  await pickToday(coachPage);
   await coachPage.getByRole('button', { name: 'Sačuvaj trening' }).click();
   await expect(coachPage.getByText('Trening je sačuvan')).toBeVisible();
 

@@ -19,6 +19,7 @@ import { updateTrainingForm } from '@/lib/trainings';
 
 interface TrainingRow {
   id: string; name: string; discipline: DisciplineId; trained_on: string; place: string; notes: string;
+  started_at: string | null; ended_at: string | null;
   matches: { id: string; label: string; align_state: 'proposed' | 'confirmed'; series: RawSeries[] }[];
   loose_shots: { kind: 'warmup' | 'attempt'; t_ms: number }[];
   hr_samples_ref: { offset_ms: number } | { offset_ms: number }[] | null;
@@ -50,7 +51,7 @@ async function Body({ params, searchParams }: { params: Promise<{ id: string }>;
   const { data } = await supabase
     .from('trainings')
     .select(
-      'id,name,discipline,trained_on,place,notes,' +
+      'id,name,discipline,trained_on,place,notes,started_at,ended_at,' +
         'matches(id,label,align_state,series(id,idx,position,total,total_decimal,mpi_x,mpi_y,group_mm,shots(idx,value,inner,t_ms))),' +
         'loose_shots(kind,t_ms),hr_samples_ref(offset_ms),source_files(kind,storage_path),' +
         'finals(id,placement,eliminated_after_shot,created_at,final_shots(idx,stage_idx,value))',
@@ -75,6 +76,9 @@ async function Body({ params, searchParams }: { params: Promise<{ id: string }>;
   const attempts = tr.loose_shots.length - warmups;
   const canEdit = profile !== null;
   const date = new Intl.DateTimeFormat('sr-Latn-RS', { day: 'numeric', month: 'numeric', year: 'numeric', timeZone: 'UTC' }).format(new Date(`${tr.trained_on}T00:00:00Z`));
+  const hm = (iso: string | null) =>
+    iso ? new Intl.DateTimeFormat('sr-Latn-RS', { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: tz }).format(new Date(iso)) : null;
+  const clock = tr.started_at || tr.ended_at ? `${hm(tr.started_at) ?? '—'}–${hm(tr.ended_at) ?? '—'}` : null;
 
   const strip = (
     <>
@@ -82,6 +86,7 @@ async function Body({ params, searchParams }: { params: Promise<{ id: string }>;
         <h1 className="ws__title">{tr.name}</h1>
         <p className="ws__meta">
           {cfg.nameSr} · <span className="num">{date}</span>
+          {clock && <> · <span className="num">{clock}</span></>}
           {tr.place && ` · ${tr.place}`}
         </p>
       </div>

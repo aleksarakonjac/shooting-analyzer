@@ -2,6 +2,7 @@
 import type { MatchSelection } from '@/lib/alignment/align';
 import type { ScattShot } from '@/lib/parsers/scatt';
 import { sr } from '@/lib/i18n/sr';
+import { NumberStepper } from './ui/NumberStepper';
 
 type Mode = MatchSelection['kind'];
 
@@ -49,32 +50,25 @@ export function MatchSelector({
           </label>
         ))}
       </div>
-      {selection?.kind === 'from' && (
-        <label>
-          {t.modeFrom}
-          <select
-            value={selection.fromShotId}
-            onChange={(e) => onChange({ kind: 'from', fromShotId: Number(e.target.value), n: selection.n })}
-          >
-            {sorted.map((s, i) => (
-              <option key={s.id} value={s.id}>
-                {i + 1}
-              </option>
-            ))}
-          </select>
-        </label>
-      )}
       {selection && (
-        <label>
-          {t.shotsWord}
-          <input
-            type="number"
+        <div className="match-selector__nums">
+          {selection.kind === 'from' && (
+            <NumberStepper
+              label={t.fromShotNo}
+              value={Math.max(1, sorted.findIndex((x) => x.id === selection.fromShotId) + 1)}
+              min={1}
+              max={Math.max(1, sorted.length)}
+              onChange={(i) => onChange({ kind: 'from', fromShotId: sorted[i - 1]?.id ?? sorted[0]?.id ?? 0, n: selection.n })}
+            />
+          )}
+          <NumberStepper
+            label={t.shotsWord}
+            value={selection.n}
             min={0}
             max={sorted.length}
-            value={selection.n}
-            onChange={(e) => onChange({ ...selection, n: Math.max(0, Math.floor(Number(e.target.value) || 0)) })}
+            onChange={(v) => onChange({ ...selection, n: Math.max(0, Math.floor(v)) })}
           />
-        </label>
+        </div>
       )}
     </fieldset>
   );

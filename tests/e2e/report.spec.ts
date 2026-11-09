@@ -1,5 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
 import { join } from 'node:path';
+import { pickDiscipline } from './helpers';
 
 // Needs the Supabase TEST project with all migrations applied (see docs/supabase-setup.md).
 const adminEmail = process.env.E2E_ADMIN_EMAIL;
@@ -18,7 +19,7 @@ let hrReportUrl = '';
 /** Opens the form and waits until React is live. */
 async function openForm(): Promise<void> {
   await page.goto('/trening/novi');
-  await page.getByLabel('Disciplina').selectOption({ label: 'Vazdušna puška' });
+  await pickDiscipline(page, 'Vazdušna puška');
   await expect(page.getByLabel('Naziv')).toHaveAttribute('placeholder', /Vazdušna puška$/);
 }
 

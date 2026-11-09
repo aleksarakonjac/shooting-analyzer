@@ -157,3 +157,21 @@ describe('saveTraining', () => {
     await expect(saveTraining(base, 'u', client)).rejects.toThrow('denied');
   });
 });
+
+describe('buildSavePayload: clock times and total-only series', () => {
+  it('stores the start and end instants when given, null otherwise', () => {
+    const p = buildSavePayload({ ...base, startedAt: '2026-10-21T15:00:00.000Z', endedAt: '2026-10-21T16:30:00.000Z' }, 'u');
+    expect(p.training.started_at).toBe('2026-10-21T15:00:00.000Z');
+    expect(p.training.ended_at).toBe('2026-10-21T16:30:00.000Z');
+    expect(buildSavePayload(base, 'u').training.started_at).toBeNull();
+  });
+
+  it('keeps the typed total of a series that has no shots', () => {
+    const manual = {
+      discipline: 'Vazdušna puška', disciplineId: 'air_rifle' as const, total: 104, totalDecimal: 104.5,
+      series: [{ index: 1, shots: [], total: 104, totalDecimal: 104.5 }],
+    };
+    const p = buildSavePayload({ ...base, sius: manual, scatt: undefined, selection: undefined }, 'u');
+    expect(p.match!.series[0]).toMatchObject({ total: 104, total_decimal: 104.5, shots: [] });
+  });
+});

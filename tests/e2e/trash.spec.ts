@@ -1,5 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
 import { join } from 'node:path';
+import { pickDiscipline } from './helpers';
 
 // Needs the Supabase TEST project with migrations 0001-0010 applied (see docs/supabase-setup.md).
 const adminEmail = process.env.E2E_ADMIN_EMAIL;
@@ -52,7 +53,7 @@ test('an empty trash says so', async () => {
 
 test('a deleted training appears in the trash and restore returns it to the list', async () => {
   await page.goto('/trening/novi');
-  await page.getByLabel('Disciplina').selectOption({ label: 'Vazdušna puška' });
+  await pickDiscipline(page, 'Vazdušna puška');
   await expect(page.getByLabel('Naziv')).toHaveAttribute('placeholder', /Vazdušna puška$/);
   await page.getByLabel('Naziv').fill(TRAINING);
   await page.getByLabel('SIUS fajl (CSV ili PDF)').setInputFiles(fx('2026-10-21T190309.csv'));

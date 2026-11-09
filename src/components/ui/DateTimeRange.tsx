@@ -37,7 +37,10 @@ export function DateTimeRange({
   value,
   onChange,
   name,
+  today,
 }: {
+  /** ISO date of "today" in the user's zone; adds a "Danas" button. */
+  today?: string;
   label: string;
   value: DateTimeRangeValue;
   onChange: (v: DateTimeRangeValue) => void;
@@ -87,6 +90,11 @@ export function DateTimeRange({
                   <TimeRange from={value.from} to={value.to} onChange={({ from, to }) => onChange({ ...value, from, to })} />
                 </div>
                 <div className="ui-dtr__foot">
+                  {today && (
+                    <Button className="button--quiet" onPress={() => onChange({ ...value, date: today })}>
+                      Danas
+                    </Button>
+                  )}
                   <Button className="button--quiet ui-dtr__clear" onPress={() => onChange({ ...value, from: '', to: '' })}>
                     Bez vremena
                   </Button>

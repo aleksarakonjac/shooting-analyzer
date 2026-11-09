@@ -9,6 +9,9 @@ import { createClient } from '@/lib/supabase/client';
 export interface TrainingDraft {
   disciplineId: DisciplineId;
   trainedOn: string; // YYYY-MM-DD
+  /** UTC instants of the training's start and end clock time, when entered. */
+  startedAt?: string | null;
+  endedAt?: string | null;
   /** The training's owner. Defaults to the saving user; a coach names the shooter. */
   shooterId?: string;
   name?: string;
@@ -45,7 +48,16 @@ export interface PayloadSeries {
   shots: PayloadShot[];
 }
 export interface SavePayload {
-  training: { shooter_id: string; discipline: DisciplineId; trained_on: string; name: string; place: string; notes: string };
+  training: {
+    shooter_id: string;
+    discipline: DisciplineId;
+    trained_on: string;
+    name: string;
+    place: string;
+    notes: string;
+    started_at: string | null;
+    ended_at: string | null;
+  };
   match: {
     label: string;
     align_state: 'proposed' | 'confirmed';
@@ -97,7 +109,8 @@ export function buildSavePayload(draft: TrainingDraft, userId: string): SavePayl
         };
       });
       // Decimal disciplines: the parsed series total is the decimal one; the whole-ring total is derived.
-      const wholeRings = shots.reduce((sum, x) => sum + Math.floor(x.value), 0);
+      // A series entered as a total only has no shots: keep its typed whole-ring total.
+      const wholeRings = shots.length ? shots.reduce((sum, x) => sum + Math.floor(x.value), 0) : s.total;
       return {
         idx: s.index,
         position: s.position ?? null,
@@ -131,6 +144,8 @@ export function buildSavePayload(draft: TrainingDraft, userId: string): SavePayl
       name: draft.name?.trim() || defaultTrainingName(draft.trainedOn, draft.disciplineId),
       place: draft.place ?? '',
       notes: draft.notes ?? '',
+      started_at: draft.startedAt ?? null,
+      ended_at: draft.endedAt ?? null,
     },
     match,
     loose_shots,
