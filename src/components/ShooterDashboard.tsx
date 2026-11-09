@@ -1,12 +1,13 @@
 import Link from 'next/link';
 import { LanePlate } from '@/components/LanePlate';
 import { PeriodTabs, type Period } from '@/components/PeriodTabs';
-import { TrendChart } from '@/components/TrendChart';
+import { TrendPanel } from '@/components/TrendPanel';
+import { Workspace } from '@/components/Workspace';
 import { DISCIPLINES } from '@/lib/domain/disciplines';
 import type { DisciplineId } from '@/lib/domain/types';
 import { sr } from '@/lib/i18n/sr';
 import { matchTotal } from '@/lib/report/derive';
-import { periodRange, periodStats } from '@/lib/stats/periodStats';
+import { periodRange, periodStats, type TrainingSummary } from '@/lib/stats/periodStats';
 import { SUMMARY_SELECT, toSummary, type SummaryRow } from '@/lib/stats/summaryQuery';
 import { createClient } from '@/lib/supabase/server';
 
@@ -49,73 +50,114 @@ export async function ShooterDashboard({
     .order('trained_on', { ascending: false })
     .order('created_at', { ascending: false });
   const all = ((data ?? []) as unknown as SummaryRow[]).map(toSummary);
+  return <DashboardView all={all} period={period} now={now} tz={tz} title={title} base={base} newHref={newHref} wanted={sp.d} />;
+}
 
+/** The dashboard for already-loaded trainings of the period (pure; the loader above fetches them). */
+export function DashboardView({
+  all,
+  period,
+  now,
+  tz,
+  title,
+  base,
+  newHref,
+  wanted,
+}: {
+  all: TrainingSummary[];
+  period: Period;
+  now: Date;
+  tz: string;
+  title: string;
+  base: string;
+  newHref: string;
+  wanted?: string;
+}) {
+  const t = sr.dashboard;
   // Series scores of different disciplines are not comparable: the dashboard shows one discipline at a time.
   const present = [...new Set(all.map((x) => x.discipline))];
   const discipline: DisciplineId | undefined =
-    present.find((d) => d === sp.d) ?? present[0];
+    present.find((d) => d === wanted) ?? present[0];
   const list = all.filter((x) => x.discipline === discipline);
   const stats = periodStats(list, period, now, tz);
   const dec = discipline ? DISCIPLINES[discipline].decimal : true;
   const href = (p: Period) => `${base}?p=${p}${discipline ? `&d=${discipline}` : ''}`;
   const dash = (v: number | null, digits = 1, unit = '') => (v === null ? t.noValue : `${v.toFixed(digits)}${unit}`);
 
-  return (
-    <div className="dash">
-      <h1>{title}</h1>
-      <div className="dash__bar">
-        <PeriodTabs value={period} hrefFor={href} />
-        {present.length > 1 && (
-          <nav className="dash__disc" aria-label={t.discipline}>
-            {present.map((d) => (
-              <Link key={d} href={`${base}?p=${period}&d=${d}`} aria-current={d === discipline ? 'page' : undefined}>
-                {DISCIPLINES[d].nameSr}
-              </Link>
-            ))}
-          </nav>
-        )}
-        <Link href={newHref}>{t.addFirst}</Link>
+  const strip = (
+    <>
+      <div className="ws__head">
+        <h1 className="ws__title">{title}</h1>
+        {discipline && <p className="ws__meta">{DISCIPLINES[discipline].nameSr}</p>}
       </div>
-
-      {list.length === 0 ? (
-        <p>{t.empty}</p>
-      ) : (
-        <>
-          <div className="dash__plates">
-            <LanePlate label={t.trainings} value={String(stats.trainings)} />
-            <LanePlate label={t.shots} value={String(stats.shots)} />
-            <LanePlate label={t.avgSeries} value={dash(stats.avgSeries, dec ? 1 : 1)} />
-            <LanePlate label={t.avgGroup} value={dash(stats.avgGroupMm)} unit={t.unitMm} />
-            <LanePlate label={t.avgHr} value={dash(stats.avgHr, 0)} unit={t.unitBpm} />
-          </div>
-          <p className="report__meta">{t.hrNote}</p>
-          <div className="dash__trends">
-            <TrendChart title={t.trendSeries} buckets={stats.buckets.map((b) => ({ label: b.label, value: b.avgSeries }))} />
-            <TrendChart title={t.trendGroup} buckets={stats.buckets.map((b) => ({ label: b.label, value: b.avgGroupMm }))} />
-          </div>
-          <section aria-labelledby="list-title">
-            <h2 id="list-title">{t.listTitle}</h2>
-            <ul className="dash__list">
-              {list.map((x) => {
-                const series = x.matches.flatMap((m) => m.series).map((s) => ({ total: s.total, total_decimal: s.totalDecimal }));
-                const proposed = x.matches.some((m) => m.alignState === 'proposed');
-                return (
-                  <li key={x.id}>
-                    <Link href={`/trening/${x.id}`}>
-                      <span>{x.trainedOn}</span>
-                      <span>
-                        {x.name}
-                        {proposed && <small> · {t.proposed}</small>}
-                      </span>
-                      <strong>{series.length ? matchTotal(series, dec).toFixed(dec ? 1 : 0) : t.noValue}</strong>
-                    </Link>
-                  </li>
-                );
-              })}
-            </ul>
-          </section>
-        </>
+      <PeriodTabs value={period} hrefFor={href} />
+      {present.length > 1 && (
+        <nav className="period-tabs dash__disc" aria-label={t.discipline}>
+          {present.map((d) => (
+            <Link key={d} href={`${base}?p=${period}&d=${d}`} aria-current={d === discipline ? 'page' : undefined}>
+              {DISCIPLINES[d].nameSr}
+            </Link>
+          ))}
+        </nav>
       )}
+      <div className="ws__strip-end">
+        <Link className="button" href={newHref}>{t.addFirst}</Link>
+      </div>
+    </>
+  );
+
+  if (list.length === 0) {
+    return (
+      <Workspace
+        label={t.panels}
+        strip={strip}
+        rows={1}
+        panels={[{ id: 'empty', title: t.listTitle, col: '1 / 13', row: '1 / 2', children: <p className="panel__empty dash__empty">{t.empty}</p> }]}
+      />
+    );
+  }
+
+  const scoreboard = (
+    <div className="dash__plates">
+      <LanePlate label={t.trainings} value={String(stats.trainings)} />
+      <LanePlate label={t.shots} value={String(stats.shots)} />
+      <LanePlate label={t.avgSeries} value={dash(stats.avgSeries, 1)} variant="score" />
+      <LanePlate label={t.avgGroup} value={dash(stats.avgGroupMm)} unit={t.unitMm} />
+      <LanePlate label={t.avgHr} value={dash(stats.avgHr, 0)} unit={t.unitBpm} />
     </div>
+  );
+
+  const rows = (
+    <ul className="dash__list">
+      {list.map((x) => {
+        const series = x.matches.flatMap((m) => m.series).map((s) => ({ total: s.total, total_decimal: s.totalDecimal }));
+        const proposed = x.matches.some((m) => m.alignState === 'proposed');
+        return (
+          <li key={x.id}>
+            <Link href={`/trening/${x.id}`}>
+              <span className="num dash__date">{x.trainedOn.slice(8, 10)}.{x.trainedOn.slice(5, 7)}.</span>
+              <span className="dash__name">
+                {x.name}
+                {proposed && <small className="dash__flag">{t.proposed}</small>}
+              </span>
+              <strong className="num">{series.length ? matchTotal(series, dec).toFixed(dec ? 1 : 0) : t.noValue}</strong>
+            </Link>
+          </li>
+        );
+      })}
+    </ul>
+  );
+
+  return (
+    <Workspace
+      label={t.panels}
+      strip={strip}
+      rowTemplate="auto repeat(5, minmax(0, 1fr))"
+      panels={[
+        { id: 'score', title: t.scoreboard, range: t.hrNote, col: '1 / 13', row: '1 / 2', children: scoreboard },
+        { id: 'trend', title: t.trendTitle, col: '1 / 9', row: '2 / 7', children: <TrendPanel buckets={stats.buckets} decimal={dec} /> },
+        { id: 'list', title: t.listTitle, range: `${list.length}`, col: '9 / 13', row: '2 / 7', flush: true, children: rows },
+      ]}
+    />
   );
 }

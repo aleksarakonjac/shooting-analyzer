@@ -34,24 +34,23 @@ describe('TargetPlot', () => {
   });
 });
 
-import { TrendChart } from '../../src/components/TrendChart';
+import { TrendPanel } from '../../src/components/TrendPanel';
 
-describe('TrendChart', () => {
-  const buckets = [
-    { label: 'pon', value: 100.5 },
-    { label: 'uto', value: null },
-    { label: 'sre', value: 102 },
-  ];
-  it('draws a marker only for buckets with data and labels the axis', () => {
-    const out = html(<TrendChart title="Prosek serije" buckets={buckets} />);
-    expect(out.match(/data-point=/g)).toHaveLength(2);
-    expect(out).toContain('pon');
-    expect(out).toContain('Prosek serije');
-    expect(out).toContain('role="img"');
+describe('TrendPanel', () => {
+  it('says there is no data for an empty period', () => {
+    const out = html(<TrendPanel buckets={[{ label: 'pon', avgSeries: null, avgGroupMm: null }]} decimal />);
+    expect(out).toContain('Nema podataka');
   });
-  it('is an empty state when no bucket has data', () => {
-    const out = html(<TrendChart title="Prosek serije" buckets={[{ label: 'pon', value: null }]} />);
-    expect(out).toContain('Nema podataka za ovaj period.');
-    expect(out).not.toContain('data-point');
+
+  it('lists every bucket with data in an accessible table next to the chart', () => {
+    const out = html(
+      <TrendPanel
+        buckets={[{ label: 'sep', avgSeries: 103.2, avgGroupMm: 9.1 }, { label: 'okt', avgSeries: null, avgGroupMm: null }, { label: 'nov', avgSeries: 105.1, avgGroupMm: 7.7 }]}
+        decimal
+      />,
+    );
+    expect(out.match(/data-point=/g)).toHaveLength(2);
+    expect(out).toContain('105.1');
+    expect(out).toContain('role="img"');
   });
 });

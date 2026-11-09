@@ -237,6 +237,9 @@ export const sr = {
     discipline: 'Disciplina',
     hrNote: 'Puls se računa samo za potvrđena poravnanja.',
     proposed: 'poravnanje nije potvrđeno',
+    scoreboard: 'Semafor',
+    trendTitle: 'Trend',
+    panels: 'Delovi pregleda',
   },
   coach: {
     title: 'Moji strelci',
@@ -255,6 +258,8 @@ export const sr = {
     addFor: 'Dodaj trening strelcu',
     newTitle: 'Novi trening za strelca',
     notLinked: 'Strelac nije povezan sa vama.',
+    shootersPanel: 'Strelci',
+    count: (n: number) => (n === 1 ? '1 strelac' : `${n} strelaca`),
   },
   trash: {
     title: 'Korpa',

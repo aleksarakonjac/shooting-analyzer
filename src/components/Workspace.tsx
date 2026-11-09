@@ -26,8 +26,11 @@ export function Workspace({
   panels,
   cols = 12,
   rows,
+  rowTemplate,
   label,
 }: {
+  /** Explicit row sizes, e.g. 'auto repeat(5, minmax(0, 1fr))' when one row should fit its content. */
+  rowTemplate?: string;
   strip: ReactNode;
   panels: WorkspacePanel[];
   cols?: number;
@@ -54,7 +57,8 @@ export function Workspace({
     tabs.current[next]?.focus();
   };
 
-  const gridStyle = { '--ws-cols': cols, ...(rows ? { gridTemplateRows: `repeat(${rows}, minmax(0, 1fr))` } : {}) } as CSSProperties;
+  const template = rowTemplate ?? (rows ? `repeat(${rows}, minmax(0, 1fr))` : undefined);
+  const gridStyle = { '--ws-cols': cols, ...(template ? { gridTemplateRows: template } : {}) } as CSSProperties;
 
   return (
     <div className="ws">

@@ -63,7 +63,7 @@ test('after saving the fixtures the year view shows counts, averages, trends and
   await expect(plate('Prosek serije').locator('.lane-plate__value')).toHaveText('105.1'); // 841.1 / 8
   await expect(plate('Prosečna grupa').locator('.lane-plate__value')).not.toHaveText('—');
   await expect(plate('Prosečan puls').locator('.lane-plate__value')).toHaveText('—'); // no heart-rate file
-  await expect(page.locator('[data-point]')).toHaveCount(2); // one bucket (okt) in each trend chart
+  await expect(page.locator('[data-point]')).toHaveCount(1); // one bucket (okt) with data in the trend table
   await expect(page.getByRole('listitem').filter({ hasText: 'Vazdušna puška' })).toContainText('841.1');
 });
 

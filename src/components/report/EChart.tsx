@@ -12,6 +12,7 @@ async function loadEcharts() {
   ]);
   core.use([
     charts.LineChart,
+    charts.BarChart,
     charts.ScatterChart,
     comps.GridComponent,
     comps.TooltipComponent,
@@ -19,6 +20,7 @@ async function loadEcharts() {
     comps.MarkAreaComponent,
     comps.MarkLineComponent,
     comps.AxisPointerComponent,
+    comps.LegendComponent,
     renderers.CanvasRenderer,
   ]);
   return core;
