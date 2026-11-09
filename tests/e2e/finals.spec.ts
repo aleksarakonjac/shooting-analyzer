@@ -14,8 +14,16 @@ const fx = (n: string) => join(__dirname, '../fixtures', n);
 let page: Page;
 let reportUrl = '';
 
+/** Opens the final entry form when it is folded away. */
+async function openEntry(): Promise<void> {
+  const shot1 = page.getByLabel('Pogodak 1', { exact: true });
+  if (!(await shot1.isVisible())) await page.getByText('Dodaj finale', { exact: true }).click();
+  await expect(shot1).toBeVisible();
+}
+
 /** Fills shots 1..n of the final form: 10.0 in the first series, 10.5 in the second, 10.2 after that. */
 async function fillShots(n: number): Promise<void> {
+  await openEntry();
   for (let i = 1; i <= n; i++) {
     const v = i <= 5 ? '10.0' : i <= 10 ? '10,5' : '10.2'; // a decimal comma works too
     await page.getByLabel(`Pogodak ${i}`, { exact: true }).fill(v);
@@ -58,6 +66,7 @@ test('a training starts without finals', async () => {
 });
 
 test('a value with two decimals is refused and nothing is saved', async () => {
+  await openEntry();
   await page.getByLabel('Pogodak 1', { exact: true }).fill('10.95');
   await page.getByRole('button', { name: 'Sačuvaj finale' }).click();
   await expect(page.locator('.final-entry').getByRole('alert')).toContainText('najviše jednu decimalu');

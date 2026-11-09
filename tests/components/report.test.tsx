@@ -1,49 +1,36 @@
 import { describe, expect, it } from 'vitest';
 import { renderToStaticMarkup } from 'react-dom/server';
-import { ShotTimeline } from '../../src/components/ShotTimeline';
-import { GroupPlot } from '../../src/components/GroupPlot';
-import { HrChart } from '../../src/components/HrChart';
+import { TargetPlot } from '../../src/components/report/TargetPlot';
+import { buildReportView } from '../../src/lib/report/viewModel';
 
 const html = (el: React.ReactElement) => renderToStaticMarkup(el);
 
-describe('ShotTimeline', () => {
-  const shots = [
-    { idx: 1, value: 10.6, tMs: 1000 },
-    { idx: 2, value: 9.1, tMs: 31000 },
-    { idx: 3, value: 10.2, tMs: null },
-  ];
-  it('draws one marker per shot with the value in its label', () => {
-    const out = html(<ShotTimeline shots={shots} decimal />);
-    expect(out.match(/data-shot=/g)).toHaveLength(3);
-    expect(out).toContain('10.6');
-    expect(out).toContain('role="img"');
-  });
-  it('is an empty state for no shots', () => {
-    expect(html(<ShotTimeline shots={[]} decimal />)).toContain('Nema pogodaka');
-  });
-});
+describe('TargetPlot', () => {
+  const view = buildReportView(
+    [
+      { id: 'a', idx: 1, position: null, total: 104, total_decimal: 104.5, mpi_x: -0.5, mpi_y: -0.4, group_mm: 8, shots: [] },
+      { id: 'b', idx: 2, position: null, total: 103, total_decimal: 103.1, mpi_x: 1, mpi_y: 0, group_mm: 9, shots: [] },
+    ],
+    'air_rifle',
+  );
 
-describe('GroupPlot', () => {
-  it('states MPI numbers and direction in words, not only by drawing', () => {
-    const out = html(<GroupPlot mpi={{ x: -0.5, y: -0.4 }} groupMm={8} />);
+  it('states the group and the MPI direction in words, not only by drawing', () => {
+    const out = html(<TargetPlot discipline="air_rifle" series={view.series} selected={1} />);
     expect(out).toContain('8.0 mm');
     expect(out).toContain('0.5 mm levo');
     expect(out).toContain('0.4 mm dole');
+    expect(out).toContain('role="img"');
   });
-  it('shows a notice when the series has no MPI', () => {
-    expect(html(<GroupPlot mpi={null} groupMm={null} />)).toContain('Nema podataka o grupi');
-  });
-});
 
-describe('HrChart', () => {
-  it('says "nema pulsa" for no samples', () => {
-    expect(html(<HrChart samples={[]} />)).toContain('nema pulsa');
+  it('draws the selected group and the other series as faint MPI dots, with no invented shot holes', () => {
+    const out = html(<TargetPlot discipline="air_rifle" series={view.series} selected={1} />);
+    expect(out.match(/target__group/g)).toHaveLength(1);
+    expect(out.match(/target__mpi-other/g)).toHaveLength(1);
+    expect(out).not.toContain('target__hole');
   });
-  it('shows average, min and max and a line for samples', () => {
-    const out = html(<HrChart samples={[{ tMs: 0, bpm: 80 }, { tMs: 1000, bpm: 100 }]} />);
-    expect(out).toContain('90');
-    expect(out).toContain('<polyline');
-    expect(out).not.toContain('nema pulsa');
+
+  it('asks for a series when none is selected', () => {
+    expect(html(<TargetPlot discipline="air_rifle" series={view.series} selected={null} />)).toContain('Izaberite seriju');
   });
 });
 
