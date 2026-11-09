@@ -1,7 +1,7 @@
 import { sr } from '@/lib/i18n/sr';
 
 /**
- * Orange flag = proposed, awaiting your confirmation. Black = confirmed.
+ * Gold, dashed edge, pennant = proposed, awaiting your confirmation. Steel edge, check = confirmed.
  * Never colour alone: the word, a dashed vs solid edge, and a pennant vs check marker all differ.
  */
 export function FlagBadge({ state }: { state: 'proposed' | 'confirmed' }) {

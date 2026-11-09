@@ -23,7 +23,7 @@ async function openForm(): Promise<void> {
   await expect(page.getByLabel('Naziv')).toHaveAttribute('placeholder', /Vazdušna puška$/);
 }
 
-async function saveWithFixtures(withHr: boolean): Promise<string> {
+async function saveWithFixtures(withHr: boolean, confirm = true): Promise<string> {
   await openForm();
   await page.getByLabel('SIUS fajl (CSV ili PDF)').setInputFiles(fx('2026-10-21T190309.csv'));
   await expect(page.getByText('Učitano: 2026-10-21T190309.csv')).toBeVisible();
@@ -33,7 +33,7 @@ async function saveWithFixtures(withHr: boolean): Promise<string> {
     await page.getByLabel('TCX fajl').setInputFiles(fx('4740240563405875576.tcx'));
     await expect(page.getByText(/uzoraka pulsa/)).toBeVisible();
   }
-  await page.getByRole('button', { name: 'Potvrdi' }).click();
+  if (confirm) await page.getByRole('button', { name: 'Potvrdi', exact: true }).click();
   await page.getByRole('button', { name: 'Sačuvaj trening' }).click();
   await page.getByRole('link', { name: 'Otvori izveštaj o treningu' }).click();
   await expect(page).toHaveURL(/\/trening\/[0-9a-f-]{36}$/);
@@ -72,7 +72,16 @@ test('the report shows total 841.1, 8 series, a group of 8.0 mm and separate war
   await expect(page.getByTestId('attempt')).toHaveText('Neuspeli pokušaji: 23');
 });
 
+test('a proposed alignment is confirmed from the report', async () => {
+  await saveWithFixtures(false, false);
+  await expect(page.locator('.flag-badge')).toHaveAttribute('data-state', 'proposed');
+  await page.getByRole('button', { name: 'Potvrdi poravnanje' }).click();
+  await expect(page.locator('.flag-badge')).toHaveAttribute('data-state', 'confirmed');
+  await expect(page.getByRole('button', { name: 'Potvrdi poravnanje' })).toHaveCount(0);
+});
+
 test('a training without heart rate shows "nema pulsa"', async () => {
+  await page.goto(reportUrl);
   await expect(page.getByText('nema pulsa')).toBeVisible();
 });
 

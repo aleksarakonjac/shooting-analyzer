@@ -7,7 +7,7 @@ import { DISCIPLINES } from '@/lib/domain/disciplines';
 import type { DisciplineId } from '@/lib/domain/types';
 import { sr } from '@/lib/i18n/sr';
 import { matchTotal } from '@/lib/report/derive';
-import { periodRange, periodStats, type TrainingSummary } from '@/lib/stats/periodStats';
+import { pastBuckets, periodRange, periodStats, type TrainingSummary } from '@/lib/stats/periodStats';
 import { SUMMARY_SELECT, toSummary, type SummaryRow } from '@/lib/stats/summaryQuery';
 import { createClient } from '@/lib/supabase/server';
 
@@ -124,10 +124,10 @@ export function DashboardView({
   }
 
   const scoreboard = (
-    <div className="dash__plates">
+    <div className="scoreline">
       <LanePlate label={t.trainings} value={String(stats.trainings)} />
       <LanePlate label={t.shots} value={String(stats.shots)} />
-      <LanePlate label={t.avgSeries} value={dash(stats.avgSeries, 1)} variant="score" />
+      <LanePlate label={t.avgSeries} value={dash(stats.avgSeries, 1)} />
       <LanePlate label={t.avgGroup} value={dash(stats.avgGroupMm)} unit={t.unitMm} />
       <LanePlate label={t.avgHr} value={dash(stats.avgHr, 0)} unit={t.unitBpm} />
     </div>
@@ -141,7 +141,9 @@ export function DashboardView({
         return (
           <li key={x.id}>
             <Link href={`/trening/${x.id}`}>
-              <span className="num dash__date">{x.trainedOn.slice(8, 10)}.{x.trainedOn.slice(5, 7)}.</span>
+              {!x.name.startsWith(`${x.trainedOn.slice(8, 10)}.${x.trainedOn.slice(5, 7)}.`) && (
+                <span className="num dash__date">{x.trainedOn.slice(8, 10)}.{x.trainedOn.slice(5, 7)}.</span>
+              )}
               <span className="dash__name">
                 {x.name}
                 {proposed && <small className="dash__flag">{t.proposed}</small>}
@@ -161,7 +163,7 @@ export function DashboardView({
       rowTemplate="auto repeat(5, minmax(0, 1fr))"
       panels={[
         { id: 'score', title: t.scoreboard, range: t.hrNote, col: '1 / 13', row: '1 / 2', children: scoreboard },
-        { id: 'trend', title: t.trendTitle, col: '1 / 9', row: '2 / 7', children: <TrendPanel buckets={stats.buckets} decimal={dec} /> },
+        { id: 'trend', title: t.trendTitle, col: '1 / 9', row: '2 / 7', children: <TrendPanel buckets={pastBuckets(stats.buckets, period, now, tz)} decimal={dec} /> },
         { id: 'list', title: t.listTitle, range: `${list.length}`, col: '9 / 13', row: '2 / 7', flush: true, children: rows },
       ]}
     />

@@ -63,7 +63,13 @@ const zoom = [
 export function timelineOption(v: ReportView, sel: Selection, tz: string, hr?: HrSample[]): any {
   const fmt = clock(tz);
   const shots = v.series.flatMap((s) => s.shots).filter((s) => s.tMs !== null);
-  const minY = v.decimal ? Math.max(0, Math.floor(Math.min(...shots.map((s) => s.value), 9) - 0.5)) : Math.max(0, Math.min(...shots.map((s) => s.value), 8) - 1);
+  // The score axis starts just below the lowest shot (half a ring for decimals), so the points use the height.
+  const low = shots.length ? Math.min(...shots.map((s) => s.value)) : 9;
+  const minY = v.decimal ? Math.max(0, Math.floor((low - 0.2) * 2) / 2) : Math.max(0, Math.floor(low) - 1);
+  // Heart rate gets the lower third: its axis is stretched upwards so the line stays under the shots.
+  const hrLo = hr?.length ? Math.min(...hr.map((x) => x.bpm)) : 0;
+  const hrHi = hr?.length ? Math.max(...hr.map((x) => x.bpm)) : 0;
+  const hrSpan = Math.max(1, hrHi - hrLo);
   const data = shots.map((s) => {
     const selected = s.n === sel.shot;
     const inSeries = sel.series !== null && s.series === sel.series;
@@ -111,7 +117,12 @@ export function timelineOption(v: ReportView, sel: Selection, tz: string, hr?: H
     yAxis: [
       { ...axisCommon, type: 'value', name: 'Pogodak', nameLocation: 'middle', nameGap: 30, nameRotate: 90, min: minY, max: v.decimal ? 10.9 : 10, interval: v.decimal ? 0.5 : 1 },
       ...(hr?.length
-        ? [{ ...axisCommon, type: 'value', name: 'otk/min', nameLocation: 'middle', nameGap: 30, nameRotate: -90, position: 'right', scale: true, splitLine: { show: false } }]
+        ? [{
+            ...axisCommon, type: 'value', name: 'otk/min', nameLocation: 'middle', nameGap: 30, nameRotate: -90, position: 'right',
+            min: Math.floor(hrLo - 2), max: Math.ceil(hrHi + 2 * hrSpan), splitLine: { show: false },
+            // Only the heart-rate band carries labels; the stretched upper part sits beside the shots.
+            axisLabel: { ...axisCommon.axisLabel, formatter: (v: number) => (v <= hrHi + 1 ? String(v) : '') },
+          }]
         : []),
     ],
     series: [
@@ -195,7 +206,7 @@ export function hrOption(samples: HrSample[], v: ReportView, sel: Selection, tz:
         name: 'Puls',
         data: samples.map((s) => [s.tMs, s.bpm]),
         showSymbol: false,
-        lineStyle: { color: CHART.faint, width: 1, opacity: 0.35 },
+        lineStyle: { color: CHART.faint, width: 1, opacity: 0.45, type: 'dotted' },
         tooltip: { show: false },
         markLine: {
           silent: true,

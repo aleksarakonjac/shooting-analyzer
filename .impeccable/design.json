@@ -1,0 +1,679 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-11-09T12:51:02+00:00",
+  "title": "Design System: Dnevnik streljaštva",
+  "extensions": {
+    "colorMeta": {
+      "ground": {
+        "role": "neutral",
+        "displayName": "Board Navy",
+        "canonical": "#0b1530",
+        "oklch": "oklch(20.4% 0.056 266)",
+        "tonalRamp": [
+          "oklch(15% 0.056 266)",
+          "oklch(25% 0.056 266)",
+          "oklch(35% 0.056 266)",
+          "oklch(48% 0.056 266)",
+          "oklch(60% 0.056 266)",
+          "oklch(72% 0.056 266)",
+          "oklch(84% 0.056 266)",
+          "oklch(95% 0.056 266)"
+        ]
+      },
+      "ground-deep": {
+        "role": "neutral",
+        "displayName": "Rail Navy",
+        "canonical": "#070e22",
+        "oklch": "oklch(17.0% 0.043 267)",
+        "tonalRamp": [
+          "oklch(15% 0.043 267)",
+          "oklch(25% 0.043 267)",
+          "oklch(35% 0.043 267)",
+          "oklch(48% 0.043 267)",
+          "oklch(60% 0.043 267)",
+          "oklch(72% 0.043 267)",
+          "oklch(84% 0.043 267)",
+          "oklch(95% 0.043 267)"
+        ]
+      },
+      "panel": {
+        "role": "neutral",
+        "displayName": "Panel Navy",
+        "canonical": "#101c3b",
+        "oklch": "oklch(23.5% 0.062 266)",
+        "tonalRamp": [
+          "oklch(15% 0.062 266)",
+          "oklch(25% 0.062 266)",
+          "oklch(35% 0.062 266)",
+          "oklch(48% 0.062 266)",
+          "oklch(60% 0.062 266)",
+          "oklch(72% 0.062 266)",
+          "oklch(84% 0.062 266)",
+          "oklch(95% 0.062 266)"
+        ]
+      },
+      "panel-raised": {
+        "role": "neutral",
+        "displayName": "Raised Navy",
+        "canonical": "#172751",
+        "oklch": "oklch(28.5% 0.080 266)",
+        "tonalRamp": [
+          "oklch(15% 0.080 266)",
+          "oklch(25% 0.080 266)",
+          "oklch(35% 0.080 266)",
+          "oklch(48% 0.080 266)",
+          "oklch(60% 0.080 266)",
+          "oklch(72% 0.080 266)",
+          "oklch(84% 0.080 266)",
+          "oklch(95% 0.080 266)"
+        ]
+      },
+      "panel-sunk": {
+        "role": "neutral",
+        "displayName": "Well Navy",
+        "canonical": "#0a1430",
+        "oklch": "oklch(20.1% 0.058 266)",
+        "tonalRamp": [
+          "oklch(15% 0.058 266)",
+          "oklch(25% 0.058 266)",
+          "oklch(35% 0.058 266)",
+          "oklch(48% 0.058 266)",
+          "oklch(60% 0.058 266)",
+          "oklch(72% 0.058 266)",
+          "oklch(84% 0.058 266)",
+          "oklch(95% 0.058 266)"
+        ]
+      },
+      "rule": {
+        "role": "neutral",
+        "displayName": "Steel Rule",
+        "canonical": "#22335e",
+        "oklch": "oklch(33.0% 0.079 266)",
+        "tonalRamp": [
+          "oklch(15% 0.079 266)",
+          "oklch(25% 0.079 266)",
+          "oklch(35% 0.079 266)",
+          "oklch(48% 0.079 266)",
+          "oklch(60% 0.079 266)",
+          "oklch(72% 0.079 266)",
+          "oklch(84% 0.079 266)",
+          "oklch(95% 0.079 266)"
+        ]
+      },
+      "rule-strong": {
+        "role": "neutral",
+        "displayName": "Strong Steel",
+        "canonical": "#3a4f86",
+        "oklch": "oklch(43.8% 0.095 267)",
+        "tonalRamp": [
+          "oklch(15% 0.095 267)",
+          "oklch(25% 0.095 267)",
+          "oklch(35% 0.095 267)",
+          "oklch(48% 0.095 267)",
+          "oklch(60% 0.095 267)",
+          "oklch(72% 0.095 267)",
+          "oklch(84% 0.095 267)",
+          "oklch(95% 0.095 267)"
+        ]
+      },
+      "ink": {
+        "role": "neutral",
+        "displayName": "Figure White",
+        "canonical": "#f3f6fc",
+        "oklch": "oklch(97.3% 0.009 265)",
+        "tonalRamp": [
+          "oklch(15% 0.009 265)",
+          "oklch(25% 0.009 265)",
+          "oklch(35% 0.009 265)",
+          "oklch(48% 0.009 265)",
+          "oklch(60% 0.009 265)",
+          "oklch(72% 0.009 265)",
+          "oklch(84% 0.009 265)",
+          "oklch(95% 0.009 265)"
+        ]
+      },
+      "ink-muted": {
+        "role": "neutral",
+        "displayName": "Muted Steel",
+        "canonical": "#aab6d3",
+        "oklch": "oklch(77.6% 0.044 268)",
+        "tonalRamp": [
+          "oklch(15% 0.044 268)",
+          "oklch(25% 0.044 268)",
+          "oklch(35% 0.044 268)",
+          "oklch(48% 0.044 268)",
+          "oklch(60% 0.044 268)",
+          "oklch(72% 0.044 268)",
+          "oklch(84% 0.044 268)",
+          "oklch(95% 0.044 268)"
+        ]
+      },
+      "ink-faint": {
+        "role": "neutral",
+        "displayName": "Faint Steel",
+        "canonical": "#8190b5",
+        "oklch": "oklch(65.5% 0.058 268)",
+        "tonalRamp": [
+          "oklch(15% 0.058 268)",
+          "oklch(25% 0.058 268)",
+          "oklch(35% 0.058 268)",
+          "oklch(48% 0.058 268)",
+          "oklch(60% 0.058 268)",
+          "oklch(72% 0.058 268)",
+          "oklch(84% 0.058 268)",
+          "oklch(95% 0.058 268)"
+        ]
+      },
+      "data": {
+        "role": "primary",
+        "displayName": "Series Cyan",
+        "canonical": "#39c6f0",
+        "oklch": "oklch(77.1% 0.129 223)",
+        "tonalRamp": [
+          "oklch(15% 0.129 223)",
+          "oklch(25% 0.129 223)",
+          "oklch(35% 0.129 223)",
+          "oklch(48% 0.129 223)",
+          "oklch(60% 0.129 223)",
+          "oklch(72% 0.129 223)",
+          "oklch(84% 0.129 223)",
+          "oklch(95% 0.129 223)"
+        ]
+      },
+      "proposed": {
+        "role": "secondary",
+        "displayName": "Proposal Gold",
+        "canonical": "#f2c14e",
+        "oklch": "oklch(83.4% 0.141 85)",
+        "tonalRamp": [
+          "oklch(15% 0.141 85)",
+          "oklch(25% 0.141 85)",
+          "oklch(35% 0.141 85)",
+          "oklch(48% 0.141 85)",
+          "oklch(60% 0.141 85)",
+          "oklch(72% 0.141 85)",
+          "oklch(84% 0.141 85)",
+          "oklch(95% 0.141 85)"
+        ]
+      },
+      "danger": {
+        "role": "tertiary",
+        "displayName": "Elimination Red",
+        "canonical": "#ff6b74",
+        "oklch": "oklch(71.3% 0.181 19)",
+        "tonalRamp": [
+          "oklch(15% 0.160 19)",
+          "oklch(25% 0.160 19)",
+          "oklch(35% 0.160 19)",
+          "oklch(48% 0.160 19)",
+          "oklch(60% 0.160 19)",
+          "oklch(72% 0.160 19)",
+          "oklch(84% 0.160 19)",
+          "oklch(95% 0.160 19)"
+        ]
+      },
+      "select-bg": {
+        "role": "primary",
+        "displayName": "Broadcast White",
+        "canonical": "#ffffff",
+        "oklch": "oklch(100.0% 0.000 90)",
+        "tonalRamp": [
+          "oklch(15% 0.000 90)",
+          "oklch(25% 0.000 90)",
+          "oklch(35% 0.000 90)",
+          "oklch(48% 0.000 90)",
+          "oklch(60% 0.000 90)",
+          "oklch(72% 0.000 90)",
+          "oklch(84% 0.000 90)",
+          "oklch(95% 0.000 90)"
+        ]
+      },
+      "select-fg": {
+        "role": "primary",
+        "displayName": "Navy on White",
+        "canonical": "#0b1530",
+        "oklch": "oklch(20.4% 0.056 266)",
+        "tonalRamp": [
+          "oklch(15% 0.056 266)",
+          "oklch(25% 0.056 266)",
+          "oklch(35% 0.056 266)",
+          "oklch(48% 0.056 266)",
+          "oklch(60% 0.056 266)",
+          "oklch(72% 0.056 266)",
+          "oklch(84% 0.056 266)",
+          "oklch(95% 0.056 266)"
+        ]
+      },
+      "select-hover": {
+        "role": "primary",
+        "displayName": "Pale Steel",
+        "canonical": "#d9e2f5",
+        "oklch": "oklch(91.2% 0.028 265)",
+        "tonalRamp": [
+          "oklch(15% 0.028 265)",
+          "oklch(25% 0.028 265)",
+          "oklch(35% 0.028 265)",
+          "oklch(48% 0.028 265)",
+          "oklch(60% 0.028 265)",
+          "oklch(72% 0.028 265)",
+          "oklch(84% 0.028 265)",
+          "oklch(95% 0.028 265)"
+        ]
+      },
+      "select-active": {
+        "role": "primary",
+        "displayName": "Pressed Steel",
+        "canonical": "#b9c7e6",
+        "oklch": "oklch(82.9% 0.046 266)",
+        "tonalRamp": [
+          "oklch(15% 0.046 266)",
+          "oklch(25% 0.046 266)",
+          "oklch(35% 0.046 266)",
+          "oklch(48% 0.046 266)",
+          "oklch(60% 0.046 266)",
+          "oklch(72% 0.046 266)",
+          "oklch(84% 0.046 266)",
+          "oklch(95% 0.046 266)"
+        ]
+      },
+      "select-muted": {
+        "role": "primary",
+        "displayName": "Slate Ink",
+        "canonical": "#3a4a72",
+        "oklch": "oklch(41.4% 0.070 267)",
+        "tonalRamp": [
+          "oklch(15% 0.070 267)",
+          "oklch(25% 0.070 267)",
+          "oklch(35% 0.070 267)",
+          "oklch(48% 0.070 267)",
+          "oklch(60% 0.070 267)",
+          "oklch(72% 0.070 267)",
+          "oklch(84% 0.070 267)",
+          "oklch(95% 0.070 267)"
+        ]
+      },
+      "select-pip": {
+        "role": "primary",
+        "displayName": "Pip Nine on White",
+        "canonical": "#8b98bb",
+        "oklch": "oklch(68.2% 0.054 269)",
+        "tonalRamp": [
+          "oklch(15% 0.054 269)",
+          "oklch(25% 0.054 269)",
+          "oklch(35% 0.054 269)",
+          "oklch(48% 0.054 269)",
+          "oklch(60% 0.054 269)",
+          "oklch(72% 0.054 269)",
+          "oklch(84% 0.054 269)",
+          "oklch(95% 0.054 269)"
+        ]
+      },
+      "target-card": {
+        "role": "neutral",
+        "displayName": "Target Card",
+        "canonical": "#e9ecef",
+        "oklch": "oklch(94.2% 0.005 248)",
+        "tonalRamp": [
+          "oklch(15% 0.005 248)",
+          "oklch(25% 0.005 248)",
+          "oklch(35% 0.005 248)",
+          "oklch(48% 0.005 248)",
+          "oklch(60% 0.005 248)",
+          "oklch(72% 0.005 248)",
+          "oklch(84% 0.005 248)",
+          "oklch(95% 0.005 248)"
+        ]
+      },
+      "target-ink": {
+        "role": "neutral",
+        "displayName": "Target Ink",
+        "canonical": "#14181b",
+        "oklch": "oklch(20.6% 0.009 240)",
+        "tonalRamp": [
+          "oklch(15% 0.009 240)",
+          "oklch(25% 0.009 240)",
+          "oklch(35% 0.009 240)",
+          "oklch(48% 0.009 240)",
+          "oklch(60% 0.009 240)",
+          "oklch(72% 0.009 240)",
+          "oklch(84% 0.009 240)",
+          "oklch(95% 0.009 240)"
+        ]
+      },
+      "pip-top": {
+        "role": "primary",
+        "displayName": "Pip Top (10.5+)",
+        "canonical": "#39c6f0",
+        "oklch": "oklch(77.1% 0.129 223)",
+        "tonalRamp": [
+          "oklch(15% 0.129 223)",
+          "oklch(25% 0.129 223)",
+          "oklch(35% 0.129 223)",
+          "oklch(48% 0.129 223)",
+          "oklch(60% 0.129 223)",
+          "oklch(72% 0.129 223)",
+          "oklch(84% 0.129 223)",
+          "oklch(95% 0.129 223)"
+        ]
+      },
+      "pip-ten": {
+        "role": "primary",
+        "displayName": "Pip Ten (10.0-10.4, ring)",
+        "canonical": "#2a8fb4",
+        "oklch": "oklch(61.0% 0.105 227)",
+        "tonalRamp": [
+          "oklch(15% 0.105 227)",
+          "oklch(25% 0.105 227)",
+          "oklch(35% 0.105 227)",
+          "oklch(48% 0.105 227)",
+          "oklch(60% 0.105 227)",
+          "oklch(72% 0.105 227)",
+          "oklch(84% 0.105 227)",
+          "oklch(95% 0.105 227)"
+        ]
+      },
+      "pip-nine": {
+        "role": "neutral",
+        "displayName": "Pip Nine (9.x)",
+        "canonical": "#5c6e9c",
+        "oklch": "oklch(54.3% 0.076 267)",
+        "tonalRamp": [
+          "oklch(15% 0.076 267)",
+          "oklch(25% 0.076 267)",
+          "oklch(35% 0.076 267)",
+          "oklch(48% 0.076 267)",
+          "oklch(60% 0.076 267)",
+          "oklch(72% 0.076 267)",
+          "oklch(84% 0.076 267)",
+          "oklch(95% 0.076 267)"
+        ]
+      },
+      "pip-low": {
+        "role": "tertiary",
+        "displayName": "Pip Low (below 9)",
+        "canonical": "#ff6b74",
+        "oklch": "oklch(71.3% 0.181 19)",
+        "tonalRamp": [
+          "oklch(15% 0.160 19)",
+          "oklch(25% 0.160 19)",
+          "oklch(35% 0.160 19)",
+          "oklch(48% 0.160 19)",
+          "oklch(60% 0.160 19)",
+          "oklch(72% 0.160 19)",
+          "oklch(84% 0.160 19)",
+          "oklch(95% 0.160 19)"
+        ]
+      },
+      "data-soft": {
+        "role": "primary",
+        "displayName": "Series Cyan Tint",
+        "canonical": "rgb(57 198 240 / 0.16)",
+        "tonalRamp": [
+          "oklch(15% 0.129 223)",
+          "oklch(25% 0.129 223)",
+          "oklch(35% 0.129 223)",
+          "oklch(48% 0.129 223)",
+          "oklch(60% 0.129 223)",
+          "oklch(72% 0.129 223)",
+          "oklch(84% 0.129 223)",
+          "oklch(95% 0.129 223)"
+        ]
+      },
+      "proposed-soft": {
+        "role": "secondary",
+        "displayName": "Proposal Gold Tint",
+        "canonical": "rgb(242 193 78 / 0.14)",
+        "tonalRamp": [
+          "oklch(15% 0.141 85)",
+          "oklch(25% 0.141 85)",
+          "oklch(35% 0.141 85)",
+          "oklch(48% 0.141 85)",
+          "oklch(60% 0.141 85)",
+          "oklch(72% 0.141 85)",
+          "oklch(84% 0.141 85)",
+          "oklch(95% 0.141 85)"
+        ]
+      },
+      "danger-soft": {
+        "role": "tertiary",
+        "displayName": "Elimination Red Tint",
+        "canonical": "rgb(255 107 116 / 0.14)",
+        "tonalRamp": [
+          "oklch(15% 0.160 19)",
+          "oklch(25% 0.160 19)",
+          "oklch(35% 0.160 19)",
+          "oklch(48% 0.160 19)",
+          "oklch(60% 0.160 19)",
+          "oklch(72% 0.160 19)",
+          "oklch(84% 0.160 19)",
+          "oklch(95% 0.160 19)"
+        ]
+      }
+    },
+    "typographyMeta": {
+      "display": {
+        "displayName": "Display",
+        "purpose": "Uppercase screen titles in the strip and on pages."
+      },
+      "plate-numeral": {
+        "displayName": "Plate Numeral",
+        "purpose": "Score-box figures."
+      },
+      "row-numeral": {
+        "displayName": "Row Numeral",
+        "purpose": "Series totals, list totals, strip counts."
+      },
+      "title": {
+        "displayName": "Title",
+        "purpose": "Subsections and emphasised rows."
+      },
+      "body": {
+        "displayName": "Body",
+        "purpose": "Running text and inputs, max 70ch."
+      },
+      "ui": {
+        "displayName": "UI",
+        "purpose": "Buttons, nav links, segmented tabs."
+      },
+      "panel-label": {
+        "displayName": "Panel Label",
+        "purpose": "Uppercase tracked panel titles and table heads."
+      },
+      "figure-label": {
+        "displayName": "Figure Label",
+        "purpose": "Uppercase label paired with a figure in a score box."
+      }
+    },
+    "shadows": [
+      {
+        "name": "shadow-pop",
+        "value": "0 2px 4px rgb(0 0 0 / 0.35), 0 14px 32px -10px rgb(0 0 0 / 0.6)",
+        "purpose": "Popovers, listboxes, calendars and tooltips only; nothing resting on the board casts a shadow."
+      }
+    ],
+    "motion": [
+      {
+        "name": "ease-out",
+        "value": "cubic-bezier(0.16, 1, 0.3, 1)",
+        "purpose": "All state transitions (background, colour, border)."
+      },
+      {
+        "name": "dur",
+        "value": "0.18s",
+        "purpose": "Default transition duration."
+      },
+      {
+        "name": "pop-in",
+        "value": "0.16s ease-out, opacity 0 and translateY(-4px) to rest",
+        "purpose": "Popover entrance; disabled under prefers-reduced-motion."
+      }
+    ],
+    "breakpoints": [
+      {
+        "name": "phone",
+        "value": "720px"
+      },
+      {
+        "name": "tablet",
+        "value": "1023px"
+      },
+      {
+        "name": "form-single",
+        "value": "520px"
+      },
+      {
+        "name": "scoreline-3col",
+        "value": "1100px"
+      }
+    ],
+    "layout": {
+      "railWidth": "13rem",
+      "controlHeight": "2.5rem (2.75rem at 720px and below)",
+      "workspaceColumns": 12,
+      "panelGap": "1px on rule colour"
+    }
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "White bar with navy text; the primary action.",
+      "html": "<button class=\"ds-btn\">Potvrdi poravnanje</button>",
+      "css": ".ds-btn{font-family:var(--font-body,Barlow,system-ui,sans-serif);font-weight:700;font-size:0.9rem;letter-spacing:0.02em;min-height:2.5rem;padding:0 1rem;color:var(--select-fg,#0b1530);background:var(--select-bg,#fff);border:1px solid var(--select-bg,#fff);border-radius:2px;cursor:pointer;transition:background .18s cubic-bezier(.16,1,.3,1)}.ds-btn:hover{background:var(--select-hover,#d9e2f5);border-color:var(--select-hover,#d9e2f5)}.ds-btn:active{background:var(--select-active,#b9c7e6)}.ds-btn:focus-visible{outline:2px solid var(--focus,#39c6f0);outline-offset:2px}"
+    },
+    {
+      "name": "Quiet Button",
+      "kind": "button",
+      "refersTo": "button-quiet",
+      "description": "Secondary action on the board.",
+      "html": "<button class=\"ds-btn-quiet\">Izmeni</button>",
+      "css": ".ds-btn-quiet{font-family:var(--font-body,Barlow,system-ui,sans-serif);font-weight:700;font-size:0.9rem;letter-spacing:0.02em;min-height:2.5rem;padding:0 1rem;color:var(--ink,#f3f6fc);background:transparent;border:1px solid var(--rule-strong,#3a4f86);border-radius:2px;cursor:pointer;transition:background .18s}.ds-btn-quiet:hover{background:var(--panel-raised,#172751);border-color:var(--ink-faint,#8190b5)}.ds-btn-quiet:focus-visible{outline:2px solid var(--focus,#39c6f0);outline-offset:2px}"
+    },
+    {
+      "name": "Danger Button",
+      "kind": "button",
+      "refersTo": "button-danger",
+      "description": "Destructive action: red edge and text.",
+      "html": "<button class=\"ds-btn-danger\">Obriši</button>",
+      "css": ".ds-btn-danger{font-family:var(--font-body,Barlow,system-ui,sans-serif);font-weight:700;font-size:0.9rem;min-height:2.5rem;padding:0 1rem;color:var(--danger,#ff6b74);background:transparent;border:1px solid var(--danger,#ff6b74);border-radius:2px;cursor:pointer}.ds-btn-danger:hover{background:var(--danger-soft,rgb(255 107 116 / .14))}.ds-btn-danger:focus-visible{outline:2px solid var(--focus,#39c6f0);outline-offset:2px}"
+    },
+    {
+      "name": "Text Field",
+      "kind": "input",
+      "refersTo": "input",
+      "description": "Raised navy field, steel edge, cyan focus.",
+      "html": "<label class=\"ds-label\">Naziv<input class=\"ds-input\" placeholder=\"Trening\"></label>",
+      "css": ".ds-label{display:grid;gap:.25rem;font-family:var(--font-body,Barlow,sans-serif);font-weight:600;font-size:.82rem;letter-spacing:.02em;color:var(--ink-muted,#aab6d3)}.ds-input{font:inherit;font-weight:400;font-size:1rem;color:var(--ink,#f3f6fc);background:var(--panel-raised,#172751);border:1px solid var(--rule-strong,#3a4f86);border-radius:2px;padding:0 .7rem;min-height:2.5rem;caret-color:var(--data,#39c6f0)}.ds-input::placeholder{color:var(--ink-faint,#8190b5)}.ds-input:hover{border-color:var(--ink-faint,#8190b5)}.ds-input:focus-visible{outline:2px solid var(--focus,#39c6f0);outline-offset:0;border-color:var(--focus,#39c6f0)}"
+    },
+    {
+      "name": "Rail Navigation",
+      "kind": "nav",
+      "refersTo": "nav-link",
+      "description": "Rail links; the current page is the white bar.",
+      "html": "<nav class=\"ds-rail\"><a class=\"ds-rail-link\" aria-current=\"page\" href=\"#\">Treninzi</a><a class=\"ds-rail-link\" href=\"#\">Novi trening</a><a class=\"ds-rail-link\" href=\"#\">Korpa</a></nav>",
+      "css": ".ds-rail{display:flex;flex-direction:column;gap:2px;width:13rem;padding:1.25rem .75rem;background:var(--ground-deep,#070e22);border-right:1px solid var(--rule,#22335e)}.ds-rail-link{display:flex;align-items:center;min-height:2.5rem;padding:0 .75rem;color:var(--ink-muted,#aab6d3);text-decoration:none;font-family:var(--font-body,Barlow,sans-serif);font-weight:600;font-size:.9rem;border-radius:2px}.ds-rail-link:hover{background:var(--panel,#101c3b);color:var(--ink,#f3f6fc)}.ds-rail-link[aria-current=page]{background:var(--select-bg,#fff);color:var(--select-fg,#0b1530)}.ds-rail-link:focus-visible{outline:2px solid var(--focus,#39c6f0);outline-offset:2px}"
+    },
+    {
+      "name": "Alignment Flag",
+      "kind": "chip",
+      "refersTo": "flag-proposed",
+      "description": "Gold dashed edge, pennant and word = proposed; steel solid edge and check = confirmed.",
+      "html": "<span class=\"ds-flag ds-flag--proposed\"><svg width=\"18\" height=\"18\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M6 21V3m0 1h12l-3.5 4L18 12H6\"/></svg>Predloženo</span> <span class=\"ds-flag ds-flag--confirmed\"><svg width=\"18\" height=\"18\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"m5 12.5 4.5 4.5L19 7.5\"/></svg>Potvrđeno</span>",
+      "css": ".ds-flag{display:inline-flex;align-items:center;gap:.5rem;min-height:1.9rem;padding:0 .65rem 0 .5rem;font-family:var(--font-body,Barlow,sans-serif);font-weight:700;font-size:.82rem;border:1px solid;border-radius:2px}.ds-flag--proposed{color:var(--proposed,#f2c14e);border-color:var(--proposed,#f2c14e);border-style:dashed;background:var(--proposed-soft,rgb(242 193 78 / .14))}.ds-flag--confirmed{color:var(--ink,#f3f6fc);border-color:var(--rule-strong,#3a4f86);background:transparent}"
+    },
+    {
+      "name": "Score Box",
+      "kind": "card",
+      "refersTo": "score-box-total",
+      "description": "Label plus condensed numeral; the total inverts to the white score bug.",
+      "html": "<div class=\"ds-plate ds-plate--score\"><span class=\"ds-plate-label\">Ukupno</span><span class=\"ds-plate-value\">841.1</span></div> <div class=\"ds-plate\"><span class=\"ds-plate-label\">Grupa</span><span class=\"ds-plate-value\">8.0</span></div>",
+      "css": ".ds-plate{display:inline-grid;gap:2px;min-width:7.5rem;padding:.5rem .75rem;background:var(--panel-sunk,#0a1430);color:var(--ink,#f3f6fc);border:1px solid var(--rule-strong,#3a4f86);border-radius:2px}.ds-plate-label{font-family:var(--font-body,Barlow,sans-serif);font-size:.72rem;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-muted,#aab6d3)}.ds-plate-value{font-family:var(--font-display,'Big Shoulders','Arial Narrow',sans-serif);font-weight:800;font-size:clamp(1.8rem,2.6vw,2.6rem);line-height:1;font-variant-numeric:tabular-nums}.ds-plate--score{background:var(--select-bg,#fff);color:var(--select-fg,#0b1530);border-color:var(--select-bg,#fff)}.ds-plate--score .ds-plate-label{color:var(--select-muted,#3a4a72)}"
+    },
+    {
+      "name": "Series Board Row",
+      "kind": "custom",
+      "refersTo": "board-row-current",
+      "description": "Finals leaderboard row: index, score-band pips (10.0-10.4 as a ring), group, total and running sum; the current series is the white bar.",
+      "html": "<div class=\"ds-board\"><button class=\"ds-row\"><span class=\"ds-idx\">2</span><span class=\"ds-pips\"><i class=\"ds-pip ds-pip--ten\"></i><i class=\"ds-pip\"></i><i class=\"ds-pip\"></i><i class=\"ds-pip ds-pip--nine\"></i><i class=\"ds-pip ds-pip--low\"></i></span><span class=\"ds-grp\">7.2 mm</span><span class=\"ds-tot\">105.4<small>Σ 209.9</small></span></button><button class=\"ds-row\" aria-current=\"true\"><span class=\"ds-idx\">3</span><span class=\"ds-pips\"><i class=\"ds-pip\"></i><i class=\"ds-pip ds-pip--ten\"></i><i class=\"ds-pip\"></i><i class=\"ds-pip ds-pip--nine\"></i><i class=\"ds-pip\"></i></span><span class=\"ds-grp\">8.0 mm</span><span class=\"ds-tot\">105.7<small>Σ 315.6</small></span></button></div>",
+      "css": ".ds-board{background:var(--panel,#101c3b);width:30rem}.ds-row{width:100%;min-height:3rem;padding:0 1rem;display:grid;grid-template-columns:1.75rem minmax(0,1fr) 4.25rem 4.75rem;align-items:center;gap:.75rem;background:transparent;color:var(--ink,#f3f6fc);border:0;border-bottom:1px solid var(--rule,#22335e);font-family:var(--font-body,Barlow,sans-serif);text-align:left;cursor:pointer;transition:background .18s}.ds-row:hover{background:var(--panel-raised,#172751)}.ds-row:focus-visible{outline:2px solid var(--focus,#39c6f0);outline-offset:-2px}.ds-row[aria-current=true]{background:var(--select-bg,#fff);color:var(--select-fg,#0b1530)}.ds-idx{font-family:var(--font-display,'Big Shoulders',sans-serif);font-weight:800;font-size:1.15rem;color:var(--ink-faint,#8190b5)}.ds-row[aria-current=true] .ds-idx,.ds-row[aria-current=true] .ds-grp,.ds-row[aria-current=true] small{color:var(--select-muted,#3a4a72)}.ds-pips{display:flex;gap:3px}.ds-pip{display:inline-block;width:.55rem;height:.55rem;border-radius:50%;background:var(--pip-top,#39c6f0)}.ds-pip--ten{background:transparent;box-shadow:inset 0 0 0 2px var(--pip-ten,#2a8fb4)}.ds-pip--nine{background:var(--pip-nine,#5c6e9c)}.ds-row[aria-current=true] .ds-pip--nine{background:var(--select-pip,#8b98bb)}.ds-pip--low{background:var(--pip-low,#ff6b74)}.ds-grp{color:var(--ink-faint,#8190b5);font-size:.82rem;text-align:right}.ds-tot{display:grid;justify-items:end;line-height:1;gap:2px;font-family:var(--font-display,'Big Shoulders',sans-serif);font-weight:800;font-size:1.4rem;font-variant-numeric:tabular-nums}.ds-tot small{font-family:var(--font-body,Barlow,sans-serif);font-size:.72rem;font-weight:600;color:var(--ink-faint,#8190b5)}"
+    },
+    {
+      "name": "Segmented Tabs",
+      "kind": "nav",
+      "refersTo": "seg-item-selected",
+      "description": "Period and source switch; the selected item is the white bar.",
+      "html": "<div class=\"ds-seg\"><button class=\"ds-seg-item\">Nedelja</button><button class=\"ds-seg-item\" aria-pressed=\"true\">Mesec</button><button class=\"ds-seg-item\">Godina</button></div>",
+      "css": ".ds-seg{display:inline-flex;border:1px solid var(--rule-strong,#3a4f86);border-radius:2px;overflow:hidden;background:var(--panel-sunk,#0a1430)}.ds-seg-item{min-height:calc(2.5rem - 2px);padding:0 1rem;color:var(--ink-muted,#aab6d3);background:transparent;border:0;font-family:var(--font-body,Barlow,sans-serif);font-weight:600;font-size:.9rem;cursor:pointer;outline-offset:-2px}.ds-seg-item+.ds-seg-item{border-left:1px solid var(--rule,#22335e)}.ds-seg-item:hover{color:var(--ink,#f3f6fc);background:var(--panel-raised,#172751)}.ds-seg-item[aria-pressed=true]{background:var(--select-bg,#fff);color:var(--select-fg,#0b1530)}.ds-seg-item:focus-visible{outline:2px solid var(--focus,#39c6f0)}"
+    },
+    {
+      "name": "Panel",
+      "kind": "card",
+      "refersTo": "panel-head",
+      "description": "Grid panel: uppercase tracked head over a 1px rule, body scrolls on its own.",
+      "html": "<section class=\"ds-panel\"><header class=\"ds-panel-head\"><h2>Serije</h2><span>Serija 3 · pogoci 21–30</span></header><div class=\"ds-panel-body\">Panel body</div></section>",
+      "css": ".ds-panel{background:var(--panel,#101c3b);color:var(--ink,#f3f6fc);border:1px solid var(--rule,#22335e);font-family:var(--font-body,Barlow,sans-serif);width:24rem}.ds-panel-head{display:flex;align-items:center;gap:.75rem;min-height:2.5rem;padding:0 1rem;border-bottom:1px solid var(--rule,#22335e)}.ds-panel-head h2{margin:0;font-size:.82rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase}.ds-panel-head span{color:var(--ink-faint,#8190b5);font-size:.82rem}.ds-panel-body{padding:1rem}"
+    }
+  ],
+  "narrative": {
+    "northStar": "Finale na televiziji",
+    "overview": "**Creative North Star: \"Finale na televiziji\"**\n\nA training reads like an ISSF finals broadcast. The ground is a deep navy board. Figures sit on it in white condensed numerals, and every colour does exactly one job. The interface is a working scoreboard, not a document. On desktop, the signed-in app is a fixed board: a rail on the left, a scoreboard strip across the top, and a grid of panels that fills the viewport. Each panel scrolls on its own and the page itself does not scroll. Density is high and deliberate. Figures are large and everything around them is small and quiet.\n\nThe signature is the current row. When the shooter picks a series or a shot, that row turns into a white bar with navy text. Every panel lights the same selection at the same moment: the series board row, the shot table row, the large white point on the timeline, the white marker on the heart-rate chart and the white dot in the drift view. Because white is reserved for that bar and for primary actions, the selection can always be read from across the room.\n\nThe world is flat and graphic. It uses square corners, 1px steel rules between panels and tonal navy steps for depth. Glow, glass, decorative gradients and a light theme are all rejected. It is dark only.",
+    "keyCharacteristics": [
+      "Deep navy ground with lighter navy panels separated by 1px steel rules (a grid gap of 1px showing the rule colour).",
+      "White condensed numerals (Big Shoulders 800) for every score and total; Barlow for all UI text.",
+      "One colour per job: cyan = data series, gold dashed + word = proposed, red = elimination or error, white bar = current selection.",
+      "Shot pips banded by score, with the 10.0–10.4 band drawn as a ring rather than a filled dot.",
+      "Near-square corners (2px), no decorative shadows. One soft shadow is reserved for floating popovers.",
+      "Desktop: a fixed panel grid. Phone: one panel per tab with a bottom navigation bar."
+    ],
+    "rules": [
+      {
+        "name": "The One Job Rule",
+        "body": "Cyan means data, gold means proposed, red means error or elimination, and white means selected. Never use a signal colour for decoration, and never give one colour two meanings.",
+        "section": "colors"
+      },
+      {
+        "name": "The Current Row Rule",
+        "body": "A white bar with navy text means the current selection or the primary action. Every panel that shows the selected series or shot lights it at the same time.",
+        "section": "colors"
+      },
+      {
+        "name": "The Not Colour Alone Rule",
+        "body": "State always carries a word and a form along with its colour: a dashed or solid edge, a pennant or check, a struck or dashed rule, or a ring or filled pip.",
+        "section": "colors"
+      },
+      {
+        "name": "The Figures Are Condensed Rule",
+        "body": "Every score, total and count that a shooter compares is set in Big Shoulders 800. Every compared figure in tables and charts uses tabular numerals.",
+        "section": "typography"
+      },
+      {
+        "name": "The Seven Steps Rule",
+        "body": "Use only the seven ramp sizes and the plate clamp.",
+        "section": "typography"
+      },
+      {
+        "name": "The Flat Board Rule",
+        "body": "Nothing resting on the board casts a shadow. Use no glow, glass or decorative gradient fills.",
+        "section": "elevation"
+      }
+    ],
+    "dos": [
+      "**Do** set every compared figure in Big Shoulders 800 with tabular numerals.",
+      "**Do** mark the current selection with the white bar and navy text (select-bg and select-fg) in every panel at once.",
+      "**Do** pair gold with a dashed edge and a word whenever something is proposed, and show it in one place per screen.",
+      "**Do** separate panels with the 1px rule gap. Keep depth to the navy tonal steps.",
+      "**Do** draw the 10.0–10.4 band as a ring and keep the other bands as filled dots.",
+      "**Do** keep chart colours in `CHART` in sync with tokens.css whenever a token changes.",
+      "**Do** give phone controls 2.75rem and show one panel per tab."
+    ],
+    "donts": [
+      "**Don't** add glow, glass, blur or decorative gradient fills.",
+      "**Don't** use cyan, gold, red or white for decoration or for a second meaning.",
+      "**Don't** signal state with colour alone.",
+      "**Don't** round corners beyond 2px or put shadows on resting surfaces.",
+      "**Don't** add a light theme. The board is dark only.",
+      "**Don't** nest cards inside panels. Sections inside a panel are separated by rules."
+    ]
+  }
+}

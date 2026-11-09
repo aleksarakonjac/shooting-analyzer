@@ -48,6 +48,17 @@ describe('timelineOption', () => {
     expect(o.yAxis[1].name).toBe('otk/min');
     const hr = o.series.find((s: { name: string }) => s.name === 'Puls');
     expect(hr.yAxisIndex).toBe(1);
+    // The heart rate sits in the lower third: its axis reaches far above the highest value.
+    expect(o.yAxis[1].max).toBeGreaterThanOrEqual(84 + 2 * (84 - 80));
+    expect(o.yAxis[1].min).toBeLessThanOrEqual(80);
+    // Labels only inside the heart-rate band.
+    expect(o.yAxis[1].axisLabel.formatter(82)).toBe('82');
+    expect(o.yAxis[1].axisLabel.formatter(100)).toBe('');
+  });
+
+  it('starts the score axis just below the lowest shot', () => {
+    const o = timelineOption(v, { series: 1, shot: null }, 'Europe/Belgrade');
+    expect(o.yAxis[0].min).toBe(9.5); // lowest timed shot 9.8
   });
 });
 

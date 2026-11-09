@@ -508,8 +508,8 @@ export function NewTrainingForm({
             row: '1 / 7',
             children: results,
           },
-          { id: 'sources', title: t.sources, col: '9 / 13', row: '1 / 4', children: sources },
-          { id: 'align', title: t.alignment, col: '9 / 13', row: '4 / 7', children: alignment },
+          { id: 'sources', title: t.sources, col: '9 / 13', row: '1 / 5', children: sources },
+          { id: 'align', title: t.alignment, col: '9 / 13', row: '5 / 7', children: alignment },
         ]}
       />
     </form>

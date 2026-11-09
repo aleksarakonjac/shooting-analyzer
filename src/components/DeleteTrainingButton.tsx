@@ -8,7 +8,7 @@ export function DeleteTrainingButton({ id }: { id: string }) {
   const t = sr.report;
   if (!asking) {
     return (
-      <button type="button" className="button--quiet" onClick={() => setAsking(true)}>
+      <button type="button" className="button--danger" onClick={() => setAsking(true)}>
         {t.delete}
       </button>
     );
@@ -17,7 +17,7 @@ export function DeleteTrainingButton({ id }: { id: string }) {
     <form action={deleteTrainingForm} role="alertdialog" aria-label={t.deleteAsk}>
       <input type="hidden" name="id" value={id} />
       <p>{t.deleteAsk}</p>
-      <button type="submit">{t.deleteYes}</button>{' '}
+      <button type="submit" className="button--danger">{t.deleteYes}</button>{' '}
       <button type="button" className="button--quiet" onClick={() => setAsking(false)}>
         {t.cancel}
       </button>

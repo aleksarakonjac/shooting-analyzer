@@ -32,6 +32,8 @@ export function SeriesBoard({
     return b === null ? '—' : Math.round(b);
   };
   if (view.series.length === 0) return <p className="panel__empty">{t.noMatch}</p>;
+  // Running match total after each series: the finals-scoreboard figure.
+  const cumulative = view.series.reduce<number[]>((acc, s) => [...acc, Math.round(((acc.at(-1) ?? 0) + s.total) * 10) / 10], []);
   return (
     <ol className="board" aria-label={t.series}>
       {view.series.map((s, i) => {
@@ -55,7 +57,10 @@ export function SeriesBoard({
                 ))}
               </span>
               <span className="board__group num">{s.groupMm !== null ? `${s.groupMm.toFixed(1)} mm` : ''}</span>
-              <strong className="board__total num">{fmt(s.total)}</strong>
+              <span className="board__totals">
+                <strong className="board__total num">{fmt(s.total)}</strong>
+                <small className="board__cum num" title={t.cumulative}>Σ {fmt(cumulative[i])}</small>
+              </span>
             </button>
             {open && (
               <table className="shots">

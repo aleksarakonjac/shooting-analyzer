@@ -52,3 +52,13 @@ export async function purgeTrainingForm(form: FormData): Promise<void> {
   revalidatePath('/korpa');
   redirect('/korpa');
 }
+
+/** Confirms a proposed alignment from the report. RLS decides who may. */
+export async function confirmAlignmentForm(form: FormData): Promise<void> {
+  const matchId = String(form.get('match_id') ?? '');
+  const trainingId = String(form.get('training_id') ?? '');
+  const supabase = await createClient();
+  const { error } = await supabase.from('matches').update({ align_state: 'confirmed' }).eq('id', matchId);
+  if (error) throw new Error(error.message);
+  revalidatePath(`/trening/${trainingId}`);
+}

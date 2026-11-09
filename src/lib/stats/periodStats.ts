@@ -124,3 +124,16 @@ export function periodStats(trainings: TrainingSummary[], period: Period, now: D
     buckets: keys.map((k) => ({ label: k.label, ...averages(inPeriod.filter((t) => k.match(t.trainedOn))) })),
   };
 }
+
+/**
+ * Buckets of the current period that are not in the future (a month on the 9th shows days 1-9),
+ * so a chart does not spend most of its width on days that have not happened. A month never shows
+ * fewer than seven days.
+ */
+export function pastBuckets<B>(buckets: B[], period: Period, now: Date, tz: string): B[] {
+  const today = localDate(now, tz);
+  const [, m, d] = today.split('-').map(Number);
+  const index =
+    period === 'year' ? m : period === 'month' ? Math.max(d, 7) : ((new Date(asDay(today)).getUTCDay() + 6) % 7) + 1;
+  return buckets.slice(0, Math.min(buckets.length, index));
+}

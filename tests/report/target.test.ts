@@ -36,17 +36,17 @@ describe('targetSpec (ISSF dimensions)', () => {
 });
 
 describe('viewRadiusMm', () => {
-  it('shows air rifle rings 5-10 for a normal group and widens for a wide one', () => {
+  it('zooms an air rifle target to the rings that hold the group (rings 7-10 for a normal 8 mm group)', () => {
     const s = targetSpec('air_rifle');
-    expect(viewRadiusMm(s, 5)).toBeCloseTo(ringRadiusMm(s, 5));
-    expect(viewRadiusMm(s, 12)).toBeCloseTo(ringRadiusMm(s, 3)); // 15.6 mm -> ring 3 (17.75)
+    expect(viewRadiusMm(s, 4.5)).toBeCloseTo(ringRadiusMm(s, 7));
+    expect(viewRadiusMm(s, 1)).toBeCloseTo(ringRadiusMm(s, 9));
     expect(viewRadiusMm(s, 40)).toBeCloseTo(ringRadiusMm(s, 1));
   });
 
-  it('zooms a large target to the rings that hold the group, never inside ring 8', () => {
+  it('zooms a large target the same way, never inside ring 9', () => {
     const s = targetSpec('smallbore_3p');
-    expect(viewRadiusMm(s, 4)).toBeCloseTo(ringRadiusMm(s, 8)); // a tight group still shows rings 8-10
-    expect(viewRadiusMm(s, 30)).toBeCloseTo(ringRadiusMm(s, 5)); // 30 mm * 1.3 = 39 mm -> ring 5 (37.2 is too small)
+    expect(viewRadiusMm(s, 4)).toBeCloseTo(ringRadiusMm(s, 9));
+    expect(viewRadiusMm(s, 30)).toBeCloseTo(ringRadiusMm(s, 5));
     expect(viewRadiusMm(s, 500)).toBeCloseTo(ringRadiusMm(s, 1));
   });
 });

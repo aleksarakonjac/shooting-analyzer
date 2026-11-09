@@ -25,6 +25,10 @@ export function TargetPlot({ discipline, series, selected }: { discipline: Disci
   const rings = Array.from({ length: 10 }, (_, i) => 10 - i).filter((n) => ringRadiusMm(spec, n) <= R + 0.001);
   const stroke = R / 160;
   const dir = sel?.mpi ? offsetDirection(sel.mpi) : null;
+  // Drift view: the MPIs alone on their own scale, so series-to-series movement is readable.
+  const withMpi = series.filter((s) => s.mpi);
+  const reach = Math.max(0.4, ...withMpi.map((s) => Math.max(Math.abs(s.mpi!.x), Math.abs(s.mpi!.y))));
+  const S = Math.ceil(reach * 1.25 * 2) / 2;
 
   return (
     <figure className="target">
@@ -37,22 +41,45 @@ export function TargetPlot({ discipline, series, selected }: { discipline: Disci
           return (
             <g key={n}>
               <circle r={r} className={inBlack ? 'target__ring target__ring--on-black' : 'target__ring'} strokeWidth={stroke} />
-              {n < 9 && n > 0 && (
+              {n < 10 && n > 0 && (
                 <text x={0} y={-(r - spec.stepMm / 4)} className={inBlack ? 'target__num target__num--on-black' : 'target__num'} fontSize={spec.stepMm * 0.32} textAnchor="middle" dominantBaseline="middle">{n}</text>
               )}
             </g>
           );
         })}
         {series.filter((s) => s.mpi && s.idx !== selected).map((s) => (
-          <circle key={s.id} cx={s.mpi!.x} cy={-s.mpi!.y} r={R / 70} className="target__mpi-other" />
+          <g key={s.id}>
+            <circle cx={s.mpi!.x} cy={-s.mpi!.y} r={R / 45} className="target__mpi-other" />
+            <text x={s.mpi!.x + R / 28} y={-s.mpi!.y} fontSize={R / 14} dominantBaseline="middle" className="target__mpi-num">{s.idx}</text>
+          </g>
         ))}
         {sel?.mpi && (
           <g className="target__sel">
             {sel.groupMm !== null && <circle cx={sel.mpi.x} cy={-sel.mpi.y} r={sel.groupMm / 2} className="target__group" strokeWidth={stroke * 2} />}
-            <path d={`M${sel.mpi.x - R / 30},${-sel.mpi.y}h${R / 15}M${sel.mpi.x},${-sel.mpi.y - R / 30}v${R / 15}`} className="target__mpi" strokeWidth={stroke * 2.5} />
+            <path d={`M${sel.mpi.x - R / 22},${-sel.mpi.y}h${R / 11}M${sel.mpi.x},${-sel.mpi.y - R / 22}v${R / 11}`} className="target__mpi" strokeWidth={stroke * 3} />
+            <text x={sel.mpi.x + R / 18} y={-sel.mpi.y - R / 18} fontSize={R / 11} className="target__mpi-num target__mpi-num--sel">{sel.idx}</text>
           </g>
         )}
       </svg>
+      {withMpi.length > 0 && (
+        <div className="target__drift">
+          <svg viewBox={`${-S} ${-S} ${2 * S} ${2 * S}`} role="img" aria-label={`${t.drift} ±${S.toFixed(1)} mm`}>
+            <rect x={-S} y={-S} width={2 * S} height={2 * S} className="target__drift-bg" />
+            <path d={`M${-S},0H${S}M0,${-S}V${S}`} className="target__drift-axis" strokeWidth={S / 90} />
+            <circle r={S / 2} className="target__drift-ring" strokeWidth={S / 120} />
+            {withMpi.map((s) => {
+              const on = s.idx === selected;
+              return (
+                <g key={s.id} data-drift={s.idx}>
+                  <circle cx={s.mpi!.x} cy={-s.mpi!.y} r={S / (on ? 9 : 13)} className={on ? 'target__drift-dot target__drift-dot--sel' : 'target__drift-dot'} />
+                  <text x={s.mpi!.x} y={-s.mpi!.y} fontSize={S / (on ? 7 : 9)} textAnchor="middle" dominantBaseline="central" className={on ? 'target__drift-num target__drift-num--sel' : 'target__drift-num'}>{s.idx}</text>
+                </g>
+              );
+            })}
+          </svg>
+          <span className="target__drift-label">{t.drift} <span className="num">±{S.toFixed(1)} mm</span></span>
+        </div>
+      )}
       <figcaption className="target__legend">
         {sel ? (
           <>
@@ -65,7 +92,7 @@ export function TargetPlot({ discipline, series, selected }: { discipline: Disci
                 </strong>
               ) : '—'}
             </span>
-            <span><i className="key key--other" aria-hidden="true" /> ostale serije</span>
+            <span><i className="key key--other" aria-hidden="true" /> {t.otherMpi}</span>
           </>
         ) : (
           <span>{t.pickSeries}</span>

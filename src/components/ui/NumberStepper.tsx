@@ -1,5 +1,6 @@
 'use client';
 import { Button, Group, Input, Label, NumberField, Text } from 'react-aria-components';
+import { Minus, Plus } from './icons';
 
 /** A whole-number stepper (number of series fired, say): minus, field, plus; arrow keys step. */
 export function NumberStepper({
@@ -32,9 +33,9 @@ export function NumberStepper({
     >
       <Label className="ui-label">{label}</Label>
       <Group className="ui-number">
-        <Button slot="decrement" aria-label="Manje">−</Button>
+        <Button slot="decrement" aria-label="Manje"><Minus /></Button>
         <Input />
-        <Button slot="increment" aria-label="Više">+</Button>
+        <Button slot="increment" aria-label="Više"><Plus /></Button>
       </Group>
       {description && <Text slot="description" className="ui-desc">{description}</Text>}
     </NumberField>

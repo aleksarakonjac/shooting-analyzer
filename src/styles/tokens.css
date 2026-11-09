@@ -33,6 +33,15 @@
   --danger-soft: rgb(255 107 116 / 0.14);
   --select-bg: #ffffff; /* the broadcast "current row" */
   --select-fg: #0b1530;
+  --select-hover: #d9e2f5; /* white bar under the pointer */
+  --select-active: #b9c7e6;
+  --select-muted: #3a4a72; /* secondary text on the white bar, 8.9:1 */
+  --select-pip: #8b98bb; /* the 9.x pip on the white bar */
+
+  /* ISSF target card (printed paper, not the board) */
+  --target-card: #e9ecef;
+  --target-ink: #14181b;
+  --group-fill: rgb(57 198 240 / 0.22);
 
   /* Shot pips by score band (whole-ring disciplines map 10 / 9 / 8 / below) */
   --pip-top: #39c6f0; /* 10.5 and up */
@@ -50,6 +59,16 @@
   --font-display: var(--f-display), 'Arial Narrow', ui-sans-serif, sans-serif;
   --font-stencil: var(--font-display);
   --font-data: ui-monospace, 'SF Mono', 'Cascadia Mono', Menlo, monospace;
+
+  /* Type ramp: seven steps, nothing in between */
+  --fs-xs: 0.72rem; /* uppercase labels, tiny meta */
+  --fs-sm: 0.82rem; /* secondary text, legends */
+  --fs-md: 0.9rem; /* dense UI text, buttons */
+  --fs-base: 1rem; /* body and inputs */
+  --fs-lg: 1.15rem; /* emphasised rows */
+  --fs-xl: 1.4rem; /* row totals, section numerals */
+  --fs-2xl: 1.8rem; /* screen titles, card numerals */
+  --fs-plate: clamp(1.8rem, 2.6vw, 2.6rem); /* score-box numerals */
 
   /* Spacing scale (4px base) */
   --space-1: 0.25rem;

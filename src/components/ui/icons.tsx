@@ -20,3 +20,9 @@ export const ChevronRight = () => (
 export const CalendarIcon = () => (
   <svg {...base} width="18" height="18"><path d="M4 7a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V7ZM4 10h16M9 3v4M15 3v4" /></svg>
 );
+export const Minus = () => (
+  <svg {...base} width="16" height="16"><path d="M5 12h14" /></svg>
+);
+export const Plus = () => (
+  <svg {...base} width="16" height="16"><path d="M12 5v14M5 12h14" /></svg>
+);

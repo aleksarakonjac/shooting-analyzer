@@ -15,7 +15,7 @@ import { sr } from '@/lib/i18n/sr';
 import { shotWindow } from '@/lib/report/derive';
 import { buildReportView, type RawSeries } from '@/lib/report/viewModel';
 import { createClient } from '@/lib/supabase/server';
-import { updateTrainingForm } from '@/lib/trainings';
+import { confirmAlignmentForm, updateTrainingForm } from '@/lib/trainings';
 
 interface TrainingRow {
   id: string; name: string; discipline: DisciplineId; trained_on: string; place: string; notes: string;
@@ -85,7 +85,8 @@ async function Body({ params, searchParams }: { params: Promise<{ id: string }>;
       <div className="ws__head">
         <h1 className="ws__title">{tr.name}</h1>
         <p className="ws__meta">
-          {cfg.nameSr} · <span className="num">{date}</span>
+          {!tr.name.includes(cfg.nameSr) && <>{cfg.nameSr} · </>}
+          <span className="num">{date}</span>
           {clock && <> · <span className="num">{clock}</span></>}
           {tr.place && ` · ${tr.place}`}
         </p>
@@ -97,11 +98,23 @@ async function Body({ params, searchParams }: { params: Promise<{ id: string }>;
           <span><strong className="num">{view.shotCount}</strong> pogodaka</span>
         </p>
       )}
-      {match && <FlagBadge state={match.align_state} />}
+      {match && (
+        <div className="align-state">
+          <FlagBadge state={match.align_state} />
+          {match.align_state === 'proposed' && canEdit && (
+            <form action={confirmAlignmentForm}>
+              <input type="hidden" name="match_id" value={match.id} />
+              <input type="hidden" name="training_id" value={tr.id} />
+              <button type="submit">
+                {t.confirmShort}<span className="hide-phone">&nbsp;{t.confirmRest}</span>
+              </button>
+            </form>
+          )}
+        </div>
+      )}
       {canEdit && !izmena && (
-        <div className="ws__strip-end">
+        <div className="ws__strip-end hide-phone">
           <Link className="button button--quiet" href={`/trening/${tr.id}?izmena=1`}>{t.edit}</Link>
-          <DeleteTrainingButton id={tr.id} />
         </div>
       )}
       {canEdit && izmena && (
@@ -143,6 +156,17 @@ async function Body({ params, searchParams }: { params: Promise<{ id: string }>;
           {tr.source_files.length === 0 && <li className="panel__empty">—</li>}
         </ul>
       </section>
+      {canEdit && (
+        <p className="show-phone">
+          <Link className="button button--quiet" href={`/trening/${tr.id}?izmena=1`}>{t.edit}</Link>
+        </p>
+      )}
+      {canEdit && (
+        <section aria-labelledby="danger-title" className="other__danger">
+          <h3 id="danger-title" className="other__title">{t.dangerTitle}</h3>
+          <DeleteTrainingButton id={tr.id} />
+        </section>
+      )}
     </div>
   );
 

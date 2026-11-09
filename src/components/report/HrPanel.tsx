@@ -2,6 +2,7 @@
 import { useMemo } from 'react';
 import { hrOption, type Selection } from '@/lib/report/charts';
 import { hrStats } from '@/lib/report/derive';
+import { hrAt } from '@/lib/report/hrAt';
 import type { ReportView } from '@/lib/report/viewModel';
 import { sr } from '@/lib/i18n/sr';
 import { EChart } from './EChart';
@@ -40,12 +41,22 @@ export function HrPanel({
     );
   }
   const stats = hrStats(samples)!;
+  // Heart rate at the moment of each shot of the selected series: the figure the overlay cannot show at a glance.
+  const sel = view.series.find((x) => x.idx === selection.series);
+  const atShots = sel ? sel.shots.map((x) => (x.tMs === null ? null : hrAt(samples, x.tMs))).filter((b): b is number => b !== null) : [];
+  const atAvg = atShots.length ? Math.round(atShots.reduce((a, b) => a + b, 0) / atShots.length) : null;
   return (
     <div className="chart-panel">
       <p className="chart-panel__legend">
         <span><i className="key key--raw" aria-hidden="true" /> {t.hr}</span>
         <span><i className="key key--line" aria-hidden="true" /> {t.hrRolling}</span>
         <span><i className="pip" data-band="top" aria-hidden="true" /> {t.hrShots}</span>
+        {sel && atAvg !== null && (
+          <span className="chart-panel__sel">
+            {t.seriesLabel(sel.idx)}: {t.hrAtShots} <strong className="num">{atAvg}</strong>{' '}
+            (<span className="num">{Math.min(...atShots).toFixed(0)}–{Math.max(...atShots).toFixed(0)}</span>)
+          </span>
+        )}
         <span className="chart-panel__stat">{t.hrAvg} <strong className="num">{stats.avg}</strong> · {t.hrMin} <span className="num">{stats.min}</span> · {t.hrMax} <span className="num">{stats.max}</span> {t.bpm}</span>
       </p>
       <EChart
