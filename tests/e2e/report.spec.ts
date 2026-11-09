@@ -1,6 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
 import { join } from 'node:path';
-import { pickDiscipline } from './helpers';
+import { pickDiscipline, openMore } from './helpers';
 
 // Needs the Supabase TEST project with all migrations applied (see docs/supabase-setup.md).
 const adminEmail = process.env.E2E_ADMIN_EMAIL;
@@ -73,6 +73,7 @@ test('the report shows total 841.1, 8 series, a group of 8.0 mm and separate war
   await expect(page.locator('.lane-plate__value')).toHaveText('841.1');
   await expect(page.getByTestId('series')).toHaveCount(8);
   await expect(page.getByTestId('series').first()).toContainText('8.0 mm');
+  await openMore(page);
   await expect(page.getByTestId('warmup')).toHaveText('Zagrevanje: 26');
   await expect(page.getByTestId('attempt')).toHaveText('Neuspeli pokušaji: 23');
 });
@@ -97,6 +98,7 @@ test('a heart-rate file outside the training window also shows "nema pulsa"', as
 
 test('editing changes the name', async () => {
   await page.goto(hrReportUrl);
+  await openMore(page);
   await page.getByRole('link', { name: 'Izmeni' }).click();
   await page.getByLabel('Naziv').fill('Preimenovan trening');
   await page.getByRole('button', { name: 'Sačuvaj izmene' }).click();
@@ -105,7 +107,8 @@ test('editing changes the name', async () => {
 
 test('delete moves the training to the trash and the report is gone', async () => {
   await page.goto(reportUrl);
-  await page.getByRole('button', { name: 'Obriši trening' }).click();
+  await openMore(page);
+  await page.getByRole('button', { name: 'Obriši sesiju' }).click();
   await page.getByRole('button', { name: 'Obriši', exact: true }).click();
   await expect(page).toHaveURL(/\/$/);
   await page.goto(reportUrl);

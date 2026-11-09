@@ -8,8 +8,12 @@ import { getSessionProfile } from '@/lib/auth/session';
 import { sr } from '@/lib/i18n/sr';
 import { createClient } from '@/lib/supabase/server';
 import { ProfileForm } from './ProfileForm';
+import { PipRuleForm } from './PipRuleForm';
+import { DISCIPLINES } from '@/lib/domain/disciplines';
+import type { DisciplineId } from '@/lib/domain/types';
+import { pipTopFor } from '@/lib/report/target';
 
-type Search = { sacuvano?: string; greska?: string };
+type Search = { sacuvano?: string; greska?: string; prikaz?: string };
 
 export default function AccountPage({ searchParams }: { searchParams: Promise<Search> }) {
   return (
@@ -21,11 +25,13 @@ export default function AccountPage({ searchParams }: { searchParams: Promise<Se
 
 async function Body({ searchParams }: { searchParams: Promise<Search> }) {
   await connection();
-  const { sacuvano, greska } = await searchParams;
+  const { sacuvano, greska, prikaz } = await searchParams;
   const profile = await getSessionProfile();
   if (!profile) redirect('/login');
   const supabase = await createClient();
-  const { data } = await supabase.from('profiles').select('display_name').eq('id', profile.id).maybeSingle();
+  const { data } = await supabase.from('profiles').select('display_name, pip_top').eq('id', profile.id).maybeSingle();
+  const pipPrefs = (data?.pip_top ?? {}) as Record<string, unknown>;
+  const pipCurrent = Object.fromEntries((Object.keys(DISCIPLINES) as DisciplineId[]).map((d) => [d, pipTopFor(pipPrefs, d)])) as Record<DisciplineId, number>;
   const t = sr.account;
 
   const profilePanel = (
@@ -33,6 +39,13 @@ async function Body({ searchParams }: { searchParams: Promise<Search> }) {
       {sacuvano && <p role="status">{t.saved}</p>}
       {greska && <p role="alert">{t.invalid}</p>}
       <ProfileForm name={(data?.display_name as string | undefined) ?? ''} tz={profile.tz} />
+    </div>
+  );
+
+  const displayPanel = (
+    <div className="stack">
+      {prikaz && <p role="status">{t.pipSaved}</p>}
+      <PipRuleForm current={pipCurrent} />
     </div>
   );
 
@@ -68,8 +81,9 @@ async function Body({ searchParams }: { searchParams: Promise<Search> }) {
       rows={1}
       strip={<div className="ws__head"><h1 className="ws__title">{t.title}</h1></div>}
       panels={[
-        { id: 'profile', title: t.profile, col: '1 / 6', row: '1 / 2', children: profilePanel },
-        { id: 'more', title: t.sections, col: '6 / 13', row: '1 / 2', flush: true, children: more },
+        { id: 'profile', title: t.profile, col: '1 / 5', row: '1 / 2', children: profilePanel },
+        { id: 'display', title: t.display, col: '5 / 9', row: '1 / 2', children: displayPanel },
+        { id: 'more', title: t.sections, col: '9 / 13', row: '1 / 2', flush: true, children: more },
       ]}
     />
   );

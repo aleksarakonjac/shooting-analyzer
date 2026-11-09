@@ -8,7 +8,13 @@ export function Segmented<T extends string>({
   onChange,
   options,
   name,
+  hideLabel,
+  full = true,
 }: {
+  /** Keep the label for assistive tech only. */
+  hideLabel?: boolean;
+  /** Stretch across the container (forms); off for a compact switch in a panel. */
+  full?: boolean;
   /** Form field name, for plain form submits. */
   name?: string;
   label: string;
@@ -18,8 +24,8 @@ export function Segmented<T extends string>({
 }) {
   return (
     <RadioGroup className="ui-control" name={name} value={value} onChange={(v) => onChange(v as T)} orientation="horizontal">
-      <Label className="ui-label">{label}</Label>
-      <div className="ui-seg ui-seg--full">
+      <Label className={hideLabel ? 'sr-only' : 'ui-label'}>{label}</Label>
+      <div className={full ? 'ui-seg ui-seg--full' : 'ui-seg'}>
         {options.map((o) => (
           <Radio key={o.id} value={o.id} className="ui-seg__item">
             {o.label}

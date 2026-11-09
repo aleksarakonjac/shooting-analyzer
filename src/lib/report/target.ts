@@ -1,3 +1,4 @@
+import { DISCIPLINES } from '@/lib/domain/disciplines';
 import type { DisciplineId } from '@/lib/domain/types';
 
 export interface TargetSpec {
@@ -40,16 +41,48 @@ export function viewRadiusMm(s: TargetSpec, extentMm: number): number {
 
 export type ScoreBand = 'top' | 'ten' | 'nine' | 'low';
 
-/** Colour band of a shot pip: decimal 10.5+ / 10.0-10.4 / 9.x / lower; whole rings 10 / 9 / 8 / lower. */
-export function scoreBand(value: number, decimal: boolean): ScoreBand {
+/** Default line between a filled pip and a ring: 10.5 for decimal scoring, 10 for whole rings. */
+export const defaultPipTop = (decimal: boolean) => (decimal ? 10.5 : 10);
+
+/** The owner's filled-pip threshold for a discipline, if it is a valid one (decimal 10.0-10.9, whole 9 or 10). */
+export function pipTopFor(prefs: Record<string, unknown> | null | undefined, d: DisciplineId): number {
+  const decimal = DISCIPLINES[d].decimal;
+  const v = prefs?.[d];
+  if (typeof v !== 'number' || !Number.isFinite(v)) return defaultPipTop(decimal);
+  const ok = decimal ? v >= 10 && v <= 10.9 && Math.abs(v * 10 - Math.round(v * 10)) < 1e-9 : v === 9 || v === 10;
+  return ok ? v : defaultPipTop(decimal);
+}
+
+/**
+ * Colour band of a shot pip. `top` (filled) starts at the owner's threshold; below it, down to the 10 (9 for
+ * whole rings), is `ten` (a ring); then 9.x (8) and lower.
+ */
+export function scoreBand(value: number, decimal: boolean, topFrom = defaultPipTop(decimal)): ScoreBand {
+  if (value >= topFrom) return 'top';
   if (decimal) {
-    if (value >= 10.5) return 'top';
     if (value >= 10) return 'ten';
     if (value >= 9) return 'nine';
     return 'low';
   }
-  if (value >= 10) return 'top';
   if (value >= 9) return 'ten';
   if (value >= 8) return 'nine';
   return 'low';
+}
+
+/** Legend entries for the pip bands under a threshold; the ring band is left out when the threshold leaves it empty. */
+export function bandLegend(decimal: boolean, top: number): { band: ScoreBand; label: string }[] {
+  if (decimal) {
+    return [
+      { band: 'top' as const, label: `${top.toFixed(1)}+` },
+      ...(top > 10 ? [{ band: 'ten' as const, label: `10.0–${(top - 0.1).toFixed(1)}` }] : []),
+      { band: 'nine' as const, label: '9.x' },
+      { band: 'low' as const, label: '< 9' },
+    ];
+  }
+  return [
+    { band: 'top' as const, label: top === 10 ? '10' : `${top}+` },
+    ...(top === 10 ? [{ band: 'ten' as const, label: '9' }] : []),
+    { band: 'nine' as const, label: '8' },
+    { band: 'low' as const, label: '< 8' },
+  ];
 }

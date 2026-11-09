@@ -100,3 +100,25 @@ export async function confirmAlignmentForm(form: FormData): Promise<void> {
   if (error) throw new Error(error.message);
   revalidatePath(`/trening/${trainingId}`);
 }
+
+/** Saves the heart-rate offset and the file's clock zone, with the average recomputed over the shot window. */
+export async function updateHrAlignmentForm(form: FormData): Promise<void> {
+  const id = String(form.get('training_id') ?? '');
+  const offset = Math.round(Number(form.get('offset_ms')));
+  const zone = String(form.get('zone') ?? '').trim() || null;
+  const avgRaw = String(form.get('avg_bpm') ?? '');
+  const avg = avgRaw === '' ? null : Math.round(Number(avgRaw));
+  if (!Number.isFinite(offset) || (avg !== null && !Number.isFinite(avg))) redirect(`/trening/${id}?greska=puls`);
+  if (zone) {
+    try {
+      new Intl.DateTimeFormat('en', { timeZone: zone });
+    } catch {
+      redirect(`/trening/${id}?greska=puls`);
+    }
+  }
+  const supabase = await createClient();
+  const { error } = await supabase.from('hr_samples_ref').update({ offset_ms: offset, zone, avg_bpm: avg }).eq('training_id', id);
+  if (error) throw new Error(error.message);
+  revalidatePath(`/trening/${id}`);
+  redirect(`/trening/${id}`);
+}

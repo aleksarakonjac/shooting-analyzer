@@ -1,6 +1,9 @@
 'use server';
 import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
+import { DISCIPLINES } from '@/lib/domain/disciplines';
+import type { DisciplineId } from '@/lib/domain/types';
+import { pipTopFor } from '@/lib/report/target';
 
 export type FormState = { error?: string } | undefined;
 
@@ -55,4 +58,18 @@ export async function updateOwnProfile(form: FormData): Promise<void> {
   if (!auth.user || !name || !tz) redirect('/nalog?greska=1');
   const { error } = await supabase.from('profiles').update({ display_name: name, tz }).eq('id', auth.user.id);
   redirect(error ? '/nalog?greska=1' : '/nalog?sacuvano=1');
+}
+
+/** Saves the filled-pip threshold per discipline; values that are not allowed fall back to the default. */
+export async function updatePipRule(form: FormData): Promise<void> {
+  const supabase = await createClient();
+  const { data: auth } = await supabase.auth.getUser();
+  if (!auth.user) redirect('/login');
+  const pip: Record<string, number> = {};
+  for (const d of Object.keys(DISCIPLINES) as DisciplineId[]) {
+    const v = Number(String(form.get(`pip_${d}`) ?? ''));
+    pip[d] = pipTopFor({ [d]: v }, d);
+  }
+  const { error } = await supabase.from('profiles').update({ pip_top: pip }).eq('id', auth.user.id);
+  redirect(error ? '/nalog?greska=1' : '/nalog?prikaz=1');
 }

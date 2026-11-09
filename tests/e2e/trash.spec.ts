@@ -1,6 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
 import { join } from 'node:path';
-import { pickDiscipline } from './helpers';
+import { pickDiscipline, openMore } from './helpers';
 
 // Needs the Supabase TEST project with migrations 0001-0010 applied (see docs/supabase-setup.md).
 const adminEmail = process.env.E2E_ADMIN_EMAIL;
@@ -18,7 +18,8 @@ let reportUrl = '';
 
 async function deleteFromReport(): Promise<void> {
   await page.goto(reportUrl);
-  await page.getByRole('button', { name: 'Obriši trening' }).click();
+  await openMore(page);
+  await page.getByRole('button', { name: 'Obriši sesiju' }).click();
   await page.getByRole('button', { name: 'Obriši', exact: true }).click();
   await expect(page).toHaveURL(/\/$/);
 }

@@ -68,3 +68,45 @@ describe('scoreBand', () => {
     expect(scoreBand(7, false)).toBe('low');
   });
 });
+
+import { pipTopFor } from '@/lib/report/target';
+import { buildReportView } from '@/lib/report/viewModel';
+
+describe('the filled-pip threshold', () => {
+  it('moves the line between filled (top) and ring (ten)', () => {
+    expect(scoreBand(10.6, true, 10.8)).toBe('ten');
+    expect(scoreBand(10.8, true, 10.8)).toBe('top');
+    expect(scoreBand(10.1, true, 10.0)).toBe('top');
+    expect(scoreBand(9, false, 9)).toBe('top');
+  });
+
+  it('reads the owner setting per discipline and falls back to the default for missing or invalid values', () => {
+    expect(pipTopFor({ air_rifle: 10.3 }, 'air_rifle')).toBe(10.3);
+    expect(pipTopFor({}, 'air_rifle')).toBe(10.5);
+    expect(pipTopFor({ air_rifle: 12 }, 'air_rifle')).toBe(10.5);
+    expect(pipTopFor({ smallbore_pistol: 9 }, 'smallbore_pistol')).toBe(9);
+    expect(pipTopFor({ smallbore_pistol: 9.5 }, 'smallbore_pistol')).toBe(10);
+    expect(pipTopFor(null, 'smallbore_pistol')).toBe(10);
+  });
+
+  it('is applied by the report view and carried for the legend', () => {
+    const v = buildReportView(
+      [{ id: 'a', idx: 1, position: null, total: 21, total_decimal: 21.2, mpi_x: null, mpi_y: null, group_mm: null, shots: [{ idx: 1, value: 10.6, inner: false, t_ms: null }] }],
+      'air_rifle',
+      10.8,
+    );
+    expect(v.series[0].shots[0].band).toBe('ten');
+    expect(v.pipTop).toBe(10.8);
+  });
+});
+
+import { bandLegend } from '@/lib/report/target';
+
+describe('bandLegend', () => {
+  it('names each band by its range under the owner threshold, leaving out an empty ring band', () => {
+    expect(bandLegend(true, 10.5).map((b) => b.label)).toEqual(['10.5+', '10.0–10.4', '9.x', '< 9']);
+    expect(bandLegend(true, 10).map((b) => b.band)).toEqual(['top', 'nine', 'low']);
+    expect(bandLegend(false, 10).map((b) => b.label)).toEqual(['10', '9', '8', '< 8']);
+    expect(bandLegend(false, 9).map((b) => b.label)).toEqual(['9+', '8', '< 8']);
+  });
+});

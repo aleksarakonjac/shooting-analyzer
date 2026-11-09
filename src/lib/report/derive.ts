@@ -67,3 +67,10 @@ export function hrCoverage(
   const inside = samples.filter((s) => s.tMs + offsetMs >= win.fromMs && s.tMs + offsetMs <= win.toMs).length;
   return { inside, total: samples.length };
 }
+
+/** Average heart rate over the shot window (first to last timed shot), as stored for the dashboard. */
+export function hrAvgOverShots(samples: HrSample[], shotTimes: (number | null)[]): number | null {
+  const win = shotWindow(shotTimes, 0);
+  if (!win) return null;
+  return hrStats(samples.filter((s) => s.tMs >= win.fromMs && s.tMs <= win.toMs))?.avg ?? null;
+}

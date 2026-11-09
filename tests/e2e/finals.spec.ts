@@ -13,11 +13,9 @@ const shooter = { name: `E2E Finale ${stamp}`, email: `e2e-f-${stamp}@example.co
 let page: Page;
 let reportUrl = '';
 
-/** Opens the final entry form when it is folded away. */
+/** The final entry is its own panel on a finale session; wait until it is there. */
 async function openEntry(): Promise<void> {
-  const shot1 = page.getByLabel('Pogodak 1', { exact: true });
-  if (!(await shot1.isVisible())) await page.getByText('Dodaj finale', { exact: true }).click();
-  await expect(shot1).toBeVisible();
+  await expect(page.getByLabel('Pogodak 1', { exact: true })).toBeVisible();
 }
 
 /** Fills shots 1..n of the final form: 10.0 in the first series, 10.5 in the second, 10.2 after that. */

@@ -1,4 +1,5 @@
 'use client';
+import { useState } from 'react';
 import { sr } from '@/lib/i18n/sr';
 import type { HrSample } from '@/lib/parsers/tcx';
 import type { Selection } from '@/lib/report/charts';
@@ -31,13 +32,21 @@ export function SeriesBoard({
     const b = tMs !== null && hr ? hrAt(hr, tMs) : null;
     return b === null ? '—' : Math.round(b);
   };
+  const [all, setAll] = useState(false);
   if (view.series.length === 0) return <p className="panel__empty">{t.noMatch}</p>;
   // Running match total after each series: the finals-scoreboard figure.
   const cumulative = view.series.reduce<number[]>((acc, s) => [...acc, Math.round(((acc.at(-1) ?? 0) + s.total) * 10) / 10], []);
   return (
-    <ol className="board" aria-label={t.series}>
+    <div className="board-wrap">
+      <div className="board__tools">
+        <button type="button" className="button--quiet" onClick={() => setAll((a) => !a)}>
+          {all ? t.collapseAll : t.expandAll}
+        </button>
+      </div>
+      <ol className="board" aria-label={t.series}>
       {view.series.map((s, i) => {
-        const open = selection.series === s.idx;
+        const current = selection.series === s.idx;
+        const open = all || current;
         const prev = i > 0 ? view.series[i - 1].position : null;
         const posHead = s.position && s.position !== prev ? sr.newTraining.positionGroup[s.position] : null;
         return (
@@ -47,8 +56,8 @@ export function SeriesBoard({
               type="button"
               className="board__row"
               aria-expanded={open}
-              aria-current={open ? 'true' : undefined}
-              onClick={() => onSelect({ series: open ? null : s.idx, shot: null })}
+              aria-current={current ? 'true' : undefined}
+              onClick={() => onSelect({ series: current ? null : s.idx, shot: null })}
             >
               <span className="board__idx num">{s.idx}</span>
               <span className="board__pips" aria-hidden="true">
@@ -90,6 +99,7 @@ export function SeriesBoard({
           </li>
         );
       })}
-    </ol>
+      </ol>
+    </div>
   );
 }

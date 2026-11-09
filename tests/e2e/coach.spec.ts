@@ -1,6 +1,6 @@
 import { expect, test, type Browser, type Page } from '@playwright/test';
 import { join } from 'node:path';
-import { pickDiscipline, pickToday } from './helpers';
+import { pickDiscipline, pickToday, openMore } from './helpers';
 
 // Needs the Supabase TEST project with migrations 0001-0009 applied (see docs/supabase-setup.md).
 const adminEmail = process.env.E2E_ADMIN_EMAIL;
@@ -118,7 +118,8 @@ test('the shooter sees the training and deletes it, after which the coach card i
   await expect(alphaPage.getByRole('link', { name: /Vazdušna puška/ }).first()).toBeVisible();
   await alphaPage.getByRole('link', { name: /Vazdušna puška/ }).first().click();
   await expect(alphaPage.getByTestId('series')).toHaveCount(8);
-  await alphaPage.getByRole('button', { name: 'Obriši trening' }).click();
+  await openMore(alphaPage);
+  await alphaPage.getByRole('button', { name: 'Obriši sesiju' }).click();
   await alphaPage.getByRole('button', { name: 'Obriši', exact: true }).click();
   await expect(alphaPage).toHaveURL(/\/$/);
 

@@ -1,6 +1,6 @@
 import { DISCIPLINES } from '@/lib/domain/disciplines';
 import type { DisciplineId, Position } from '@/lib/domain/types';
-import { scoreBand, type ScoreBand } from './target';
+import { defaultPipTop, scoreBand, type ScoreBand } from './target';
 
 export interface RawSeries {
   id: string;
@@ -39,6 +39,8 @@ export interface SeriesView {
 
 export interface ReportView {
   decimal: boolean;
+  /** Score from which a pip is drawn filled (the owner's setting). */
+  pipTop: number;
   series: SeriesView[];
   total: number;
   shotCount: number;
@@ -49,8 +51,9 @@ const num = (v: number | string | null | undefined): number | null => (v === nul
 const round1 = (v: number) => Math.round(v * 10) / 10;
 
 /** Plain, ordered data for the report panels (server and client alike). */
-export function buildReportView(raw: RawSeries[], discipline: DisciplineId): ReportView {
+export function buildReportView(raw: RawSeries[], discipline: DisciplineId, pipTop?: number): ReportView {
   const decimal = DISCIPLINES[discipline].decimal;
+  const top = pipTop ?? defaultPipTop(decimal);
   let n = 0;
   const series = [...raw]
     .sort((a, b) => a.idx - b.idx)
@@ -61,7 +64,7 @@ export function buildReportView(raw: RawSeries[], discipline: DisciplineId): Rep
         .map((sh): ShotView => {
           n += 1;
           const value = Number(sh.value);
-          return { n, idx: sh.idx, value, inner: Boolean(sh.inner), tMs: num(sh.t_ms), band: scoreBand(value, decimal), series: s.idx };
+          return { n, idx: sh.idx, value, inner: Boolean(sh.inner), tMs: num(sh.t_ms), band: scoreBand(value, decimal, top), series: s.idx };
         });
       const mx = num(s.mpi_x);
       const my = num(s.mpi_y);
@@ -80,6 +83,7 @@ export function buildReportView(raw: RawSeries[], discipline: DisciplineId): Rep
   const all = series.flatMap((s) => s.shots);
   return {
     decimal,
+    pipTop: top,
     series,
     total: round1(series.reduce((a, s) => a + s.total, 0)),
     shotCount: all.length,

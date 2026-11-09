@@ -7,12 +7,14 @@ import { FinalsList, type FinalRow } from '@/components/FinalsList';
 import { FlagBadge } from '@/components/FlagBadge';
 import { LanePlate } from '@/components/LanePlate';
 import { ReportWorkspace } from '@/components/report/ReportWorkspace';
+import { MoreMenu } from '@/components/report/MoreMenu';
 import { getSessionProfile } from '@/lib/auth/session';
 import { DISCIPLINES } from '@/lib/domain/disciplines';
 import type { DisciplineId } from '@/lib/domain/types';
 import { isFinalDiscipline } from '@/lib/finals/format';
 import { sr } from '@/lib/i18n/sr';
 import { shotWindow } from '@/lib/report/derive';
+import { pipTopFor } from '@/lib/report/target';
 import { buildReportView, type RawSeries } from '@/lib/report/viewModel';
 import { createClient } from '@/lib/supabase/server';
 import { confirmAlignmentForm } from '@/lib/trainings';
@@ -78,7 +80,9 @@ async function Body({ params, searchParams }: { params: Promise<{ id: string }>;
   const nt = sr.newTraining;
   // A training holds one match in practice; a second match would follow the first in the same board.
   const match = tr.matches[0] ?? null;
-  const view = buildReportView(tr.matches.flatMap((m) => m.series), tr.discipline);
+  // The pip rule is the viewer's own display setting.
+  const { data: me } = profile ? await supabase.from('profiles').select('pip_top').eq('id', profile.id).maybeSingle() : { data: null };
+  const view = buildReportView(tr.matches.flatMap((m) => m.series), tr.discipline, pipTopFor(me?.pip_top as Record<string, unknown> | null, tr.discipline));
   const hrRef = Array.isArray(tr.hr_samples_ref) ? tr.hr_samples_ref[0] : tr.hr_samples_ref;
   const tcx = tr.source_files.find((f) => f.kind === 'tcx')?.storage_path ?? null;
   const allShots = view.series.flatMap((s) => s.shots);
@@ -137,6 +141,41 @@ async function Body({ params, searchParams }: { params: Promise<{ id: string }>;
     );
   }
 
+  const menu = (
+    <MoreMenu>
+      <section aria-labelledby="info-title" className="more__section">
+        <h3 id="info-title" className="more__title">{t.info}</h3>
+        <ul className="more__files">
+          {tr.source_files.map((f) => <li key={f.storage_path}>{SOURCE_LABEL[f.kind] ?? f.kind}</li>)}
+          {tr.source_files.length === 0 && <li className="panel__empty">—</li>}
+        </ul>
+        {match && <p>{t.alignInfo(match.align_state)}</p>}
+      </section>
+      <section aria-labelledby="loose-title" className="more__section">
+        <h3 id="loose-title" className="more__title">{t.loose}</h3>
+        {tr.loose_shots.length === 0 ? (
+          <p className="panel__empty">{t.looseNone}</p>
+        ) : (
+          <p className="report__loose">
+            <span data-testid="warmup">{t.warmup(warmups)}</span>
+            <span data-testid="attempt">{t.attempt(attempts)}</span>
+          </p>
+        )}
+        <p className="more__help">{t.looseHelp}</p>
+      </section>
+      <section aria-labelledby="notes-title" className="more__section">
+        <h3 id="notes-title" className="more__title">{t.notes}</h3>
+        {tr.notes ? <p>{tr.notes}</p> : <p className="panel__empty">{t.noNotes}</p>}
+      </section>
+      {canEdit && (
+        <div className="more__actions">
+          <Link className="button button--quiet" href={`/trening/${tr.id}?izmena=1`}>{t.edit}</Link>
+          <DeleteTrainingButton id={tr.id} />
+        </div>
+      )}
+    </MoreMenu>
+  );
+
   const strip = (
     <>
       <div className="ws__head">
@@ -151,6 +190,7 @@ async function Body({ params, searchParams }: { params: Promise<{ id: string }>;
           {tr.events && ` · ${tr.events.name}`}
         </p>
       </div>
+      {greska === 'puls' && <p role="alert">{t.hrInvalid}</p>}
       {view.series.length > 0 && <LanePlate label={t.total} value={view.total.toFixed(cfg.decimal ? 1 : 0)} variant="score" />}
       {view.series.length > 0 && (
         <p className="ws__figures">
@@ -172,64 +212,40 @@ async function Body({ params, searchParams }: { params: Promise<{ id: string }>;
           )}
         </div>
       )}
-      {canEdit && (
-        <div className="ws__strip-end hide-phone">
-          <Link className="button button--quiet" href={`/trening/${tr.id}?izmena=1`}>{t.edit}</Link>
-        </div>
-      )}
+      <div className="ws__strip-end">{menu}</div>
     </>
   );
 
-  const other = (
-    <div className="other">
-      <section aria-labelledby="loose-title">
-        <h3 id="loose-title" className="other__title">{t.loose}</h3>
-        {tr.loose_shots.length === 0 ? (
-          <p className="panel__empty">{t.looseNone}</p>
-        ) : (
-          <p className="report__loose">
-            <span data-testid="warmup">{t.warmup(warmups)}</span>
-            <span data-testid="attempt">{t.attempt(attempts)}</span>
-          </p>
-        )}
-      </section>
-      <section aria-labelledby="notes-title">
-        <h3 id="notes-title" className="other__title">{t.notes}</h3>
-        {tr.notes ? <p>{tr.notes}</p> : <p className="panel__empty">{t.noNotes}</p>}
-      </section>
-      <section aria-labelledby="src-title">
-        <h3 id="src-title" className="other__title">{t.sources}</h3>
-        <ul className="other__files">
-          {tr.source_files.map((f) => <li key={f.storage_path}>{SOURCE_LABEL[f.kind] ?? f.kind}</li>)}
-          {tr.source_files.length === 0 && <li className="panel__empty">—</li>}
-        </ul>
-      </section>
-      {canEdit && (
-        <p className="show-phone">
-          <Link className="button button--quiet" href={`/trening/${tr.id}?izmena=1`}>{t.edit}</Link>
-        </p>
-      )}
-      {canEdit && (
-        <section aria-labelledby="danger-title" className="other__danger">
-          <h3 id="danger-title" className="other__title">{t.dangerTitle}</h3>
-          <DeleteTrainingButton id={tr.id} />
-        </section>
-      )}
-    </div>
-  );
 
-  // Finals belong to a finale session only.
-  const finals = tr.stage === 'finale' && isFinalDiscipline(tr.discipline) ? (
-    <div className="finals">
-      <FinalsList trainingId={tr.id} discipline={tr.discipline} finals={tr.finals} canEdit={canEdit} />
-      {canEdit && profile && (
-        <details className="finals__add">
-          <summary className="button button--quiet">{sr.finals.add}</summary>
-          <FinalEntry trainingId={tr.id} discipline={tr.discipline} tz={tz} />
-        </details>
-      )}
-    </div>
-  ) : null;
+  // A finale session is the final and nothing else: its stages, totals and elimination, and the entry beside them.
+  if (tr.stage === 'finale') {
+    const f = sr.finals;
+    const fd = isFinalDiscipline(tr.discipline) ? tr.discipline : null;
+    return (
+      <Workspace
+        label={t.panels}
+        rows={1}
+        strip={strip}
+        panels={[
+          {
+            id: 'finals',
+            title: f.title,
+            range: tr.finals.length ? String(tr.finals.length) : undefined,
+            col: canEdit && fd ? '1 / 8' : '1 / 13',
+            row: '1 / 2',
+            children: fd ? (
+              <FinalsList trainingId={tr.id} discipline={fd} finals={tr.finals} canEdit={canEdit} />
+            ) : (
+              <p className="panel__empty">{sr.newTraining.finaleNoDiscipline}</p>
+            ),
+          },
+          ...(canEdit && fd
+            ? [{ id: 'final-entry', title: f.add, col: '8 / 13', row: '1 / 2', children: <FinalEntry trainingId={tr.id} discipline={fd} tz={tz} /> }]
+            : []),
+        ]}
+      />
+    );
+  }
 
   return (
     <ReportWorkspace
@@ -238,8 +254,8 @@ async function Body({ params, searchParams }: { params: Promise<{ id: string }>;
       discipline={tr.discipline}
       tz={tz}
       hr={{ tcxPath: tcx, offsetMs: Number(hrRef?.offset_ms ?? 0), zone: hrRef?.zone ?? null, window: win }}
-      finals={finals}
-      other={other}
+      trainingId={tr.id}
+      canEdit={canEdit}
     />
   );
 }

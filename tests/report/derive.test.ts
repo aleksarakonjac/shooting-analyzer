@@ -46,3 +46,17 @@ describe('zoneShiftMs', () => {
     expect(zoneShiftMs([], [{ tMs: 1, bpm: 1 }])).toBe(0);
   });
 });
+
+import { hrAvgOverShots } from '@/lib/report/derive';
+
+describe('hrAvgOverShots', () => {
+  it('averages the samples between the first and last timed shot only', () => {
+    const samples = [0, 10, 20, 30, 40].map((t, i) => ({ tMs: t * 1000, bpm: 60 + i * 10 }));
+    expect(hrAvgOverShots(samples, [10_000, null, 30_000])).toBe(80);
+  });
+
+  it('is null without timed shots or samples inside them', () => {
+    expect(hrAvgOverShots([{ tMs: 0, bpm: 70 }], [null])).toBeNull();
+    expect(hrAvgOverShots([{ tMs: 0, bpm: 70 }], [5_000, 9_000])).toBeNull();
+  });
+});

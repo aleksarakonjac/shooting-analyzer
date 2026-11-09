@@ -20,3 +20,9 @@ export async function typeDate(page: Page, label: string, iso: string): Promise<
   await page.getByRole('group', { name: label, exact: true }).getByRole('spinbutton', { name: /dan/ }).click();
   await page.keyboard.type(`${d}${m}${y}`);
 }
+
+/** Opens the report strip's "⋯" menu (session details, edit, delete). */
+export async function openMore(page: Page): Promise<void> {
+  await page.getByRole('button', { name: 'Više o sesiji' }).click();
+  await page.getByRole('dialog', { name: 'Više o sesiji' }).waitFor();
+}

@@ -1,5 +1,6 @@
 import type { HrSample } from '@/lib/parsers/tcx';
 import { hrAt } from './hrAt';
+import type { Rhythm } from './rhythm';
 import type { ScoreBand } from './target';
 import type { ReportView } from './viewModel';
 
@@ -224,6 +225,60 @@ export function hrOption(samples: HrSample[], v: ReportView, sel: Selection, tz:
         tooltip: { show: false },
       },
       { type: 'scatter', name: 'Pogoci', data: shots, z: 5, emphasis: { scale: 1.4 } },
+    ],
+  };
+}
+
+/**
+ * Time between shots: one bar per gap inside a series, coloured by the shot's score band, with the mean
+ * as a line and mean ± one standard deviation as a band. Gaps across a series break are left out.
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export function rhythmOption(r: Rhythm, sel: Selection): any {
+  const bars = r.points.filter((p) => !p.afterBreak);
+  const data = bars.map((p) => {
+    const on = p.n === sel.shot;
+    const inSeries = sel.series !== null && p.series === sel.series;
+    return {
+      n: p.n,
+      series: p.series,
+      value: [String(p.n), p.seconds],
+      itemStyle: {
+        color: on ? CHART.select : CHART.band[p.band],
+        opacity: sel.series === null || inSeries || on ? 1 : 0.45,
+        borderRadius: [2, 2, 0, 0],
+      },
+    };
+  });
+  const band =
+    r.meanS !== null && r.sdS !== null
+      ? [[{ yAxis: Math.max(0, r.meanS - r.sdS), itemStyle: { color: 'rgba(57,198,240,0.08)' } }, { yAxis: r.meanS + r.sdS }]]
+      : [];
+  return {
+    animationDuration: 300,
+    grid: { left: 46, right: 12, top: 26, bottom: 48 },
+    tooltip: {
+      ...tooltipCommon,
+      trigger: 'item',
+      formatter: (p: { data: { n: number; series: number; value: [string, number] } }) =>
+        `<b>Pogodak ${p.data.n}</b> · Serija ${p.data.series}<br/>${p.data.value[1].toFixed(1)} s od prethodnog`,
+    },
+    dataZoom: zoom,
+    xAxis: { ...axisCommon, type: 'category', name: 'Pogodak', nameLocation: 'middle', nameGap: 26, data: bars.map((p) => String(p.n)), splitLine: { show: false } },
+    yAxis: { ...axisCommon, type: 'value', name: 's', nameLocation: 'middle', nameGap: 30, nameRotate: 90, min: 0 },
+    series: [
+      {
+        type: 'bar',
+        name: 'Razmak',
+        data,
+        barMaxWidth: 14,
+        markArea: { silent: true, data: band },
+        markLine: {
+          silent: true,
+          symbol: 'none',
+          data: r.meanS !== null ? [{ yAxis: r.meanS, lineStyle: { color: CHART.ink, width: 1.5, type: 'dashed' }, label: { color: CHART.ink, fontFamily: CHART.font, fontSize: 12, formatter: `prosek ${r.meanS.toFixed(1)} s` } }] : [],
+        },
+      },
     ],
   };
 }
