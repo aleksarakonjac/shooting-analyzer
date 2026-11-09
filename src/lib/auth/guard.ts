@@ -17,6 +17,8 @@ const isUnder = (path: string, base: string) => path === base || path.startsWith
  * this only keeps people on the right page.
  */
 export function decideRoute(pathname: string, profile: SessionProfile | null, signedIn: boolean): RouteDecision {
+  // Scheduled jobs carry no session; the route checks its own secret.
+  if (isUnder(pathname, '/api/cron')) return { allow: true };
   const onAuthPage = AUTH_PAGES.some((p) => isUnder(pathname, p));
   const onWaiting = isUnder(pathname, WAITING);
 

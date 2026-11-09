@@ -15,6 +15,8 @@ const ICON = {
   link: icon('M10 14a4.5 4.5 0 0 0 6.4 0l3-3a4.5 4.5 0 0 0-6.4-6.4l-1 1M14 10a4.5 4.5 0 0 0-6.4 0l-3 3a4.5 4.5 0 0 0 6.4 6.4l1-1'),
   share: icon('M4 12v7a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-7M16 6l-4-4-4 4M12 2v13'),
   shield: icon('M12 3 4 6v6c0 4.5 3.4 8 8 9 4.6-1 8-4.5 8-9V6l-8-3ZM8.5 12l2.5 2.5L15.5 10'),
+  trash: icon('M4 7h16M10 11v6M14 11v6M6 7l1 12a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1l1-12M9 7V4h6v3'),
+  clock: icon('M12 7v5l3 2M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z'),
   out: icon('M9 21H5a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h4M16 17l5-5-5-5M21 12H9'),
 };
 
@@ -24,12 +26,20 @@ const NAV: Record<Role, NavItem[]> = {
     { href: '/trening/novi', label: sr.newTraining.nav, icon: ICON.plus },
     { href: '/profil/veze', label: sr.nav.links, icon: ICON.link },
     { href: '/profil/deljenje', label: sr.nav.sharing, icon: ICON.share },
+    { href: '/korpa', label: sr.nav.trash, icon: ICON.trash },
+    { href: '/dnevnik', label: sr.nav.audit, icon: ICON.clock },
   ],
   coach: [
     { href: '/strelci', label: sr.nav.shooters, icon: ICON.people },
     { href: '/profil/veze', label: sr.nav.links, icon: ICON.link },
+    { href: '/korpa', label: sr.nav.trash, icon: ICON.trash },
+    { href: '/dnevnik', label: sr.nav.audit, icon: ICON.clock },
   ],
-  admin: [{ href: '/admin/approvals', label: sr.nav.approvals, icon: ICON.shield }],
+  admin: [
+    { href: '/admin/approvals', label: sr.nav.approvals, icon: ICON.shield },
+    { href: '/korpa', label: sr.nav.trash, icon: ICON.trash },
+    { href: '/dnevnik', label: sr.nav.audit, icon: ICON.clock },
+  ],
 };
 
 /** Side rail on desktop, bottom bar on phone widths (the same markup, restyled). */

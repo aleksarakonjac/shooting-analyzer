@@ -28,3 +28,27 @@ export async function deleteTrainingForm(form: FormData): Promise<void> {
   if (error) throw new Error(error.message);
   redirect('/');
 }
+
+/** Takes a training out of the trash. RLS decides who may. */
+export async function restoreTrainingForm(form: FormData): Promise<void> {
+  const id = String(form.get('id') ?? '');
+  const supabase = await createClient();
+  const { error } = await supabase.from('trainings').update({ deleted_at: null }).eq('id', id);
+  if (error) throw new Error(error.message);
+  revalidatePath('/korpa');
+  redirect('/korpa');
+}
+
+/** Deletes a trashed training for good, including its stored source files. */
+export async function purgeTrainingForm(form: FormData): Promise<void> {
+  const id = String(form.get('id') ?? '');
+  const supabase = await createClient();
+  // Storage first: its policy needs the training row, which the next call removes.
+  const bucket = supabase.storage.from('source-files');
+  const { data: files } = await bucket.list(id);
+  if (files?.length) await bucket.remove(files.map((f) => `${id}/${f.name}`));
+  const { error } = await supabase.rpc('delete_training_forever', { tid: id });
+  if (error) throw new Error(error.message);
+  revalidatePath('/korpa');
+  redirect('/korpa');
+}
