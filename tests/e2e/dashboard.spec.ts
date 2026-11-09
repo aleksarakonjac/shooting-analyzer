@@ -77,5 +77,7 @@ test('a list row opens the training report', async () => {
   await page.goto('/?p=year');
   await page.getByRole('link', { name: /Vazdušna puška/ }).first().click();
   await expect(page).toHaveURL(/\/trening\/[0-9a-f-]{36}$/);
-  await expect(page.locator('.lane-plate__value')).toHaveText('841.1');
+  // The previous route stays in the DOM hidden (cacheComponents), so only count visible plates.
+  await expect(page.getByTestId('series')).toHaveCount(8);
+  await expect(page.locator('.lane-plate__value:visible')).toHaveText('841.1');
 });
