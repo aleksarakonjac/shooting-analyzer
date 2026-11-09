@@ -210,3 +210,9 @@ input[type='radio'], input[type='checkbox'] { min-height: 0; width: 1.1rem; heig
 .dash__list a:focus-visible { outline-offset: -2px; }
 .dash__list strong { font-family: var(--font-stencil); font-size: 1.25rem; }
 .dash__disc a { margin-right: var(--space-4); }
+
+/* ---------- coach: shooter cards ---------- */
+.coach__cards { list-style: none; padding: 0; margin: 0; display: grid; gap: var(--space-4); grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr)); }
+.coach__card a { display: grid; gap: var(--space-1); padding: var(--space-4); border: 2px solid var(--ink); color: var(--ink); text-decoration: none; background: var(--ground-raised); font-variant-numeric: tabular-nums; }
+.coach__card a:hover { background: var(--ground); }
+.coach__name { font-family: var(--font-stencil); font-size: 1.25rem; }

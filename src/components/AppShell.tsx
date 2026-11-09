@@ -26,7 +26,7 @@ const NAV: Record<Role, NavItem[]> = {
     { href: '/profil/deljenje', label: sr.nav.sharing, icon: ICON.share },
   ],
   coach: [
-    { href: '/', label: sr.nav.shooters, icon: ICON.people },
+    { href: '/strelci', label: sr.nav.shooters, icon: ICON.people },
     { href: '/profil/veze', label: sr.nav.links, icon: ICON.link },
   ],
   admin: [{ href: '/admin/approvals', label: sr.nav.approvals, icon: ICON.shield }],
