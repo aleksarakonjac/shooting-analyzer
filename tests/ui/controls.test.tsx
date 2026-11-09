@@ -165,3 +165,44 @@ describe('Workspace', () => {
     expect(screen.getByRole('tab', { name: 'Serije' })).toHaveAttribute('aria-selected', 'true');
   });
 });
+
+import { DateTimeRange } from '../../src/components/ui/DateTimeRange';
+
+describe('DateTimeRange', () => {
+  function Training({ onChange }: { onChange?: (v: { date: string; from: string; to: string }) => void }) {
+    const [v, setV] = useState({ date: '2026-11-09', from: '17:00', to: '18:30' });
+    return <DateTimeRange label="Datum i vreme" value={v} onChange={(x) => { setV(x); onChange?.(x); }} />;
+  }
+
+  it('shows date and from–to time in one field', () => {
+    sr(<Training />);
+    const trigger = screen.getByRole('button', { name: /Datum i vreme/ });
+    expect(trigger.textContent?.replace(/\s/g, '')).toContain('9.11.2026.');
+    expect(trigger).toHaveTextContent('17:00–18:30');
+  });
+
+  it('opens one popover with a calendar and the from and to clocks, and changes them', async () => {
+    const user = userEvent.setup();
+    const onChange = vi.fn();
+    sr(<Training onChange={onChange} />);
+    await user.click(screen.getByRole('button', { name: /Datum i vreme/ }));
+    const dialog = await screen.findByRole('dialog');
+    expect(within(dialog).getByRole('grid')).toBeInTheDocument();
+    await user.click(within(dialog).getByRole('button', { name: /12\./ }));
+    expect(onChange).toHaveBeenLastCalledWith({ date: '2026-11-12', from: '17:00', to: '18:30' });
+    const hours = within(dialog).getAllByRole('spinbutton', { name: /sat/i });
+    hours[1].focus();
+    await user.keyboard('{ArrowUp}');
+    expect(onChange).toHaveBeenLastCalledWith({ date: '2026-11-12', from: '17:00', to: '19:30' });
+  });
+
+  it('says when the end is before the start', async () => {
+    sr(<DateTimeRange label="Datum i vreme" value={{ date: '2026-11-09', from: '18:00', to: '17:00' }} onChange={() => {}} />);
+    expect(screen.getByText('Kraj je pre početka.')).toBeInTheDocument();
+  });
+
+  it('shows only the date when no time is set', () => {
+    sr(<DateTimeRange label="Datum i vreme" value={{ date: '2026-11-09', from: '', to: '' }} onChange={() => {}} />);
+    expect(screen.getByRole('button', { name: /Datum i vreme/ })).toHaveTextContent('bez vremena');
+  });
+});

@@ -95,7 +95,7 @@ No native browser select, date or time inputs (owner, 2026-11-09). Libraries are
 - **Target:** stays our own SVG. ISSF ring geometry, the group circle and the MPI must be drawn to scale in millimetres, which a general chart library does poorly.
 
 - **Select:** the library's `Select`, a listbox with type-ahead.
-- **Date and time range:** the library's `DatePicker` with a `Calendar` popover, plus two `TimeField`s for from and to.
+- **Date and time range:** one field showing "9. 11. 2026. · 17:00–18:30"; one popover holds the `Calendar` and two 24-hour `TimeField`s (from, to), with "Bez vremena" and "Gotovo" (owner, 2026-11-09).
 - **Search-select:** the library's `ComboBox`, which allows a custom value for a new place.
 - **Number stepper:** the library's `NumberField`.
 - **Tabs:** the library's `Tabs`, also used for the phone segment switcher.
