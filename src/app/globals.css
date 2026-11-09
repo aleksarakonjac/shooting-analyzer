@@ -36,7 +36,7 @@ p {
 }
 
 a {
-  color: var(--data-ink);
+  color: var(--data);
   text-underline-offset: 0.2em;
 }
 
@@ -53,10 +53,20 @@ output {
 }
 
 :focus-visible {
-  outline: 3px solid var(--focus);
+  outline: 2px solid var(--focus);
   outline-offset: 2px;
 }
 
 html {
-  scrollbar-color: var(--ink-muted) var(--ground-sunk);
+  scrollbar-color: var(--rule-strong) transparent;
+}
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--rule-strong) transparent;
+}
+
+input,
+textarea {
+  caret-color: var(--data);
 }

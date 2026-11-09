@@ -1,5 +1,6 @@
 import { Suspense, type ReactNode } from 'react';
 import { AppShell } from '@/components/AppShell';
+import { UiProvider } from '@/components/ui/UiProvider';
 import { logout } from '@/lib/auth/actions';
 import { getSessionProfile } from '@/lib/auth/session';
 
@@ -17,7 +18,7 @@ async function Shell({ children }: { children: ReactNode }) {
   if (!profile || profile.status !== 'active') return <>{children}</>;
   return (
     <AppShell role={profile.role} signOutAction={logout}>
-      {children}
+      <UiProvider>{children}</UiProvider>
     </AppShell>
   );
 }

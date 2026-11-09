@@ -1,37 +1,54 @@
 /*
- * Range Hall Lane Board tokens (spec section 10).
- * Light ground only: the hall and the range are bright, so no
- * prefers-color-scheme switch. Colour fills large flat regions; state is never
- * colour alone (solid / dashed / half-height / struck-through accompany it).
+ * "Final on TV" tokens (docs/superpowers/specs/2026-11-09-ui-workspace-brief.md).
+ * A finals broadcast board: deep navy, white figures, one colour per job.
+ *   cyan  = the data series
+ *   gold  = proposed, awaiting confirmation (always with a dashed edge and a word)
+ *   red   = elimination, out of range, error
+ *   white bar with navy text = the current selection
+ * State is never colour alone: a word and a form (dashed, solid, struck) go with it.
  */
 :root {
-  color-scheme: light;
+  color-scheme: dark;
 
-  /* Core palette (spec starting values) */
-  --ground: #e9ebec; /* painted concrete */
-  --ink: #14181b; /* near-black enamel */
-  --flag: #ff5a1f; /* chamber-flag orange: proposed, awaiting confirmation */
-  --hazard: #f2d400; /* hi-vis yellow, used with black hatching for warnings */
-  --data: #1f5fbf; /* the one data blue */
+  /* Board */
+  --ground: #0b1530; /* the broadcast board */
+  --ground-deep: #070e22; /* rail and strip */
+  --panel: #101c3b; /* panel body */
+  --panel-raised: #172751; /* inputs, hover, popovers */
+  --panel-sunk: #0a1430; /* wells inside panels */
+  --rule: #22335e; /* 1px panel rules */
+  --rule-strong: #3a4f86; /* control edges */
 
-  /* Derived surfaces and text */
-  --ground-raised: #f4f5f6; /* lighter concrete for inset regions */
-  --ground-sunk: #dcdfe1; /* darker concrete for wells and rails */
-  --ink-muted: #4a5359; /* secondary text, above 6:1 on --ground */
-  --rule: #b9bfc3; /* hairlines on concrete */
-  --on-ink: #f4f5f6; /* text on black lane plates */
-  --on-flag: #14181b; /* text on orange: ink, never white (white is under 4.5:1) */
-  --data-ink: #174a96; /* data blue as text on --ground, 7.0:1 */
+  /* Figures */
+  --ink: #f3f6fc; /* white figures and text */
+  --ink-muted: #aab6d3; /* secondary text, 8.3:1 on --panel */
+  --ink-faint: #8190b5; /* tertiary text and axis labels, 5.1:1 on --panel */
+
+  /* Jobs */
+  --data: #39c6f0; /* the data series */
+  --data-soft: rgb(57 198 240 / 0.16);
+  --proposed: #f2c14e; /* awaiting confirmation */
+  --proposed-soft: rgb(242 193 78 / 0.14);
+  --danger: #ff6b74; /* elimination and errors, 5.6:1 on --panel */
+  --danger-soft: rgb(255 107 116 / 0.14);
+  --select-bg: #ffffff; /* the broadcast "current row" */
+  --select-fg: #0b1530;
+
+  /* Shot pips by score band (whole-ring disciplines map 10 / 9 / 8 / below) */
+  --pip-top: #39c6f0; /* 10.5 and up */
+  --pip-ten: #2a8fb4; /* 10.0 to 10.4 */
+  --pip-nine: #5c6e9c; /* 9.x */
+  --pip-low: #ff6b74; /* below 9 */
 
   /* Focus and selection (themed, not browser default) */
-  --focus: #1f5fbf;
-  --selection-bg: #14181b;
-  --selection-fg: #e9ebec;
+  --focus: #39c6f0;
+  --selection-bg: #39c6f0;
+  --selection-fg: #0b1530;
 
-  /* Type: Barlow (body) and Big Shoulders Display (lane-plate numerals, titles), loaded in layout.tsx */
+  /* Type: Barlow (UI) and Big Shoulders (numerals, titles), loaded in layout.tsx */
   --font-body: var(--f-body), ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
   --font-display: var(--f-display), 'Arial Narrow', ui-sans-serif, sans-serif;
-  --font-stencil: var(--f-stencil), var(--font-display);
+  --font-stencil: var(--font-display);
   --font-data: ui-monospace, 'SF Mono', 'Cascadia Mono', Menlo, monospace;
 
   /* Spacing scale (4px base) */
@@ -39,17 +56,26 @@
   --space-2: 0.5rem;
   --space-3: 0.75rem;
   --space-4: 1rem;
+  --space-5: 1.25rem;
   --space-6: 1.5rem;
   --space-8: 2rem;
   --space-12: 3rem;
 
-  /* Page gutter: 16px on phones, wider on desktop */
-  --gutter: clamp(1rem, 4vw, 2.5rem);
+  --gutter: clamp(1rem, 3vw, 1.75rem);
+  --rail-w: 13rem;
+  --control-h: 2.5rem; /* desktop; phones get 2.75rem */
 
-  /* Shape and depth: plates are square-cornered, shadows soft with offset */
+  /* Shape and depth: square board corners, one soft offset shadow for popovers */
   --radius: 2px;
-  --shadow-plate: 0 1px 2px rgb(20 24 27 / 0.18), 0 6px 14px -6px rgb(20 24 27 / 0.28);
+  --shadow-pop: 0 2px 4px rgb(0 0 0 / 0.35), 0 14px 32px -10px rgb(0 0 0 / 0.6);
 
   /* Motion */
   --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --dur: 0.18s;
+}
+
+@media (max-width: 720px) {
+  :root {
+    --control-h: 2.75rem;
+  }
 }

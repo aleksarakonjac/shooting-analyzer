@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from 'next';
-import { Barlow, Big_Shoulders, Big_Shoulders_Stencil } from 'next/font/google';
+import { Barlow, Big_Shoulders } from 'next/font/google';
 import { sr } from '@/lib/i18n/sr';
 import './globals.css';
 
@@ -15,12 +15,6 @@ const shoulders = Big_Shoulders({
   display: 'swap',
   adjustFontFallback: false, // no metrics for this family; silences a build warning
 });
-const stencil = Big_Shoulders_Stencil({
-  subsets: ['latin', 'latin-ext'],
-  variable: '--f-stencil',
-  display: 'swap',
-  adjustFontFallback: false,
-});
 
 export const metadata: Metadata = {
   title: sr.appName,
@@ -30,12 +24,13 @@ export const metadata: Metadata = {
 export const viewport: Viewport = {
   width: 'device-width',
   initialScale: 1,
-  colorScheme: 'light',
+  colorScheme: 'dark',
+  themeColor: '#0b1530',
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="sr" className={`${barlow.variable} ${shoulders.variable} ${stencil.variable}`}>
+    <html lang="sr" className={`${barlow.variable} ${shoulders.variable}`}>
       <body>{children}</body>
     </html>
   );
