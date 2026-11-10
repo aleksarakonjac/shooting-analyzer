@@ -28,3 +28,11 @@ describe('cron route and the sign-in guard', () => {
     expect(decideRoute('/api/other', null, false)).toEqual({ redirect: '/login' });
   });
 });
+
+describe('isCronAuthorized compares in constant time', () => {
+  it('rejects a header of a different length without throwing', () => {
+    expect(isCronAuthorized('Bearer s3cret-valueX', 's3cret-value')).toBe(false);
+    expect(isCronAuthorized('Bearer s3cret-valu', 's3cret-value')).toBe(false);
+    expect(isCronAuthorized('Bearer šš', 'ab')).toBe(false);
+  });
+});

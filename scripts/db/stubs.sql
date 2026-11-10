@@ -10,6 +10,7 @@ create extension if not exists pgtap;
 do $$ begin
   if not exists (select from pg_roles where rolname = 'anon') then create role anon nologin; end if;
   if not exists (select from pg_roles where rolname = 'authenticated') then create role authenticated nologin; end if;
+  if not exists (select from pg_roles where rolname = 'service_role') then create role service_role nologin bypassrls; end if;
 end $$;
 create schema if not exists storage;
 create table if not exists storage.buckets (id text primary key, name text not null, public boolean not null default false);
