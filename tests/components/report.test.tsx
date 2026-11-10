@@ -29,6 +29,17 @@ describe('TargetPlot', () => {
     expect(out).not.toContain('target__hole');
   });
 
+  it('draws shot holes at their positions at the pellet size when positions are known', () => {
+    const holes = [
+      { n: 1, x: 0.5, y: -1, selected: false },
+      { n: 2, x: -2, y: 1, selected: true },
+    ];
+    const out = html(<TargetPlot discipline="air_rifle" series={view.series} selected={1} holes={holes} caliberMm={4.5} />);
+    expect(out.match(/class="target__hole[ "]/g)).toHaveLength(2);
+    expect(out).toContain('r="2.25"');
+    expect(out).toContain('target__hole--sel');
+  });
+
   it('asks for a series when none is selected', () => {
     expect(html(<TargetPlot discipline="air_rifle" series={view.series} selected={null} />)).toContain('Izaberite seriju');
   });

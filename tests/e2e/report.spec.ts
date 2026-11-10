@@ -78,6 +78,15 @@ test('the report shows total 841.1, 8 series, a group of 8.0 mm and separate war
   await expect(page.getByTestId('attempt')).toHaveText('Neuspeli pokušaji: 23');
 });
 
+test('the SCATT traces put the selected series\' shots on the target and add aim columns', async () => {
+  await page.goto(reportUrl);
+  // The first series is selected and open; its shots come from the SCATT traces.
+  await expect(page.locator('.target__hole').first()).toBeVisible({ timeout: 20_000 });
+  await expect(page.getByRole('columnheader', { name: '10a0' })).toBeVisible();
+  await page.getByRole('radio', { name: 'Stabilnost' }).check({ force: true });
+  await expect(page.getByText('stabilnost ritma (SCATT)')).toBeVisible();
+});
+
 test('a proposed alignment is confirmed from the report', async () => {
   await saveWithFixtures(false, false);
   await expect(page.locator('.flag-badge')).toHaveAttribute('data-state', 'proposed');

@@ -7,17 +7,39 @@ import { sr } from '@/lib/i18n/sr';
 const t = sr.report;
 const side = (s: 'left' | 'right' | 'up' | 'down' | null) => (s ? t[s] : t.centred);
 
+export interface ShotHole {
+  n: number;
+  /** mm from the centre, x right, y up. */
+  x: number;
+  y: number;
+  selected: boolean;
+}
+
 /**
  * The ISSF target to scale in millimetres. The selected series shows its group (circle) and
- * mean point of impact; the other series' MPIs are faint dots. No invented shot holes:
- * the SIUS CSV has no per-shot coordinates.
+ * mean point of impact; the other series' MPIs are faint dots. Shot holes are drawn only where
+ * positions are known (SCATT traces), as pellets of the real calibre.
  */
-export function TargetPlot({ discipline, series, selected }: { discipline: DisciplineId; series: SeriesView[]; selected: number | null }) {
+export function TargetPlot({
+  discipline,
+  series,
+  selected,
+  holes = [],
+  caliberMm = 4.5,
+}: {
+  discipline: DisciplineId;
+  series: SeriesView[];
+  selected: number | null;
+  /** Shots of the selected series with known positions. */
+  holes?: ShotHole[];
+  caliberMm?: number;
+}) {
   const spec = targetSpec(discipline);
   const sel = series.find((s) => s.idx === selected) ?? null;
   const extent = Math.max(
     0,
     ...series.filter((s) => s.mpi).map((s) => Math.hypot(s.mpi!.x, s.mpi!.y) + (s.groupMm ?? 0) / 2),
+    ...holes.map((h) => Math.hypot(h.x, h.y) + caliberMm / 2),
   );
   const R = viewRadiusMm(spec, extent);
   const pad = R * 0.06;
@@ -52,6 +74,17 @@ export function TargetPlot({ discipline, series, selected }: { discipline: Disci
             <circle cx={s.mpi!.x} cy={-s.mpi!.y} r={R / 45} className="target__mpi-other" />
             <text x={s.mpi!.x + R / 28} y={-s.mpi!.y} fontSize={R / 14} dominantBaseline="middle" className="target__mpi-num">{s.idx}</text>
           </g>
+        ))}
+        {holes.map((h) => (
+          <circle
+            key={h.n}
+            cx={h.x}
+            cy={-h.y}
+            r={caliberMm / 2}
+            className={h.selected ? 'target__hole target__hole--sel' : 'target__hole'}
+            strokeWidth={stroke * 1.5}
+            data-shot={h.n}
+          />
         ))}
         {sel?.mpi && (
           <g className="target__sel">

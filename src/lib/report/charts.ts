@@ -1,6 +1,7 @@
 import type { HrSample } from '@/lib/parsers/tcx';
 import { hrAt } from './hrAt';
 import type { Rhythm } from './rhythm';
+import type { ShotAnalysis, ShotMetrics } from '@/lib/scatt/analysis';
 import type { ScoreBand } from './target';
 import type { ReportView } from './viewModel';
 
@@ -284,5 +285,48 @@ export function rhythmOption(r: Rhythm, sel: Selection): any {
         },
       },
     ],
+  };
+}
+
+export type ScattMetric = 'speed250' | 'speed' | 'hold10Abs' | 'holdCircleD';
+
+const METRIC: Record<ScattMetric, { name: string; unit: string; digits: number; max?: number }> = {
+  speed250: { name: 'Brzina 0,25 s', unit: 'mm/s', digits: 1 },
+  speed: { name: 'Brzina 1 s', unit: 'mm/s', digits: 1 },
+  hold10Abs: { name: 'U desetki (10a0)', unit: '%', digits: 0, max: 100 },
+  holdCircleD: { name: 'Krug držanja', unit: 'mm', digits: 1 },
+};
+
+/** A SCATT metric per shot (aim stability, speed): one bar per shot with SCATT data, coloured by score band. */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export function scattMetricOption(v: ReportView, byShot: Map<number, ShotAnalysis>, metric: ScattMetric, sel: Selection): any {
+  const m = METRIC[metric];
+  const shots = v.series
+    .flatMap((s) => s.shots)
+    .map((s) => ({ s, a: s.scattId !== null ? byShot.get(s.scattId)?.metrics : undefined }))
+    .filter((x): x is { s: (typeof x)['s']; a: ShotMetrics } => Boolean(x.a));
+  const data = shots.map(({ s, a }) => {
+    const on = s.n === sel.shot;
+    const inSeries = sel.series !== null && s.series === sel.series;
+    return {
+      n: s.n,
+      series: s.series,
+      value: [String(s.n), Math.round(a[metric] * 10 ** m.digits) / 10 ** m.digits],
+      itemStyle: { color: on ? CHART.select : CHART.band[s.band], opacity: sel.series === null || inSeries || on ? 1 : 0.45, borderRadius: [2, 2, 0, 0] },
+    };
+  });
+  return {
+    animationDuration: 300,
+    grid: { left: 46, right: 12, top: 26, bottom: 48 },
+    tooltip: {
+      ...tooltipCommon,
+      trigger: 'item',
+      formatter: (p: { data: { n: number; series: number; value: [string, number] } }) =>
+        `<b>Pogodak ${p.data.n}</b> · Serija ${p.data.series}<br/>${m.name}: ${p.data.value[1].toFixed(m.digits)} ${m.unit}`,
+    },
+    dataZoom: zoom,
+    xAxis: { ...axisCommon, type: 'category', name: 'Pogodak', nameLocation: 'middle', nameGap: 26, data: shots.map(({ s }) => String(s.n)), splitLine: { show: false } },
+    yAxis: { ...axisCommon, type: 'value', name: m.unit, nameLocation: 'middle', nameGap: 30, nameRotate: 90, min: 0, ...(m.max ? { max: m.max } : {}) },
+    series: [{ type: 'bar', name: m.name, data, barMaxWidth: 14 }],
   };
 }

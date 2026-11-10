@@ -11,7 +11,7 @@ export interface RawSeries {
   mpi_x: number | string | null;
   mpi_y: number | string | null;
   group_mm: number | string | null;
-  shots: { idx: number; value: number | string; inner: boolean | null; t_ms: number | string | null }[];
+  shots: { idx: number; value: number | string; inner: boolean | null; t_ms: number | string | null; scatt_shot_id?: number | null }[];
 }
 
 export interface ShotView {
@@ -23,6 +23,8 @@ export interface ShotView {
   tMs: number | null;
   band: ScoreBand;
   series: number;
+  /** The SCATT shot this shot was aligned to, when there is one. */
+  scattId: number | null;
 }
 
 export interface SeriesView {
@@ -64,7 +66,7 @@ export function buildReportView(raw: RawSeries[], discipline: DisciplineId, pipT
         .map((sh): ShotView => {
           n += 1;
           const value = Number(sh.value);
-          return { n, idx: sh.idx, value, inner: Boolean(sh.inner), tMs: num(sh.t_ms), band: scoreBand(value, decimal, top), series: s.idx };
+          return { n, idx: sh.idx, value, inner: Boolean(sh.inner), tMs: num(sh.t_ms), band: scoreBand(value, decimal, top), series: s.idx, scattId: sh.scatt_shot_id ?? null };
         });
       const mx = num(s.mpi_x);
       const my = num(s.mpi_y);

@@ -1,4 +1,5 @@
 import initSqlJs from 'sql.js';
+import { decodeTraceBlob, type TraceSamples } from '@/lib/scatt/decode';
 
 export class NotScattFileError extends Error {
   constructor(message = 'Not a SCATT Expert file') {
@@ -27,7 +28,6 @@ export interface ReadScattOptions {
   locateFile?: (file: string) => string;
 }
 
-// Phase 4 will add `traceBlobs`; traces are intentionally not read here.
 export async function readScatt(data: Uint8Array, opts: ReadScattOptions = {}): Promise<ScattData> {
   const SQL = await initSqlJs(opts.locateFile ? { locateFile: opts.locateFile } : undefined);
   let db: InstanceType<typeof SQL.Database>;
@@ -63,6 +63,69 @@ export async function readScatt(data: Uint8Array, opts: ReadScattOptions = {}): 
       distanceM: meta[1],
       caliberMm: meta[2],
       shots: rows.map((r) => ({ id: r[0], tMs: r[1], flaggedMatch: r[2] !== 0 })),
+    };
+  } finally {
+    db.close();
+  }
+}
+
+export interface ScattTraceShot {
+  shotId: number;
+  traceId: number;
+  /** Unix epoch ms. */
+  timer: number;
+  /** Sample index of the shot in its trace. */
+  offset: number;
+  match: boolean;
+  missed: boolean;
+  deleted: boolean;
+}
+
+export interface ScattTraceFile {
+  sampleRate: number;
+  traces: Map<number, TraceSamples & { timer: number; timerEnter: number }>;
+  shots: ScattTraceShot[];
+  /** The stored blob of a trace, for diagnostics and tests. */
+  rawBlob: (traceId: number) => Uint8Array | undefined;
+}
+
+/** Every aim trace and shot of a SCATT file, decoded (see src/lib/scatt/decode.ts). */
+export async function readScattTraces(data: Uint8Array, opts: ReadScattOptions = {}): Promise<ScattTraceFile> {
+  const SQL = await initSqlJs(opts.locateFile ? { locateFile: opts.locateFile } : undefined);
+  let db: InstanceType<typeof SQL.Database>;
+  try {
+    db = new SQL.Database(data);
+  } catch {
+    throw new NotScattFileError();
+  }
+  try {
+    const rate = Number(db.exec('SELECT sample_rate FROM sessions ORDER BY timer ASC LIMIT 1')[0]?.values[0]?.[0] ?? 0);
+    if (!rate) throw new NotScattFileError('SCATT file contains no session');
+    const traceRows = (db.exec('SELECT trace_id, timer, timer_enter, data FROM traces ORDER BY trace_id')[0]?.values ?? []) as [
+      number,
+      number,
+      number,
+      Uint8Array,
+    ][];
+    const shotRows = (db.exec(
+      'SELECT shot_id, trace_id, timer, trace_offset, match_shot, missed, deleted FROM shots ORDER BY timer ASC',
+    )[0]?.values ?? []) as number[][];
+    const blobs = new Map(traceRows.map((r) => [r[0], r[3]]));
+    const traces = new Map<number, TraceSamples & { timer: number; timerEnter: number }>();
+    for (const [id, timer, timerEnter, blob] of traceRows) traces.set(id, { ...(await decodeTraceBlob(blob)), timer, timerEnter });
+    return {
+      sampleRate: rate,
+      traces,
+      shots: shotRows.map((r) => ({
+        shotId: r[0],
+        traceId: r[1],
+        timer: r[2],
+        offset: r[3],
+        match: r[4] !== 0,
+        missed: r[5] !== 0,
+        deleted: r[6] !== 0,
+      })),
+      rawBlob: (id) => blobs.get(id),
     };
   } finally {
     db.close();

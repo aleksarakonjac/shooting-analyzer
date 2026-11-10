@@ -62,7 +62,7 @@ async function Body({ params, searchParams }: { params: Promise<{ id: string }>;
     .from('trainings')
     .select(
       'id,shooter_id,name,discipline,trained_on,place,notes,started_at,ended_at,kind,stage,tz,events(id,name),' +
-        'matches(id,label,align_state,series(id,idx,position,total,total_decimal,mpi_x,mpi_y,group_mm,shots(idx,value,inner,t_ms))),' +
+        'matches(id,label,align_state,series(id,idx,position,total,total_decimal,mpi_x,mpi_y,group_mm,shots(idx,value,inner,t_ms,scatt_shot_id))),' +
         'loose_shots(kind,t_ms),hr_samples_ref(offset_ms,zone),source_files(kind,storage_path),' +
         'finals(id,placement,eliminated_after_shot,created_at,final_shots(idx,stage_idx,value))',
     )
@@ -85,6 +85,7 @@ async function Body({ params, searchParams }: { params: Promise<{ id: string }>;
   const view = buildReportView(tr.matches.flatMap((m) => m.series), tr.discipline, pipTopFor(me?.pip_top as Record<string, unknown> | null, tr.discipline));
   const hrRef = Array.isArray(tr.hr_samples_ref) ? tr.hr_samples_ref[0] : tr.hr_samples_ref;
   const tcx = tr.source_files.find((f) => f.kind === 'tcx')?.storage_path ?? null;
+  const scattPath = tr.source_files.find((f) => f.kind === 'scatt')?.storage_path ?? null;
   const allShots = view.series.flatMap((s) => s.shots);
   const win = shotWindow([...allShots.map((s) => s.tMs), ...tr.loose_shots.map((s) => Number(s.t_ms))], 60_000);
   const warmups = tr.loose_shots.filter((s) => s.kind === 'warmup').length;
@@ -254,6 +255,7 @@ async function Body({ params, searchParams }: { params: Promise<{ id: string }>;
       discipline={tr.discipline}
       tz={tz}
       hr={{ tcxPath: tcx, offsetMs: Number(hrRef?.offset_ms ?? 0), zone: hrRef?.zone ?? null, window: win }}
+      scattPath={scattPath}
       trainingId={tr.id}
       canEdit={canEdit}
     />

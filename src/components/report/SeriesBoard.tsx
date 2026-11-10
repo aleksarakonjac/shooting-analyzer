@@ -5,6 +5,7 @@ import type { HrSample } from '@/lib/parsers/tcx';
 import type { Selection } from '@/lib/report/charts';
 import { hrAt } from '@/lib/report/hrAt';
 import type { ReportView } from '@/lib/report/viewModel';
+import type { ShotAnalysis } from '@/lib/scatt/analysis';
 
 const t = sr.report;
 
@@ -18,7 +19,10 @@ export function SeriesBoard({
   onSelect,
   tz,
   hr,
+  scatt,
 }: {
+  /** SCATT analysis by SCATT shot id: adds aiming time, hold in the 10 and aim speed columns. */
+  scatt?: Map<number, ShotAnalysis>;
   /** Heart-rate samples, when the training has them: adds a "Puls" column to the shots. */
   hr?: HrSample[];
   view: ReportView;
@@ -75,7 +79,17 @@ export function SeriesBoard({
               <table className="shots">
                 <caption className="sr-only">{t.seriesLabel(s.idx)}</caption>
                 <thead>
-                  <tr><th scope="col">#</th><th scope="col">Pogodak</th><th scope="col">Vreme</th>{hr?.length ? <th scope="col">Puls</th> : null}</tr>
+                  <tr>
+                    <th scope="col">#</th><th scope="col">Pogodak</th><th scope="col">Vreme</th>{hr?.length ? <th scope="col">Puls</th> : null}
+                    {scatt && (
+                      <>
+                        <th scope="col" title={t.scattAimTitle}>{t.scattAim}</th>
+                        <th scope="col" title={t.scattHoldTitle}>{t.scattHold}</th>
+                        <th scope="col" title={t.scattSpeed1Title}>{t.scattSpeed1}</th>
+                        <th scope="col" title={t.scattSpeed250Title}>{t.scattSpeed250}</th>
+                      </>
+                    )}
+                  </tr>
                 </thead>
                 <tbody>
                   {s.shots.map((sh) => (
@@ -91,6 +105,7 @@ export function SeriesBoard({
                       </td>
                       <td className="num">{sh.tMs !== null ? clock.format(sh.tMs) : '—'}</td>
                       {hr?.length ? <td className="num">{hrBpm(sh.tMs)}</td> : null}
+                      {scatt && <ScattCells a={sh.scattId !== null ? scatt.get(sh.scattId) : undefined} />}
                     </tr>
                   ))}
                 </tbody>
@@ -101,5 +116,18 @@ export function SeriesBoard({
       })}
       </ol>
     </div>
+  );
+}
+
+/** The SCATT figures of one shot, or dashes when it has no trace. */
+function ScattCells({ a }: { a: ShotAnalysis | undefined }) {
+  const m = a?.metrics;
+  return (
+    <>
+      <td className="num">{a ? (a.aimingMs / 1000).toFixed(1) : '—'}</td>
+      <td className="num">{m ? m.hold10Abs : '—'}</td>
+      <td className="num">{m ? m.speed.toFixed(1) : '—'}</td>
+      <td className="num">{m ? m.speed250.toFixed(1) : '—'}</td>
+    </>
   );
 }

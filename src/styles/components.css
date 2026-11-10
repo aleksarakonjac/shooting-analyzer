@@ -768,3 +768,5 @@ input[type='file']::file-selector-button { font: inherit; font-weight: 700; marg
 .event-table .num { text-align: right; white-space: nowrap; }
 .event-table td:first-child { text-align: left; color: var(--ink-muted); }
 .event-table__total { font-family: var(--font-display); font-weight: 800; font-size: var(--fs-xl); }
+.target__hole { fill: rgb(57 198 240 / 0.55); stroke: var(--ink); }
+.target__hole--sel { fill: var(--select-bg); stroke: var(--ground); }
