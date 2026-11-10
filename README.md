@@ -13,8 +13,7 @@ Stack: Next.js (App Router), Supabase (Postgres with row-level security, Auth, S
 4. `npm run dev`
 
 Checks: `npm test` (unit), `npm run lint`, `npx tsc --noEmit`, `npm run build`,
-`scripts/db/test.sh` (pgTAP against a throwaway local Postgres), `npm run test:e2e` (Playwright, needs the admin
-variables described in `docs/supabase-setup.md`).
+`scripts/db/test.sh` (pgTAP against a throwaway local Postgres).
 
 ## Environment variables
 
@@ -38,7 +37,7 @@ All later accounts wait on the approval page until the admin approves them (shoo
 
 ## Production checklist
 
-- Authentication → Providers → Email: **Confirm email ON** (it is off in the test project so e2e can sign in at once).
+- Authentication → Providers → Email: **Confirm email ON**.
 - Apply all migrations with `supabase db push`.
 - Set the four environment variables above in the Vercel project.
 - `vercel.json` schedules `/api/cron/purge` daily at 03:00 UTC. It deletes trainings that have been in the trash

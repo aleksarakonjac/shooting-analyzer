@@ -1,9 +1,9 @@
-# Supabase test project setup (for e2e and development)
+# Supabase project setup (development)
 
-Use a separate **test** project, never one holding real data. Nothing below is committed.
+Use a separate project for development, never one holding real data. Nothing below is committed.
 
 1. Create a project at supabase.com (free tier is fine). Save the database password in your password manager.
-2. Authentication → Providers → Email: turn **off** "Confirm email" (the e2e registration signs in at once).
+2. Authentication → Providers → Email: keep "Confirm email" on, or turn it off in a development project to sign in at once.
 3. Apply the schema (from this repo, once):
    ```bash
    supabase login
@@ -19,8 +19,3 @@ Use a separate **test** project, never one holding real data. Nothing below is c
    ```
    Expect `UPDATE 1`. Do not use `admin_set_profile` here: it is for the app and fails in the SQL editor
    ("admin only"), because the editor has no signed-in user (`auth.uid()` is null).
-6. Run the e2e tests:
-   ```bash
-   E2E_ADMIN_EMAIL=you@example.com E2E_ADMIN_PASSWORD='...' npm run test:e2e
-   ```
-   The first run needs `npx playwright install chromium` (downloads a browser into the Playwright cache).

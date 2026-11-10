@@ -8,8 +8,7 @@
     "start": "next start",
     "lint": "eslint",
     "test": "vitest run",
-    "test:watch": "vitest",
-    "test:e2e": "playwright test"
+    "test:watch": "vitest"
   },
   "dependencies": {
     "@internationalized/date": "^3.12.4",
@@ -25,7 +24,6 @@
     "sql.js": "^1.15.2"
   },
   "devDependencies": {
-    "@playwright/test": "^1.65.0",
     "@testing-library/dom": "^10.4.2",
     "@testing-library/jest-dom": "^7.0.1",
     "@testing-library/react": "^16.3.3",
