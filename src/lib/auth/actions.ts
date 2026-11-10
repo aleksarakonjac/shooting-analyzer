@@ -6,8 +6,7 @@ import { DISCIPLINES } from '@/lib/domain/disciplines';
 import type { DisciplineId } from '@/lib/domain/types';
 import { pipTopFor } from '@/lib/report/target';
 import { createAdminClient, siteUrl } from '@/lib/supabase/admin';
-import { signApproval, verifyApproval } from '@/lib/auth/approvalToken';
-import { notifyAdminOfRequest } from '@/lib/email/adminNotice';
+import { verifyApproval } from '@/lib/auth/approvalToken';
 import { announceNewAccount } from '@/lib/email/announce';
 
 export type FormState = { error?: string } | undefined;
@@ -40,12 +39,7 @@ export async function register(_: FormState, form: FormData): Promise<FormState>
     return { error: 'registerFailed' };
   }
   // Best effort: if mail is not set up the request is still in the admin's list.
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  const base = siteUrl();
-  if (data.user && key && base) {
-    const link = `${base}/odobrenje?id=${data.user.id}&sig=${signApproval(data.user.id, key)}`;
-    await notifyAdminOfRequest({ name: displayName || email, email, role: requestedRole, link });
-  }
+  if (data.user) await announceNewAccount(data.user, displayName || email, requestedRole);
   redirect('/cekanje-odobrenja');
 }
 
@@ -72,13 +66,13 @@ export async function decideByLink(form: FormData): Promise<void> {
 /** Starts Google sign-in. The chosen role rides along to the callback; it is only a request until the admin approves. */
 export async function signInWithGoogle(form: FormData): Promise<void> {
   const role = form.get('role') === 'coach' ? 'coach' : 'shooter';
+  // Prefer the configured site URL; Supabase's redirect allow-list rejects any other host anyway.
   const h = await headers();
-  const host = h.get('x-forwarded-host') ?? h.get('host');
-  const proto = h.get('x-forwarded-proto') ?? 'http';
+  const base = siteUrl() ?? `${h.get('x-forwarded-proto') ?? 'http'}://${h.get('x-forwarded-host') ?? h.get('host')}`;
   const supabase = await createClient();
   const { data, error } = await supabase.auth.signInWithOAuth({
     provider: 'google',
-    options: { redirectTo: `${proto}://${host}/auth/callback?role=${role}` },
+    options: { redirectTo: `${base}/auth/callback?role=${role}` },
   });
   if (error || !data.url) redirect('/login');
   redirect(data.url);
@@ -97,10 +91,7 @@ export async function completeOnboarding(form: FormData): Promise<void> {
   if (error) redirect('/dobrodoslica');
   if (first) {
     const { data: p } = await supabase.from('profiles').select('display_name').eq('id', auth.user.id).maybeSingle();
-    const h = await headers();
-    const host = h.get('x-forwarded-host') ?? h.get('host');
-    const base = siteUrl() ?? `${h.get('x-forwarded-proto') ?? 'http'}://${host}`;
-    await announceNewAccount(base, auth.user, p?.display_name ?? auth.user.email ?? '', role);
+    await announceNewAccount(auth.user, p?.display_name ?? auth.user.email ?? '', role);
   }
   redirect('/cekanje-odobrenja');
 }

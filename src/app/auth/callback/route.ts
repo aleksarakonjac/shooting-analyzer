@@ -19,7 +19,7 @@ export async function GET(request: NextRequest) {
     if (first) {
       const { data: auth } = await supabase.auth.getUser();
       const { data: p } = await supabase.from('profiles').select('display_name').eq('id', auth.user?.id ?? '').maybeSingle();
-      if (auth.user) await announceNewAccount(origin, auth.user, p?.display_name ?? auth.user.email ?? '', picked);
+      if (auth.user) await announceNewAccount(auth.user, p?.display_name ?? auth.user.email ?? '', picked);
     }
   }
   return NextResponse.redirect(`${origin}/`);
