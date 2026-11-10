@@ -40,7 +40,10 @@ async function saveWithFixtures(withHr: boolean, confirm = true): Promise<string
   const link = page.getByRole('link', { name: 'Otvori izveštaj o sesiji' });
   await expect(again.or(link)).toBeVisible();
   if (await again.isVisible()) await again.click();
-  await page.getByRole('link', { name: 'Otvori izveštaj o sesiji' }).click();
+  // Follow the link's target directly: a click during hydration can be lost.
+  const href = await link.getAttribute('href');
+  expect(href).toMatch(/^\/trening\/[0-9a-f-]{36}$/);
+  await page.goto(href!);
   await expect(page).toHaveURL(/\/trening\/[0-9a-f-]{36}$/);
   return page.url();
 }
