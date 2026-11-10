@@ -90,6 +90,19 @@ test('the SCATT traces put the selected series\' shots on the target and add aim
   await expect(page.getByText('stabilnost ritma (SCATT)')).toBeVisible();
 });
 
+test('a shot opens its aim trace for replay and goes back to the series', async () => {
+  await page.goto(reportUrl);
+  await expect(page.locator('.target__hole').first()).toBeVisible({ timeout: 20_000 });
+  await page.locator('table.shots tbody tr').first().click();
+  await expect(page.getByRole('img', { name: /^Putanja · pogodak 1:/ })).toBeVisible();
+  await page.getByRole('button', { name: /Pusti/ }).click();
+  await expect(page.getByRole('button', { name: /Pauza/ })).toBeVisible();
+  await page.getByRole('button', { name: 'Uvećaj' }).click();
+  await expect(page.getByRole('button', { name: 'Prilagodi' })).toBeVisible();
+  await page.getByRole('button', { name: /Nazad na seriju/ }).click();
+  await expect(page.locator('.target__hole').first()).toBeVisible();
+});
+
 test('a proposed alignment is confirmed from the report', async () => {
   await saveWithFixtures(false, false);
   await expect(page.locator('.flag-badge')).toHaveAttribute('data-state', 'proposed');

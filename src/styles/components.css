@@ -498,6 +498,42 @@ input[type='file']::file-selector-button { font: inherit; font-weight: 700; marg
 .key--raw { width: 1rem; height: 0; border-top: 1px dotted var(--ink-faint); }
 .key--shot { width: 2px; height: 0.8rem; background: var(--pip-ten); }
 
+.target { position: relative; }
+.target__zoom { top: var(--space-1); left: var(--space-1); }
+
+/* Aim trace replay (SCATT): target canvas, transport, options, level vial. */
+.trace { margin: 0; height: 100%; min-height: 22rem; display: grid; grid-template-rows: auto minmax(12rem, 1fr) auto auto auto auto; gap: var(--space-2); }
+.trace__head { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2) var(--space-4); font-size: var(--fs-md); color: var(--ink-muted); }
+.trace__score { font-family: var(--font-display); font-weight: 800; font-size: var(--fs-xl); color: var(--ink); }
+.trace__hold strong { color: var(--ink); }
+.trace__canvas { position: relative; min-height: 0; }
+.trace__canvas canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; border-radius: var(--radius); }
+.trace__zoom { position: absolute; top: var(--space-2); left: var(--space-2); z-index: 1; display: flex; gap: var(--space-1); }
+.trace__zoom button { min-width: 2.25rem; min-height: 2.25rem; padding: 0 var(--space-2); background: rgb(11 21 48 / 0.78); color: #fff; border: 1px solid rgb(255 255 255 / 0.25); font-weight: 700; font-size: var(--fs-md); }
+.trace__zoom button:hover { background: rgb(11 21 48 / 0.92); }
+.trace__bar { display: flex; align-items: center; gap: var(--space-3); }
+.trace__play { min-width: 6.5rem; }
+.trace__scrub { flex: 1; min-width: 6rem; accent-color: var(--data); }
+.trace__time { min-width: 9.5rem; text-align: right; font-size: var(--fs-sm); color: var(--ink-muted); }
+.trace__opts { display: flex; flex-wrap: wrap; gap: var(--space-2) var(--space-6); }
+.trace__legend { display: flex; flex-wrap: wrap; gap: var(--space-1) var(--space-4); font-size: var(--fs-sm); color: var(--ink-muted); }
+.key--trace { width: 1rem; height: 3px; border-radius: 2px; }
+.level { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: var(--space-3); font-size: var(--fs-sm); color: var(--ink-muted); }
+.level svg { width: 100%; max-height: 3.5rem; overflow: visible; }
+.level__vial { fill: rgb(120 200 150 / 0.16); stroke: var(--ink-faint); stroke-width: 1.25; }
+.level__tick { stroke: var(--ink-faint); stroke-width: 1; }
+.level__tick--major { stroke: var(--ink-muted); }
+.level__mark { stroke: var(--ink); stroke-width: 1.5; }
+.level__bubble { fill: rgb(200 220 245 / 0.9); stroke: rgb(0 0 0 / 0.35); }
+.level__bubble--ok { fill: rgb(110 210 150 / 0.95); }
+.level__num { fill: var(--ink-muted); font-size: 11px; font-family: var(--font-body); }
+.level__value { min-width: 4rem; text-align: right; color: var(--ink); font-weight: 700; }
+@media (max-width: 40rem) {
+  .trace__time { min-width: 0; }
+  .level { grid-template-columns: minmax(0, 1fr) auto; }
+  .level__label { grid-column: 1 / -1; }
+}
+
 .chart-panel { height: 100%; min-height: 14rem; display: grid; grid-template-rows: auto minmax(0, 1fr); gap: var(--space-2); }
 .chart-panel__legend { margin: 0; display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2) var(--space-4); font-size: var(--fs-md); color: var(--ink-muted); max-width: none; }
 .chart-panel__stat { margin-left: auto; color: var(--ink-muted); }

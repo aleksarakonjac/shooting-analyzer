@@ -53,3 +53,19 @@ describe('SCATT shot analysis (sample, against the reference implementation)', (
     expect(intervalStability([0, 1000, 5000])).toBe(40); // gaps 1 s and 4 s: mean 2.5, deviation 3 s over 5 s
   });
 });
+
+describe('scattTargetFor', () => {
+  it('gives every discipline its target, the 25 m pistol the precision target with 5.6 mm', async () => {
+    const { scattTargetFor } = await import('@/lib/scatt/targets');
+    expect(scattTargetFor('air_rifle')?.id).toBe('ar10');
+    expect(scattTargetFor('air_pistol')?.id).toBe('ap10');
+    expect(scattTargetFor('smallbore_3p')?.id).toBe('sbr50');
+    const p = scattTargetFor('smallbore_pistol')!;
+    expect(p.id).toBe('sp25');
+    expect(p.rings[10]).toBe(50);
+    expect(p.rings[1]).toBe(500);
+    expect(p.black).toBe(200);
+    expect(p.innerTen).toBe(25);
+    expect(p.caliber).toBe(5.6);
+  });
+});

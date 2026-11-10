@@ -15,7 +15,10 @@ import { hrAvgOverShots } from '@/lib/report/derive';
 import { useHrSamples } from './useHrSamples';
 import { SeriesBoard } from './SeriesBoard';
 import { TargetPlot, type ShotHole } from './TargetPlot';
-import { useScattAnalysis } from './useScattAnalysis';
+import { useReplay, useScattAnalysis } from './useScattAnalysis';
+import { TraceViewer } from './TraceViewer';
+import { scattTargetFor } from '@/lib/scatt/targets';
+import { targetSpec } from '@/lib/report/target';
 
 const t = sr.report;
 
@@ -76,6 +79,10 @@ export function ReportWorkspace({
     })
     .filter((h): h is ShotHole => h !== null)
     .sort((a, b) => Number(a.selected) - Number(b.selected));
+  // The selected shot's aim trace, when the SCATT file has one.
+  const selShot = series?.shots.find((sh) => sh.n === sel.shot) ?? null;
+  const selScattId = selShot?.scattId ?? null;
+  const replay = useReplay(scatt, selScattId);
   const fmtClock = (ms: number) => new Intl.DateTimeFormat('sr-Latn-RS', { timeZone: tz, hour: '2-digit', minute: '2-digit', hour12: false }).format(ms);
   const times = view.series.flatMap((s) => s.shots).map((s) => s.tMs).filter((x): x is number => x !== null);
   const span = times.length ? `${fmtClock(Math.min(...times))}–${fmtClock(Math.max(...times))}` : undefined;
@@ -92,11 +99,20 @@ export function ReportWorkspace({
     },
     {
       id: 'target',
-      title: t.target,
+      title: replay && selShot ? t.traceTitle(selShot.n) : t.target,
       range: series ? t.seriesLabel(series.idx) : undefined,
       col: '5 / 9',
       row: '1 / 4',
-      children: view.series.length ? <TargetPlot discipline={discipline} series={view.series} selected={sel.series} holes={holes} caliberMm={scatt.status === 'ready' ? scatt.caliberMm : undefined} /> : <p className="panel__empty">{t.noMatch}</p>,
+      children: replay && selShot ? (
+        <TraceViewer
+          replay={replay}
+          spec={targetSpec(discipline)}
+          target={scattTargetFor(discipline)}
+          shotN={selShot.n}
+          score={selShot.value.toFixed(view.decimal ? 1 : 0)}
+          onBack={() => setSel({ series: sel.series, shot: null })}
+        />
+      ) : view.series.length ? <TargetPlot discipline={discipline} series={view.series} selected={sel.series} holes={holes} caliberMm={scatt.status === 'ready' ? scatt.caliberMm : undefined} onPickShot={(n) => setSel({ series: sel.series, shot: n })} /> : <p className="panel__empty">{t.noMatch}</p>,
     },
     {
       id: 'time',

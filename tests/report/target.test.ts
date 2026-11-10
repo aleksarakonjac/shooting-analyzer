@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { ringRadiusMm, scoreBand, targetSpec, viewRadiusMm } from '@/lib/report/target';
+import { ringRadiusMm, scoreBand, targetSpec, viewRadiusMm, zoomRing, ringAtRadius } from '@/lib/report/target';
 
 describe('targetSpec (ISSF dimensions)', () => {
   it('10 m air rifle: ring 1 is 45.5 mm, ring 10 a 0.5 mm dot, 5 mm per ring, black from ring 4', () => {
@@ -108,5 +108,30 @@ describe('bandLegend', () => {
     expect(bandLegend(true, 10).map((b) => b.band)).toEqual(['top', 'nine', 'low']);
     expect(bandLegend(false, 10).map((b) => b.label)).toEqual(['10', '9', '8', '< 8']);
     expect(bandLegend(false, 9).map((b) => b.label)).toEqual(['9+', '8', '< 8']);
+  });
+});
+
+describe('zoomRing (SCATT zooms ring by ring about the centre)', () => {
+  const s = targetSpec('air_rifle');
+  it('steps in to the next smaller ring, never inside the minimum ring', () => {
+    expect(zoomRing(s, ringRadiusMm(s, 6), 'in')).toBeCloseTo(ringRadiusMm(s, 7));
+    expect(zoomRing(s, ringRadiusMm(s, 9), 'in')).toBeCloseTo(ringRadiusMm(s, 9));
+  });
+  it('steps out to the next larger ring, never past ring 1', () => {
+    expect(zoomRing(s, ringRadiusMm(s, 6), 'out')).toBeCloseTo(ringRadiusMm(s, 5));
+    expect(zoomRing(s, ringRadiusMm(s, 1), 'out')).toBeCloseTo(ringRadiusMm(s, 1));
+  });
+  it('snaps a radius between rings to the neighbouring ring', () => {
+    const between = (ringRadiusMm(s, 6) + ringRadiusMm(s, 7)) / 2;
+    expect(zoomRing(s, between, 'in')).toBeCloseTo(ringRadiusMm(s, 7));
+    expect(zoomRing(s, between, 'out')).toBeCloseTo(ringRadiusMm(s, 6));
+  });
+});
+
+describe('ringAtRadius', () => {
+  it('names the ring whose edge a view radius sits on', () => {
+    const s = targetSpec('air_pistol');
+    expect(ringAtRadius(s, ringRadiusMm(s, 7))).toBe(7);
+    expect(ringAtRadius(s, ringRadiusMm(s, 1))).toBe(1);
   });
 });

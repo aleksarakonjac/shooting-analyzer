@@ -1,9 +1,10 @@
 'use client';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import type { DisciplineId } from '@/lib/domain/types';
 import { scattBrowserOptions } from '@/lib/parsers/browser';
 import { readScattTraces, type ScattTraceFile } from '@/lib/parsers/scatt';
 import { analyseShots, intervalStability, type ShotAnalysis } from '@/lib/scatt/analysis';
+import { buildReplay, type Replay } from '@/lib/scatt/replay';
 import { scattTargetFor } from '@/lib/scatt/targets';
 import { createClient } from '@/lib/supabase/client';
 
@@ -19,7 +20,7 @@ export function useScattAnalysis(path: string | null, discipline: DisciplineId):
   const target = scattTargetFor(discipline);
 
   useEffect(() => {
-    if (path === null || target === null) return;
+    if (path === null) return;
     let alive = true;
     (async () => {
       try {
@@ -42,7 +43,18 @@ export function useScattAnalysis(path: string | null, discipline: DisciplineId):
     };
   }, [path, target]);
 
-  if (path === null || target === null) return { status: 'none' };
+  if (path === null) return { status: 'none' };
   if (state?.path !== path) return { status: 'loading' };
   return state.value;
+}
+
+/** The replay of one SCATT shot's aim trace, or null when the shot has none (or missed the target). */
+export function useReplay(state: ScattState, scattId: number | null): Replay | null {
+  return useMemo(() => {
+    if (state.status !== 'ready' || scattId === null) return null;
+    const a = state.byShot.get(scattId);
+    const shot = state.file.shots.find((x) => x.shotId === scattId);
+    const tr = a && !a.missed && shot ? state.file.traces.get(shot.traceId) : undefined;
+    return tr && shot ? buildReplay(tr, shot.offset, state.file.sampleRate) : null;
+  }, [state, scattId]);
 }

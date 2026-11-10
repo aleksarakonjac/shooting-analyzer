@@ -39,6 +39,24 @@ export function viewRadiusMm(s: TargetSpec, extentMm: number): number {
   return ringRadiusMm(s, 1);
 }
 
+/**
+ * The next view radius when zooming in or out: SCATT zooms ring by ring about the centre.
+ * A radius between rings snaps to the neighbouring ring; the view stays between ring 1 and the minimum ring.
+ */
+export function zoomRing(s: TargetSpec, R: number, dir: 'in' | 'out'): number {
+  const eps = 1e-6;
+  if (dir === 'in') {
+    for (let ring = 1; ring <= s.minViewRing; ring++) {
+      if (ringRadiusMm(s, ring) < R - eps) return ringRadiusMm(s, ring);
+    }
+    return ringRadiusMm(s, s.minViewRing);
+  }
+  for (let ring = s.minViewRing; ring >= 1; ring--) {
+    if (ringRadiusMm(s, ring) > R + eps) return ringRadiusMm(s, ring);
+  }
+  return ringRadiusMm(s, 1);
+}
+
 export type ScoreBand = 'top' | 'ten' | 'nine' | 'low';
 
 /** Default line between a filled pip and a ring: 10.5 for decimal scoring, 10 for whole rings. */
@@ -85,4 +103,9 @@ export function bandLegend(decimal: boolean, top: number): { band: ScoreBand; la
     { band: 'nine' as const, label: '8' },
     { band: 'low' as const, label: '< 8' },
   ];
+}
+
+/** The ring whose edge is at radius R (rounded to the nearest ring, 1..10). */
+export function ringAtRadius(s: TargetSpec, R: number): number {
+  return Math.max(1, Math.min(10, Math.round(10 - (2 * R - s.tenMm) / s.stepMm)));
 }

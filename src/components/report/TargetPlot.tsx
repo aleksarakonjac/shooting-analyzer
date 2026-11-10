@@ -1,8 +1,11 @@
+'use client';
+import { useRef } from 'react';
 import type { DisciplineId } from '@/lib/domain/types';
 import { offsetDirection } from '@/lib/report/derive';
-import { ringRadiusMm, targetSpec, viewRadiusMm } from '@/lib/report/target';
+import { ringAtRadius, ringRadiusMm, targetSpec, viewRadiusMm } from '@/lib/report/target';
 import type { SeriesView } from '@/lib/report/viewModel';
 import { sr } from '@/lib/i18n/sr';
+import { useRingZoom } from './useRingZoom';
 
 const t = sr.report;
 const side = (s: 'left' | 'right' | 'up' | 'down' | null) => (s ? t[s] : t.centred);
@@ -26,7 +29,10 @@ export function TargetPlot({
   selected,
   holes = [],
   caliberMm = 4.5,
+  onPickShot,
 }: {
+  /** A click on a hole picks that shot (opens its aim trace). */
+  onPickShot?: (n: number) => void;
   discipline: DisciplineId;
   series: SeriesView[];
   selected: number | null;
@@ -41,7 +47,9 @@ export function TargetPlot({
     ...series.filter((s) => s.mpi).map((s) => Math.hypot(s.mpi!.x, s.mpi!.y) + (s.groupMm ?? 0) / 2),
     ...holes.map((h) => Math.hypot(h.x, h.y) + caliberMm / 2),
   );
-  const R = viewRadiusMm(spec, extent);
+  const svg = useRef<SVGSVGElement>(null);
+  const zoom = useRingZoom(spec, viewRadiusMm(spec, extent), svg, discipline);
+  const R = zoom.R;
   const pad = R * 0.06;
   const vb = `${-R - pad} ${-R - pad} ${2 * (R + pad)} ${2 * (R + pad)}`;
   const rings = Array.from({ length: 10 }, (_, i) => 10 - i).filter((n) => ringRadiusMm(spec, n) <= R + 0.001);
@@ -54,7 +62,16 @@ export function TargetPlot({
 
   return (
     <figure className="target">
-      <svg viewBox={vb} role="img" aria-label={sel ? `${t.seriesLabel(sel.idx)}: ${t.group} ${sel.groupMm?.toFixed(1) ?? '—'} mm` : t.group}>
+      <div className="trace__zoom target__zoom" role="group" aria-label={t.zoomRing(ringAtRadius(spec, R))}>
+        <button type="button" onClick={zoom.zoomIn} aria-label={t.zoomIn} title={t.zoomIn}>+</button>
+        <button type="button" onClick={zoom.zoomOut} aria-label={t.zoomOut} title={t.zoomOut}>−</button>
+        {zoom.zoomed && (
+          <button type="button" onClick={zoom.fit} title={t.zoomFit}>
+            {t.zoomFit}
+          </button>
+        )}
+      </div>
+      <svg ref={svg} onDoubleClick={zoom.fit} viewBox={vb} role="img" aria-label={sel ? `${t.seriesLabel(sel.idx)}: ${t.group} ${sel.groupMm?.toFixed(1) ?? '—'} mm` : t.group}>
         <circle r={R + pad} className="target__card" />
         <circle r={Math.min(spec.blackMm / 2, R + pad)} className="target__black" />
         {rings.map((n) => {
@@ -84,6 +101,8 @@ export function TargetPlot({
             className={h.selected ? 'target__hole target__hole--sel' : 'target__hole'}
             strokeWidth={stroke * 1.5}
             data-shot={h.n}
+            onClick={onPickShot ? () => onPickShot(h.n) : undefined}
+            style={onPickShot ? { cursor: 'pointer' } : undefined}
           />
         ))}
         {sel?.mpi && (
