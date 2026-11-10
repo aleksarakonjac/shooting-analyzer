@@ -124,21 +124,3 @@ describe('periodRange', () => {
   });
 });
 
-import { pastBuckets } from '@/lib/stats/periodStats';
-
-describe('pastBuckets', () => {
-  const b = (n: number) => Array.from({ length: n }, (_, i) => ({ label: String(i + 1), avgSeries: null, avgGroupMm: null }));
-
-  it('keeps a month up to today', () => {
-    expect(pastBuckets(b(30), 'month', new Date('2026-11-09T10:00:00Z'), 'Europe/Belgrade')).toHaveLength(9);
-  });
-
-  it('keeps a week up to today (Monday first) and a year up to this month', () => {
-    expect(pastBuckets(b(7), 'week', new Date('2026-11-11T10:00:00Z'), 'Europe/Belgrade')).toHaveLength(3); // Wednesday
-    expect(pastBuckets(b(12), 'year', new Date('2026-11-09T10:00:00Z'), 'Europe/Belgrade')).toHaveLength(11);
-  });
-
-  it('shows at least the first week of a month on its first days', () => {
-    expect(pastBuckets(b(30), 'month', new Date('2026-11-02T10:00:00Z'), 'Europe/Belgrade')).toHaveLength(7);
-  });
-});

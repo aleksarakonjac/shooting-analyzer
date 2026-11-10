@@ -22,6 +22,13 @@ export interface TrainingSummary {
   looseShots: number;
   /** Average heart rate over the match shots, computed when the training was saved. */
   hrAvg: number | null;
+  kind?: 'trening' | 'kontrolni' | 'takmicenje';
+  stage?: 'slobodno' | 'eliminacije' | 'kvalifikacije' | 'finale';
+  place?: string;
+  eventName?: string | null;
+  /** Start instant (ISO) and the venue zone it is read in. */
+  startedAt?: string | null;
+  tz?: string;
 }
 
 export interface Bucket {
@@ -86,6 +93,62 @@ function averages(trainings: TrainingSummary[]): { avgSeries: number | null; avg
   return { avgSeries: mean(scores), avgGroupMm: mean(groups) };
 }
 
+export interface SetStats {
+  trainings: number;
+  shots: number;
+  avgSeries: number | null;
+  avgGroupMm: number | null;
+  avgHr: number | null;
+}
+
+/** A session's heart rate counts only when its shots are aligned to the clock (not only proposed). */
+const hrCounts = (t: TrainingSummary) => t.hrAvg !== null && !(t.matches.length > 0 && t.matches.every((m) => m.alignState === 'proposed'));
+
+/** Figures over a set of sessions: count, shots (match plus warm-up and attempts), averages. */
+export function setStats(trainings: TrainingSummary[]): SetStats {
+  const hr = trainings.filter(hrCounts).map((t) => t.hrAvg as number);
+  const shots = trainings.reduce(
+    (a, t) => a + t.looseShots + t.matches.reduce((b, m) => b + m.series.reduce((c, s) => c + s.shotCount, 0), 0),
+    0,
+  );
+  return {
+    trainings: trainings.length,
+    shots,
+    ...averages(trainings),
+    avgHr: hr.length === 0 ? null : Math.round(hr.reduce((a, b) => a + b, 0) / hr.length),
+  };
+}
+
+export interface SessionPoint {
+  id: string;
+  trainedOn: string;
+  name: string;
+  total: number | null;
+  avgSeries: number | null;
+  avgGroupMm: number | null;
+  hr: number | null;
+}
+
+/** One chart point per session of a discipline, oldest first. */
+export function sessionPoints(trainings: TrainingSummary[], discipline: DisciplineId): SessionPoint[] {
+  return trainings
+    .filter((t) => t.discipline === discipline)
+    .sort((a, b) => a.trainedOn.localeCompare(b.trainedOn) || (a.startedAt ?? '').localeCompare(b.startedAt ?? ''))
+    .map((t) => {
+      const scores = t.matches.flatMap((m) => m.series).map((s) => seriesScore(t.discipline, s)).filter((v): v is number => v !== null);
+      const avg = averages([t]);
+      return {
+        id: t.id,
+        trainedOn: t.trainedOn,
+        name: t.name,
+        total: scores.length ? round1(scores.reduce((a, b) => a + b, 0)) : null,
+        avgSeries: avg.avgSeries,
+        avgGroupMm: avg.avgGroupMm,
+        hr: hrCounts(t) ? t.hrAvg : null,
+      };
+    });
+}
+
 /**
  * Dashboard figures for the period containing `now` (calendar dates in `tz`).
  * Proposed matches count for SIUS-only figures (series scores, groups) but not for
@@ -95,13 +158,6 @@ export function periodStats(trainings: TrainingSummary[], period: Period, now: D
   const { from, to } = periodRange(period, now, tz);
   const inPeriod = trainings.filter((t) => t.trainedOn >= from && t.trainedOn < to);
 
-  const hr = inPeriod
-    .filter((t) => t.hrAvg !== null && !(t.matches.length > 0 && t.matches.every((m) => m.alignState === 'proposed')))
-    .map((t) => t.hrAvg as number);
-  const shots = inPeriod.reduce(
-    (a, t) => a + t.looseShots + t.matches.reduce((b, m) => b + m.series.reduce((c, s) => c + s.shotCount, 0), 0),
-    0,
-  );
 
   // Buckets: days for a week or month, months for a year.
   const keys: { label: string; match: (date: string) => boolean }[] = [];
@@ -117,23 +173,7 @@ export function periodStats(trainings: TrainingSummary[], period: Period, now: D
   }
 
   return {
-    trainings: inPeriod.length,
-    shots,
-    ...averages(inPeriod),
-    avgHr: hr.length === 0 ? null : Math.round(hr.reduce((a, b) => a + b, 0) / hr.length),
+    ...setStats(inPeriod),
     buckets: keys.map((k) => ({ label: k.label, ...averages(inPeriod.filter((t) => k.match(t.trainedOn))) })),
   };
-}
-
-/**
- * Buckets of the current period that are not in the future (a month on the 9th shows days 1-9),
- * so a chart does not spend most of its width on days that have not happened. A month never shows
- * fewer than seven days.
- */
-export function pastBuckets<B>(buckets: B[], period: Period, now: Date, tz: string): B[] {
-  const today = localDate(now, tz);
-  const [, m, d] = today.split('-').map(Number);
-  const index =
-    period === 'year' ? m : period === 'month' ? Math.max(d, 7) : ((new Date(asDay(today)).getUTCDay() + 6) % 7) + 1;
-  return buckets.slice(0, Math.min(buckets.length, index));
 }

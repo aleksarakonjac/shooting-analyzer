@@ -1,5 +1,6 @@
 import { CHART } from '@/lib/report/charts';
-import type { Bucket } from './periodStats';
+import type { ChartKind } from './filters';
+import type { SessionPoint } from './periodStats';
 
 const axis = {
   axisLine: { lineStyle: { color: CHART.rule } },
@@ -9,57 +10,52 @@ const axis = {
   nameTextStyle: { color: CHART.muted, fontFamily: CHART.font },
 };
 
-/**
- * Period trend: average series as a line (left axis), average group as bars in mm (right axis).
- * Empty buckets get no point; the line is drawn across them so a trend reads even when training is not daily.
- */
+const CHART_META: Record<ChartKind, { name: string; unit: string; pick: (p: SessionPoint) => number | null; digits: number }> = {
+  rez: { name: 'Prosek serije', unit: '', pick: (p) => p.avgSeries, digits: 1 },
+  puls: { name: 'Prosečan puls', unit: 'otk/min', pick: (p) => p.hr, digits: 0 },
+  grupa: { name: 'Prosečna grupa', unit: 'mm', pick: (p) => p.avgGroupMm, digits: 1 },
+};
+
+/** One figure per session over the calendar: average series, average heart rate or average group. */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-export function trendOption(buckets: Bucket[], decimal: boolean): any {
-  const digits = decimal ? 1 : 1;
+export function sessionsOption(points: SessionPoint[], kind: ChartKind, decimal: boolean): any {
+  const m = CHART_META[kind];
+  const data = points
+    .map((p) => ({ p, v: m.pick(p) }))
+    .filter((x): x is { p: SessionPoint; v: number } => x.v !== null)
+    .map(({ p, v }) => ({ id: p.id, name: p.name, total: p.total, value: [p.trainedOn, v] }));
+  const fmtDate = (ms: number) => {
+    const d = new Date(ms);
+    return `${d.getUTCDate()}. ${d.getUTCMonth() + 1}.`;
+  };
   return {
     animationDuration: 300,
-    grid: { left: 52, right: 44, top: 40, bottom: 28 },
-    legend: {
-      data: ['Prosek serije', 'Prosečna grupa'],
-      top: 4,
-      left: 0,
-      textStyle: { color: CHART.muted, fontFamily: CHART.font, fontSize: 13 },
-      itemWidth: 14,
-      itemHeight: 8,
-    },
+    grid: { left: 52, right: 16, top: 20, bottom: 30 },
     tooltip: {
-      trigger: 'axis',
+      trigger: 'item',
       backgroundColor: CHART.select,
       borderColor: CHART.select,
       textStyle: { color: '#0b1530', fontFamily: CHART.font, fontSize: 12 },
       extraCssText: 'border-radius:2px;box-shadow:0 8px 24px -8px rgba(0,0,0,.6);',
-      valueFormatter: (v: number | null) => (v === null || v === undefined ? '—' : Number(v).toFixed(digits)),
+      formatter: (x: { data: { name: string; total: number | null; value: [string, number] } }) =>
+        `<b>${x.data.name}</b><br/>${m.name}: ${x.data.value[1].toFixed(m.digits)}${m.unit ? ` ${m.unit}` : ''}` +
+        (kind === 'rez' && x.data.total !== null ? `<br/>Ukupno: ${x.data.total.toFixed(decimal ? 1 : 0)}` : ''),
     },
-    xAxis: { ...axis, type: 'category', data: buckets.map((b) => b.label), splitLine: { show: false } },
-    yAxis: [
-      { ...axis, type: 'value', name: 'Serija', nameLocation: 'middle', nameGap: 38, nameRotate: 90, scale: true },
-      { ...axis, type: 'value', name: 'mm', nameLocation: 'middle', nameGap: 30, nameRotate: -90, position: 'right', min: 0, splitLine: { show: false } },
-    ],
+    xAxis: { ...axis, type: 'time', splitNumber: 5, splitLine: { show: false }, axisLabel: { ...axis.axisLabel, hideOverlap: true, formatter: fmtDate } },
+    yAxis: { ...axis, type: 'value', name: m.unit || 'Serija', nameLocation: 'middle', nameGap: 38, nameRotate: 90, scale: true },
     series: [
       {
-        type: 'bar',
-        name: 'Prosečna grupa',
-        yAxisIndex: 1,
-        data: buckets.map((b) => b.avgGroupMm),
-        barMaxWidth: 18,
-        itemStyle: { color: 'rgba(129,144,181,0.22)', borderColor: 'rgba(129,144,181,0.6)', borderWidth: 1 },
-        z: 1,
-      },
-      {
-        type: 'line',
-        name: 'Prosek serije',
-        data: buckets.map((b) => b.avgSeries),
-        connectNulls: true,
+        type: kind === 'grupa' ? 'bar' : 'line',
+        name: m.name,
+        data,
         symbol: 'circle',
         symbolSize: 8,
-        lineStyle: { color: CHART.data, width: 2.5 },
-        itemStyle: { color: CHART.data, borderColor: '#0b1530', borderWidth: 1.5 },
-        z: 3,
+        barMaxWidth: 14,
+        lineStyle: { color: CHART.data, width: 2 },
+        itemStyle:
+          kind === 'grupa'
+            ? { color: 'rgba(129,144,181,0.35)', borderColor: 'rgba(129,144,181,0.8)', borderWidth: 1 }
+            : { color: CHART.data, borderColor: '#0b1530', borderWidth: 1.5 },
       },
     ],
   };

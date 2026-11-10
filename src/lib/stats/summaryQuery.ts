@@ -3,7 +3,7 @@ import type { TrainingSummary } from './periodStats';
 
 /** The PostgREST select that yields what `toSummary` needs. */
 export const SUMMARY_SELECT =
-  'id,name,trained_on,discipline,shooter_id,' +
+  'id,name,trained_on,discipline,shooter_id,kind,stage,place,started_at,tz,events(name),' +
   'matches(align_state,series(idx,total,total_decimal,group_mm,shots(count))),' +
   'loose_shots(count),hr_samples_ref(avg_bpm)';
 
@@ -13,6 +13,12 @@ export interface SummaryRow {
   trained_on: string;
   discipline: DisciplineId;
   shooter_id: string;
+  kind?: TrainingSummary['kind'];
+  stage?: TrainingSummary['stage'];
+  place?: string;
+  started_at?: string | null;
+  tz?: string;
+  events?: { name: string } | null;
   matches: {
     align_state: 'proposed' | 'confirmed';
     series: {
@@ -36,6 +42,12 @@ export const toSummary = (r: SummaryRow): TrainingSummary => {
     discipline: r.discipline,
     looseShots: r.loose_shots[0]?.count ?? 0,
     hrAvg: ref?.avg_bpm ?? null,
+    kind: r.kind,
+    stage: r.stage,
+    place: r.place,
+    eventName: r.events?.name ?? null,
+    startedAt: r.started_at ?? null,
+    tz: r.tz,
     matches: r.matches.map((m) => ({
       alignState: m.align_state,
       series: m.series.map((s) => ({

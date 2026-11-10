@@ -4,7 +4,6 @@ import { FlagBadge } from '../../src/components/FlagBadge';
 import { LanePlate } from '../../src/components/LanePlate';
 import { StateLine } from '../../src/components/StateLine';
 import { AppShell } from '../../src/components/AppShell';
-import { PeriodTabs } from '../../src/components/PeriodTabs';
 
 const html = (el: React.ReactElement) => renderToStaticMarkup(el);
 
@@ -76,12 +75,3 @@ describe('AppShell', () => {
   });
 });
 
-describe('PeriodTabs', () => {
-  it('marks the selected period', () => {
-    const out = html(<PeriodTabs value="month" hrefFor={(p) => `/?period=${p}`} />);
-    expect(out).toContain('Nedelja');
-    expect(out).toContain('Mesec');
-    expect(out).toContain('Godina');
-    expect(out).toMatch(/aria-current="page"[^>]*>Mesec/);
-  });
-});

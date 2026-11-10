@@ -2,7 +2,7 @@ import { expect, test, type Page } from '@playwright/test';
 import { join } from 'node:path';
 import { pickDiscipline } from './helpers';
 
-// Needs the Supabase TEST project with migrations 0001-0009 applied (see docs/supabase-setup.md).
+// Needs the Supabase TEST project with migrations 0001-0017 applied (see docs/supabase-setup.md).
 const adminEmail = process.env.E2E_ADMIN_EMAIL;
 const adminPassword = process.env.E2E_ADMIN_PASSWORD;
 test.skip(!adminEmail || !adminPassword, 'E2E_ADMIN_EMAIL / E2E_ADMIN_PASSWORD not set');
@@ -39,13 +39,13 @@ test.beforeAll(async ({ browser }) => {
 
 const plate = (label: string) => page.locator('.lane-plate').filter({ hasText: label });
 
-test('a new shooter sees an empty period with a way to add a training', async () => {
-  await page.goto('/?p=year');
-  await expect(page.getByText('U ovom periodu nema treninga.')).toBeVisible();
-  await expect(page.getByRole('link', { name: 'Dodaj trening' })).toBeVisible();
+test('a new shooter sees no sessions yet and a way to add one', async () => {
+  await page.goto('/');
+  await expect(page.getByText('Još nema sesija.')).toBeVisible();
+  await expect(page.getByRole('main').getByRole('link', { name: 'Nova sesija' })).toBeVisible();
 });
 
-test('after saving the fixtures the year view shows counts, averages, trends and the list', async () => {
+test('after saving the fixtures the year view shows the list, counts, averages and the chart', async () => {
   await page.goto('/trening/novi');
   await pickDiscipline(page, 'Vazdušna puška');
   await expect(page.getByLabel('Naziv')).toHaveAttribute('placeholder', /Vazdušna puška$/);
@@ -58,20 +58,36 @@ test('after saving the fixtures the year view shows counts, averages, trends and
   await expect(page.getByText('Sesija je sačuvana')).toBeVisible();
 
   await page.goto('/?p=year');
-  await expect(plate('Treninga').locator('.lane-plate__value')).toHaveText('1');
+  await expect(plate('Sesija').locator('.lane-plate__value')).toHaveText('1');
   await expect(plate('Pogodaka').locator('.lane-plate__value')).toHaveText('129'); // 80 match + 49 warm-up/attempts
   await expect(plate('Prosek serije').locator('.lane-plate__value')).toHaveText('105.1'); // 841.1 / 8
   await expect(plate('Prosečna grupa').locator('.lane-plate__value')).not.toHaveText('—');
   await expect(plate('Prosečan puls').locator('.lane-plate__value')).toHaveText('—'); // no heart-rate file
-  await expect(page.locator('[data-point]')).toHaveCount(1); // one bucket (okt) with data in the trend table
+  await expect(page.locator('[data-point]')).toHaveCount(1); // one session in the chart's table
   await expect(page.getByRole('listitem').filter({ hasText: 'Vazdušna puška' })).toContainText('841.1');
 });
 
-test('the period tabs switch and a period without the training is empty', async () => {
+test('the default view lists the recent sessions without a period', async () => {
+  await page.goto('/');
+  await expect(page.getByRole('listitem').filter({ hasText: 'Vazdušna puška' })).toContainText('841.1');
+  await expect(page.getByRole('link', { name: 'Skorašnje' })).toHaveAttribute('aria-current', 'page');
+});
+
+test('the period tabs switch and a period without the session is empty', async () => {
   await page.goto('/?p=year');
   await page.getByRole('link', { name: 'Nedelja' }).click();
   await expect(page).toHaveURL(/p=week/);
-  await expect(page.getByText('U ovom periodu nema treninga.')).toBeVisible();
+  await expect(page.getByText('Nema sesija za izabrane filtere.')).toBeVisible();
+});
+
+test('filters in the URL narrow the list, and the chart switches to the group', async () => {
+  await page.goto('/?v=takmicenje');
+  await expect(page.getByText('Nema sesija za izabrane filtere.')).toBeVisible();
+  await page.goto('/?v=trening&d=air_rifle');
+  await expect(page.getByRole('listitem').filter({ hasText: 'Vazdušna puška' })).toBeVisible();
+  await page.getByRole('link', { name: 'Grupa' }).click();
+  await expect(page).toHaveURL(/g=grupa/);
+  await expect(page.locator('[data-point]')).toHaveCount(1);
 });
 
 test('a list row opens the training report', async () => {

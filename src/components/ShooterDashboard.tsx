@@ -1,22 +1,18 @@
 import Link from 'next/link';
 import { LanePlate } from '@/components/LanePlate';
-import { PeriodTabs, type Period } from '@/components/PeriodTabs';
-import { TrendPanel } from '@/components/TrendPanel';
 import { Workspace } from '@/components/Workspace';
+import { FilterBar } from '@/components/sessions/FilterBar';
+import { SessionsChart } from '@/components/sessions/SessionsChart';
 import { DISCIPLINES } from '@/lib/domain/disciplines';
 import type { DisciplineId } from '@/lib/domain/types';
 import { sr } from '@/lib/i18n/sr';
-import { matchTotal } from '@/lib/report/derive';
-import { pastBuckets, periodRange, periodStats, type TrainingSummary } from '@/lib/stats/periodStats';
-import { SUMMARY_SELECT, toSummary, type SummaryRow } from '@/lib/stats/summaryQuery';
-import { createClient } from '@/lib/supabase/server';
+import { filtersHref, hasFilters, parseFilters, RECENT_LIMIT, type ChartKind, type FilterSearch, type Quick, type SessionFilters } from '@/lib/stats/filters';
+import { filterChoices, loadSessions } from '@/lib/stats/loadSessions';
+import { sessionPoints, setStats, type TrainingSummary } from '@/lib/stats/periodStats';
 
-export interface DashboardSearch {
-  p?: string;
-  d?: string;
-}
+export type DashboardSearch = FilterSearch;
 
-/** Period dashboard of one shooter: used by the shooter's own home and by the coach's drill-down. */
+/** Sessions page of one shooter: the shooter's own home and the coach's drill-down. */
 export async function ShooterDashboard({
   shooterId,
   tz,
@@ -31,139 +27,190 @@ export async function ShooterDashboard({
   shooterId: string;
   tz: string;
   title: string;
-  /** Path the period and discipline links point to ('/' or '/strelci/<id>'). */
+  /** Path the filter links point to ('/' or '/strelci/<id>'). */
   base: string;
   newHref: string;
   search: DashboardSearch;
 }) {
-  const sp = search;
-  const period: Period = sp.p === 'week' || sp.p === 'year' ? sp.p : 'month';
-  const now = new Date();
-  const { from, to } = periodRange(period, now, tz);
-
-  const supabase = await createClient();
-  const { data } = await supabase
-    .from('trainings')
-    .select(SUMMARY_SELECT)
-    .eq('shooter_id', shooterId)
-    .is('deleted_at', null)
-    .gte('trained_on', from)
-    .lt('trained_on', to)
-    .order('trained_on', { ascending: false })
-    .order('created_at', { ascending: false });
-  const all = ((data ?? []) as unknown as SummaryRow[]).map(toSummary);
-  return <DashboardView all={all} period={period} now={now} tz={tz} title={title} base={base} newHref={newHref} wanted={sp.d} back={back} />;
+  const filters = parseFilters(search, new Date(), tz);
+  const [all, choices] = await Promise.all([loadSessions(shooterId, filters), filterChoices(shooterId)]);
+  return <SessionsView all={all} filters={filters} title={title} base={base} newHref={newHref} back={back} choices={choices} />;
 }
 
-/** The dashboard for already-loaded trainings of the period (pure; the loader above fetches them). */
-export function DashboardView({
+const t = sr.dashboard;
+const nt = sr.newTraining;
+const WEEKDAYS = ['ned', 'pon', 'uto', 'sre', 'čet', 'pet', 'sub'];
+const QUICK: { id: Exclude<Quick, 'range'>; label: string }[] = [
+  { id: 'recent', label: t.recent },
+  { id: 'week', label: sr.period.week },
+  { id: 'month', label: sr.period.month },
+  { id: 'year', label: sr.period.year },
+];
+const CHARTS: { id: ChartKind; label: string }[] = [
+  { id: 'rez', label: t.chartRez },
+  { id: 'puls', label: t.chartPuls },
+  { id: 'grupa', label: t.chartGrupa },
+];
+
+const dayParts = (iso: string) => {
+  const d = new Date(`${iso}T12:00:00Z`);
+  return { weekday: WEEKDAYS[d.getUTCDay()], date: `${d.getUTCDate()}. ${d.getUTCMonth() + 1}.`, year: d.getUTCFullYear() };
+};
+
+const hm = (iso: string, tz: string) =>
+  new Intl.DateTimeFormat('sr-Latn-RS', { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: tz }).format(new Date(iso));
+
+/** The sessions list first, then the figures and a chart of the filtered set (pure; the loader fetches). */
+export function SessionsView({
   all,
-  period,
-  now,
-  tz,
+  filters,
   title,
   base,
   newHref,
-  wanted,
   back,
+  choices,
 }: {
   back?: { href: string; label: string };
   all: TrainingSummary[];
-  period: Period;
-  now: Date;
-  tz: string;
+  filters: SessionFilters;
   title: string;
   base: string;
   newHref: string;
-  wanted?: string;
+  choices: { places: string[]; events: { id: string; name: string }[] };
 }) {
-  const t = sr.dashboard;
-  // Series scores of different disciplines are not comparable: the dashboard shows one discipline at a time.
-  const present = [...new Set(all.map((x) => x.discipline))];
-  const discipline: DisciplineId | undefined =
-    present.find((d) => d === wanted) ?? present[0];
-  const list = all.filter((x) => x.discipline === discipline);
-  const stats = periodStats(list, period, now, tz);
+  const f = filters;
+  // Series scores of different disciplines are not comparable: the figures follow one discipline.
+  const discipline: DisciplineId | undefined = f.discipline ?? all[0]?.discipline;
+  const same = discipline ? all.filter((x) => x.discipline === discipline) : [];
+  const mixed = new Set(all.map((x) => x.discipline)).size > 1;
+  const stats = setStats(same);
   const dec = discipline ? DISCIPLINES[discipline].decimal : true;
-  const href = (p: Period) => `${base}?p=${p}${discipline ? `&d=${discipline}` : ''}`;
-  const dash = (v: number | null, digits = 1, unit = '') => (v === null ? t.noValue : `${v.toFixed(digits)}${unit}`);
+  const thisYear = new Date().getUTCFullYear();
+  const activeCount = [f.quick === 'range', f.discipline, f.kind, f.stage, f.place, f.event].filter(Boolean).length;
+  const dash = (v: number | null, digits = 1) => (v === null ? t.noValue : v.toFixed(digits));
 
   const strip = (
     <>
       <div className="ws__head">
         {back && <Link className="ws__back" href={back.href}>{back.label}</Link>}
         <h1 className="ws__title">{title}</h1>
-        {discipline && <p className="ws__meta">{DISCIPLINES[discipline].nameSr}</p>}
       </div>
-      <PeriodTabs value={period} hrefFor={href} />
-      {present.length > 1 && (
-        <nav className="period-tabs dash__disc" aria-label={t.discipline}>
-          {present.map((d) => (
-            <Link key={d} href={`${base}?p=${period}&d=${d}`} aria-current={d === discipline ? 'page' : undefined}>
-              {DISCIPLINES[d].nameSr}
-            </Link>
-          ))}
-        </nav>
-      )}
+      <nav className="period-tabs" aria-label={t.quick}>
+        {QUICK.map((q) => (
+          <Link key={q.id} href={filtersHref(base, f, { quick: q.id })} aria-current={f.quick === q.id ? 'page' : undefined}>
+            {q.label}
+          </Link>
+        ))}
+      </nav>
+      <FilterBar base={base} filters={f} places={choices.places} events={choices.events} activeCount={activeCount} />
+      {activeCount > 0 && <Link className="button button--quiet" href={base}>{t.clear}</Link>}
       <div className="ws__strip-end">
         <Link className="button" href={newHref}>{t.addFirst}</Link>
       </div>
     </>
   );
 
-  if (list.length === 0) {
+  if (all.length === 0) {
     return (
       <Workspace
         label={t.panels}
         strip={strip}
         rows={1}
-        panels={[{ id: 'empty', title: t.listTitle, col: '1 / 13', row: '1 / 2', children: <p className="panel__empty dash__empty">{t.empty}</p> }]}
+        panels={[
+          {
+            id: 'list',
+            title: t.listTitle,
+            col: '1 / 13',
+            row: '1 / 2',
+            children: <p className="panel__empty dash__empty">{hasFilters(f) ? t.empty : t.emptyNew}</p>,
+          },
+        ]}
       />
     );
   }
 
-  const scoreboard = (
-    <div className="scoreline">
+  const list = (
+    <ol className="srows">
+      {all.map((x) => {
+        const series = x.matches.flatMap((m) => m.series);
+        const xdec = DISCIPLINES[x.discipline].decimal;
+        const total = series.length
+          ? Math.round(series.reduce((a, s) => a + ((xdec ? (s.totalDecimal ?? s.total) : s.total) ?? 0), 0) * 10) / 10
+          : null;
+        const proposed = x.matches.some((m) => m.alignState === 'proposed');
+        const day = dayParts(x.trainedOn);
+        const label = [x.kind && x.kind !== 'trening' ? nt.kinds[x.kind] : null, x.stage && x.stage !== 'slobodno' ? nt.stages[x.stage] : null]
+          .filter(Boolean)
+          .join(', ');
+        const meta = [
+          mixed ? DISCIPLINES[x.discipline].nameSr : null,
+          label || null,
+          x.eventName ?? null,
+          x.place || null,
+          x.startedAt && x.tz ? hm(x.startedAt, x.tz) : null,
+        ].filter(Boolean);
+        return (
+          <li key={x.id}>
+            <Link href={`/trening/${x.id}`} className="srow">
+              <span className="srow__day">
+                <span className="srow__wd">{day.weekday}</span>
+                <span className="srow__date num">{day.date}</span>
+                {day.year !== thisYear && <span className="srow__year num">{day.year}</span>}
+              </span>
+              <span className="srow__main">
+                <span className="srow__name">{x.name}</span>
+                {meta.length > 0 && <span className="srow__meta">{meta.join(' · ')}</span>}
+                {proposed && <small className="dash__flag">{t.proposed}</small>}
+              </span>
+              <strong className="srow__total num">{total === null ? t.noValue : total.toFixed(xdec ? 1 : 0)}</strong>
+            </Link>
+          </li>
+        );
+      })}
+    </ol>
+  );
+
+  const figures = (
+    <div className="scoreline scoreline--stack">
       <LanePlate label={t.trainings} value={String(stats.trainings)} />
       <LanePlate label={t.shots} value={String(stats.shots)} />
-      <LanePlate label={t.avgSeries} value={dash(stats.avgSeries, 1)} />
+      <LanePlate label={t.avgSeries} value={dash(stats.avgSeries)} />
       <LanePlate label={t.avgGroup} value={dash(stats.avgGroupMm)} unit={t.unitMm} />
       <LanePlate label={t.avgHr} value={dash(stats.avgHr, 0)} unit={t.unitBpm} />
     </div>
   );
 
-  const rows = (
-    <ul className="dash__list">
-      {list.map((x) => {
-        const series = x.matches.flatMap((m) => m.series).map((s) => ({ total: s.total, total_decimal: s.totalDecimal }));
-        const proposed = x.matches.some((m) => m.alignState === 'proposed');
-        return (
-          <li key={x.id}>
-            <Link href={`/trening/${x.id}`}>
-              {!x.name.startsWith(`${x.trainedOn.slice(8, 10)}.${x.trainedOn.slice(5, 7)}.`) && (
-                <span className="num dash__date">{x.trainedOn.slice(8, 10)}.{x.trainedOn.slice(5, 7)}.</span>
-              )}
-              <span className="dash__name">
-                {x.name}
-                {proposed && <small className="dash__flag">{t.proposed}</small>}
-              </span>
-              <strong className="num">{series.length ? matchTotal(series, dec).toFixed(dec ? 1 : 0) : t.noValue}</strong>
-            </Link>
-          </li>
-        );
-      })}
-    </ul>
+  const chart = (
+    <div className="chart-panel">
+      <nav className="period-tabs" aria-label={t.chart}>
+        {CHARTS.map((c) => (
+          <Link key={c.id} href={filtersHref(base, f, { chart: c.id })} aria-current={f.chart === c.id ? 'page' : undefined} scroll={false}>
+            {c.label}
+          </Link>
+        ))}
+      </nav>
+      {discipline && <SessionsChart points={sessionPoints(same, discipline)} kind={f.chart} decimal={dec} />}
+    </div>
   );
 
+  const figuresRange = discipline && mixed ? t.figuresFor(DISCIPLINES[discipline].nameSr) : t.hrNote;
   return (
     <Workspace
       label={t.panels}
       strip={strip}
-      rowTemplate="auto repeat(5, minmax(0, 1fr))"
+      rows={6}
       panels={[
-        { id: 'score', title: t.scoreboard, range: t.hrNote, col: '1 / 13', row: '1 / 2', children: scoreboard },
-        { id: 'trend', title: t.trendTitle, col: '1 / 9', row: '2 / 7', children: <TrendPanel buckets={pastBuckets(stats.buckets, period, now, tz)} decimal={dec} /> },
-        { id: 'list', title: t.listTitle, range: `${list.length}`, col: '9 / 13', row: '2 / 7', flush: true, children: rows },
+        {
+          id: 'list',
+          title: t.listTitle,
+          range: f.quick === 'recent' && all.length >= RECENT_LIMIT ? t.recentRange(RECENT_LIMIT) : String(all.length),
+          col: '1 / 8',
+          row: '1 / 7',
+          flush: true,
+          children: list,
+        },
+        { id: 'figures', title: t.scoreboard, range: figuresRange, col: '8 / 13', row: '1 / 3', children: figures },
+        { id: 'chart', title: t.trendTitle, col: '8 / 13', row: '3 / 7', children: chart },
       ]}
     />
   );

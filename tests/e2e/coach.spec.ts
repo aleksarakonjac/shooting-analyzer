@@ -87,11 +87,11 @@ test('opening a shooter shows their (still empty) trainings', async () => {
   await coachPage.goto('/strelci');
   await coachPage.getByTestId('shooter-card').filter({ hasText: alpha.name }).getByRole('link').click();
   await expect(coachPage.getByRole('heading', { level: 1, name: alpha.name })).toBeVisible();
-  await expect(coachPage.getByText('U ovom periodu nema treninga.')).toBeVisible();
+  await expect(coachPage.getByText('Još nema sesija.')).toBeVisible();
 });
 
 test('the coach creates a training for the shooter and it shows on the card and the latest list', async () => {
-  await coachPage.getByRole('link', { name: 'Dodaj trening' }).click();
+  await coachPage.getByRole('main').getByRole('link', { name: 'Nova sesija' }).click();
   await expect(coachPage.getByRole('heading', { level: 1 })).toContainText(alpha.name);
   await pickDiscipline(coachPage, 'Vazdušna puška');
   await expect(coachPage.getByLabel('Naziv')).toHaveAttribute('placeholder', /Vazdušna puška$/);

@@ -34,27 +34,6 @@ describe('TargetPlot', () => {
   });
 });
 
-import { TrendPanel } from '../../src/components/TrendPanel';
-
-describe('TrendPanel', () => {
-  it('says there is no data for an empty period', () => {
-    const out = html(<TrendPanel buckets={[{ label: 'pon', avgSeries: null, avgGroupMm: null }]} decimal />);
-    expect(out).toContain('Nema podataka');
-  });
-
-  it('lists every bucket with data in an accessible table next to the chart', () => {
-    const out = html(
-      <TrendPanel
-        buckets={[{ label: 'sep', avgSeries: 103.2, avgGroupMm: 9.1 }, { label: 'okt', avgSeries: null, avgGroupMm: null }, { label: 'nov', avgSeries: 105.1, avgGroupMm: 7.7 }]}
-        decimal
-      />,
-    );
-    expect(out.match(/data-point=/g)).toHaveLength(2);
-    expect(out).toContain('105.1');
-    expect(out).toContain('role="img"');
-  });
-});
-
 describe('TargetPlot drift view', () => {
   const view = buildReportView(
     [
