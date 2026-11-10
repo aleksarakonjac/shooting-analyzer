@@ -9,6 +9,7 @@ import { sr } from '@/lib/i18n/sr';
 import { createClient } from '@/lib/supabase/server';
 import { ProfileForm } from './ProfileForm';
 import { PipRuleForm } from './PipRuleForm';
+import { PasskeyPanel } from './PasskeyPanel';
 import { DISCIPLINES } from '@/lib/domain/disciplines';
 import type { DisciplineId } from '@/lib/domain/types';
 import { pipTopFor } from '@/lib/report/target';
@@ -39,6 +40,7 @@ async function Body({ searchParams }: { searchParams: Promise<Search> }) {
       {sacuvano && <p role="status">{t.saved}</p>}
       {greska && <p role="alert">{t.invalid}</p>}
       <ProfileForm name={(data?.display_name as string | undefined) ?? ''} tz={profile.tz} />
+      <PasskeyPanel />
     </div>
   );
 

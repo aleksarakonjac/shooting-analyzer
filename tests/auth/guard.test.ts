@@ -37,3 +37,17 @@ describe('decideRoute', () => {
     expect(decideRoute('/administrator', p('shooter', 'active'), true)).toEqual({ allow: true });
   });
 });
+
+describe('onboarding', () => {
+  const fresh = { ...p('shooter', 'pending'), onboarded: false };
+  it('sends a not-yet-onboarded pending user to onboarding and keeps them there', () => {
+    expect(decideRoute('/', fresh, true)).toEqual({ redirect: '/dobrodoslica' });
+    expect(decideRoute('/cekanje-odobrenja', fresh, true)).toEqual({ redirect: '/dobrodoslica' });
+    expect(decideRoute('/dobrodoslica', fresh, true)).toEqual({ allow: true });
+  });
+  it('moves anyone else off the onboarding page', () => {
+    expect(decideRoute('/dobrodoslica', { ...p('shooter', 'pending'), onboarded: true }, true)).toEqual({ redirect: '/cekanje-odobrenja' });
+    expect(decideRoute('/dobrodoslica', p('coach', 'active'), true)).toEqual({ redirect: '/' });
+    expect(decideRoute('/dobrodoslica', null, false)).toEqual({ redirect: '/login' });
+  });
+});

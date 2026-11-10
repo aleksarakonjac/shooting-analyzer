@@ -19,3 +19,10 @@ Use a separate project for development, never one holding real data. Nothing bel
    ```
    Expect `UPDATE 1`. Do not use `admin_set_profile` here: it is for the app and fails in the SQL editor
    ("admin only"), because the editor has no signed-in user (`auth.uid()` is null).
+
+## Google sign-in
+
+1. Google Cloud Console → APIs & Services → Credentials → OAuth client ID (Web application). Authorized redirect URI: `https://<project-ref>.supabase.co/auth/v1/callback`.
+2. Supabase → Authentication → Providers → Google: enable, paste the client ID and secret.
+3. Supabase → Authentication → URL Configuration: add the site URL and `https://<your-domain>/auth/callback` (plus `http://localhost:3000/auth/callback` for development) to the redirect allow-list.
+4. A new Google account is a pending account like any other: the admin is mailed once with the approval link (same `RESEND_API_KEY`, `ADMIN_EMAIL`, `SUPABASE_SERVICE_ROLE_KEY`).

@@ -3,11 +3,14 @@ export interface SessionProfile {
   role: 'shooter' | 'coach' | 'admin';
   status: 'pending' | 'active' | 'disabled';
   tz: string;
+  /** False for a first-time Google sign-in that has not yet chosen an account type. Missing counts as done. */
+  onboarded?: boolean;
 }
 
 export type RouteDecision = { allow: true } | { redirect: string };
 
 const WAITING = '/cekanje-odobrenja';
+const ONBOARDING = '/dobrodoslica';
 const AUTH_PAGES = ['/login', '/register'];
 
 const isUnder = (path: string, base: string) => path === base || path.startsWith(base + '/');
@@ -19,10 +22,18 @@ const isUnder = (path: string, base: string) => path === base || path.startsWith
 export function decideRoute(pathname: string, profile: SessionProfile | null, signedIn: boolean): RouteDecision {
   // Scheduled jobs carry no session; the route checks its own secret.
   if (isUnder(pathname, '/api/cron')) return { allow: true };
+  // The e-mailed approval link is authorized by its own signature, so the admin needs no sign-in.
+  if (isUnder(pathname, '/odobrenje')) return { allow: true };
+  // OAuth return: arrives without a session until the code is exchanged.
+  if (isUnder(pathname, '/auth/callback')) return { allow: true };
   const onAuthPage = AUTH_PAGES.some((p) => isUnder(pathname, p));
   const onWaiting = isUnder(pathname, WAITING);
 
   if (!signedIn) return onAuthPage ? { allow: true } : { redirect: '/login' };
+  if (profile && profile.status === 'pending' && profile.onboarded === false) {
+    return isUnder(pathname, ONBOARDING) ? { allow: true } : { redirect: ONBOARDING };
+  }
+  if (isUnder(pathname, ONBOARDING)) return { redirect: profile?.status === 'active' ? '/' : WAITING };
   if (!profile || profile.status !== 'active') return onWaiting ? { allow: true } : { redirect: WAITING };
   if (onAuthPage || onWaiting) return { redirect: '/' };
   if (isUnder(pathname, '/admin') && profile.role !== 'admin') return { redirect: '/' };

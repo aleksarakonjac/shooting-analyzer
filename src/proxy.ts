@@ -19,8 +19,10 @@ export async function proxy(request: NextRequest) {
   const { data: auth } = await supabase.auth.getUser();
   let profile: SessionProfile | null = null;
   if (auth.user) {
-    const { data } = await supabase.from('profiles').select('id, role, status, tz').eq('id', auth.user.id).maybeSingle();
-    profile = (data as SessionProfile | null) ?? null;
+    const { data } = await supabase.from('profiles').select('id, role, status, tz, onboarded_at').eq('id', auth.user.id).maybeSingle();
+    profile = data
+      ? { id: data.id, role: data.role, status: data.status, tz: data.tz, onboarded: data.onboarded_at !== null }
+      : null;
   }
 
   const decision = decideRoute(request.nextUrl.pathname, profile, Boolean(auth.user));

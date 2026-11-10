@@ -16,7 +16,7 @@ async function PendingList() {
   const supabase = await createClient();
   const { data: pending } = await supabase
     .from('profiles')
-    .select('id, display_name, created_at')
+    .select('id, display_name, created_at, requested_role')
     .eq('status', 'pending')
     .order('created_at');
   const body = !pending?.length ? (
@@ -27,11 +27,11 @@ async function PendingList() {
         <li key={p.id} className="rows__item">
           <div className="rows__main">
             <strong>{p.display_name}</strong>
+            <div className="rows__muted">{p.requested_role === 'coach' ? sr.admin.requestedCoach : sr.admin.requestedShooter}</div>
             <div className="rows__muted num">{sr.admin.registered} {new Date(p.created_at).toLocaleDateString('sr-Latn-RS')}</div>
           </div>
           <div className="rows__actions">
-            <Decision id={p.id} role="shooter" status="active" label={sr.admin.approveShooter} />
-            <Decision id={p.id} role="coach" status="active" label={sr.admin.approveCoach} />
+            <Decision id={p.id} role={p.requested_role} status="active" label={sr.admin.approve} />
             <Decision id={p.id} role="shooter" status="disabled" label={sr.admin.reject} danger />
           </div>
         </li>
