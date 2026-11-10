@@ -1,10 +1,8 @@
 import { createClient } from '@/lib/supabase/server';
+import type { EventOption } from './eventTypes';
 
-export interface EventOption {
-  id: string;
-  name: string;
-  kind: 'kontrolni' | 'takmicenje';
-}
+export type { EventOption } from './eventTypes';
+
 
 /** The shooter's events, newest first, for the session form's event field. */
 export async function shooterEvents(shooterId: string): Promise<EventOption[]> {
@@ -17,3 +15,4 @@ export async function shooterEvents(shooterId: string): Promise<EventOption[]> {
     .limit(100);
   return (data ?? []) as EventOption[];
 }
+

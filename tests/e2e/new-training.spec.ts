@@ -147,3 +147,21 @@ test('importing the same file again asks first and names the earlier training', 
   await expect(page.getByRole('alertdialog')).toHaveCount(0);
   await expect(page.getByText('Sesija je sačuvana')).toHaveCount(0);
 });
+
+test('a competition session joins a new event, and the event page lists it', async () => {
+  await page.goto('/trening/novi');
+  await pickDiscipline(page, 'Vazdušna puška');
+  await page.getByRole('radio', { name: 'Takmičenje' }).check({ force: true });
+  await page.getByRole('radio', { name: 'Kvalifikacije' }).check({ force: true });
+  const eventName = `E2E Kup ${stamp}`;
+  await page.getByRole('combobox', { name: 'Događaj' }).fill(eventName);
+  await page.getByRole('button', { name: 'Sačuvaj sesiju' }).click();
+  await page.getByRole('button', { name: 'Sačuvaj praznu sesiju' }).click();
+  await page.getByRole('link', { name: 'Otvori izveštaj o sesiji' }).click();
+  await expect(page.locator('.ws__meta:visible')).toContainText('Takmičenje, Kvalifikacije');
+  await page.getByRole('link', { name: eventName }).click();
+  await expect(page).toHaveURL(/\/dogadjaj\/[0-9a-f-]{36}$/);
+  await expect(page.getByRole('heading', { level: 1, name: eventName })).toBeVisible();
+  await expect(page.getByTestId('event-session')).toHaveCount(1);
+  await expect(page.getByTestId('event-session')).toContainText('Kvalifikacije');
+});

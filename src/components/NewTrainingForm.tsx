@@ -18,7 +18,7 @@ import { zoneNames } from '@/lib/time/zone';
 import { isRepeatedHour, toInstantRange, type Fold } from '@/lib/import/times';
 import { isFinalDiscipline } from '@/lib/finals/format';
 import { createClient } from '@/lib/supabase/client';
-import type { EventOption } from '@/lib/events';
+import type { EventOption } from '@/lib/eventTypes';
 import { FinalEntry, type FinalDraft } from './FinalEntry';
 import { Segmented } from './ui/Segmented';
 import { ManualEntry } from './entry/ManualEntry';

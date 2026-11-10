@@ -187,7 +187,7 @@ async function Body({ params, searchParams }: { params: Promise<{ id: string }>;
           {clock && tz !== viewerTz && <span className="rows__muted"> ({tz})</span>}
           {tr.place && ` · ${tr.place}`}
           {sessionLabel && ` · ${sessionLabel}`}
-          {tr.events && ` · ${tr.events.name}`}
+          {tr.events && <> · <Link href={`/dogadjaj/${tr.events.id}`}>{tr.events.name}</Link></>}
         </p>
       </div>
       {greska === 'puls' && <p role="alert">{t.hrInvalid}</p>}

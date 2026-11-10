@@ -1,7 +1,7 @@
 'use client';
 import Link from 'next/link';
 import { useMemo, useState } from 'react';
-import type { EventOption } from '@/lib/events';
+import type { EventOption } from '@/lib/eventTypes';
 import type { SessionKind, SessionStage } from '@/lib/import/saveTraining';
 import { sr } from '@/lib/i18n/sr';
 import { zoneNames } from '@/lib/time/zone';
