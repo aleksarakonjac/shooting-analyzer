@@ -9,6 +9,9 @@
 
 const KEY = Uint8Array.from([0xe3, 0x00, 0xe9, 0x00, 0x34, 0x85, 0x1d, 0x04, 0xf0, 0x95, 0xc0, 0x70, 0x0e, 0x1e, 0xb9, 0xf3]);
 
+/** Header (15 bytes) plus 65535 samples of x, y, angle and trigger: no real trace is larger. */
+export const MAX_TRACE_BYTES = 15 + 0xffff * 14;
+
 export interface TraceSamples {
   /** Aim point, mm from the target centre (x right, y up). */
   x: Float64Array;
@@ -41,9 +44,28 @@ function decrypt(blob: Uint8Array): Uint8Array {
   return out;
 }
 
-async function inflateZlib(data: Uint8Array): Promise<Uint8Array> {
-  const stream = new Blob([data as BlobPart]).stream().pipeThrough(new DecompressionStream('deflate'));
-  return new Uint8Array(await new Response(stream).arrayBuffer());
+/** Inflates zlib data, stopping as soon as the output passes `limit` bytes (a crafted file cannot balloon). */
+async function inflateZlib(data: Uint8Array, limit: number): Promise<Uint8Array> {
+  const reader = new Blob([data as BlobPart]).stream().pipeThrough(new DecompressionStream('deflate')).getReader();
+  const parts: Uint8Array[] = [];
+  let size = 0;
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    size += value.length;
+    if (size > limit) {
+      await reader.cancel();
+      throw new Error('SCATT trace too large');
+    }
+    parts.push(value);
+  }
+  const out = new Uint8Array(size);
+  let at = 0;
+  for (const p of parts) {
+    out.set(p, at);
+    at += p.length;
+  }
+  return out;
 }
 
 export async function decodeTraceBlob(blob: Uint8Array): Promise<TraceSamples> {
@@ -52,7 +74,8 @@ export async function decodeTraceBlob(blob: Uint8Array): Promise<TraceSamples> {
   const check = (plain[1] << 8) | plain[2];
   if (qChecksum(comp) !== check) throw new Error('SCATT trace checksum mismatch');
   const length = new DataView(comp.buffer, comp.byteOffset, 4).getUint32(0);
-  const d = await inflateZlib(comp.subarray(4));
+  if (length > MAX_TRACE_BYTES) throw new Error('SCATT trace too large');
+  const d = await inflateZlib(comp.subarray(4), length);
   if (d.length !== length) throw new Error('SCATT trace length mismatch');
   const v = new DataView(d.buffer, d.byteOffset, d.byteLength);
   if (v.getInt32(0) !== 0x0a0b0c0d || v.getInt32(4) !== 0x10000010 || v.getInt32(8) !== 2) throw new Error('Unknown SCATT trace format');

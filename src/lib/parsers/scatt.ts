@@ -69,6 +69,9 @@ export async function readScatt(data: Uint8Array, opts: ReadScattOptions = {}): 
   }
 }
 
+/** Upper bound of decoded samples in one file (about 7 hours at 100 Hz). */
+export const MAX_FILE_SAMPLES = 2_500_000;
+
 export interface ScattTraceShot {
   shotId: number;
   traceId: number;
@@ -112,7 +115,14 @@ export async function readScattTraces(data: Uint8Array, opts: ReadScattOptions =
     )[0]?.values ?? []) as number[][];
     const blobs = new Map(traceRows.map((r) => [r[0], r[3]]));
     const traces = new Map<number, TraceSamples & { timer: number; timerEnter: number }>();
-    for (const [id, timer, timerEnter, blob] of traceRows) traces.set(id, { ...(await decodeTraceBlob(blob)), timer, timerEnter });
+    // A real session holds a few hundred thousand samples; far more means a crafted file.
+    let total = 0;
+    for (const [id, timer, timerEnter, blob] of traceRows) {
+      const decoded = await decodeTraceBlob(blob);
+      total += decoded.x.length;
+      if (total > MAX_FILE_SAMPLES) throw new NotScattFileError('SCATT file has too many trace samples');
+      traces.set(id, { ...decoded, timer, timerEnter });
+    }
     return {
       sampleRate: rate,
       traces,
