@@ -17,6 +17,10 @@ export const CHART = {
   font: 'Barlow, system-ui, sans-serif',
 };
 
+/** Escapes text for the HTML tooltips (anything a user typed, such as a session name). */
+export const escapeHtml = (v: string) =>
+  v.replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]!);
+
 export interface Selection {
   series: number | null;
   shot: number | null;

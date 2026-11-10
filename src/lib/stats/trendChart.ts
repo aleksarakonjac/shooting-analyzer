@@ -1,4 +1,4 @@
-import { CHART } from '@/lib/report/charts';
+import { CHART, escapeHtml } from '@/lib/report/charts';
 import type { ChartKind } from './filters';
 import type { SessionPoint } from './periodStats';
 
@@ -38,7 +38,7 @@ export function sessionsOption(points: SessionPoint[], kind: ChartKind, decimal:
       textStyle: { color: '#0b1530', fontFamily: CHART.font, fontSize: 12 },
       extraCssText: 'border-radius:2px;box-shadow:0 8px 24px -8px rgba(0,0,0,.6);',
       formatter: (x: { data: { name: string; total: number | null; value: [string, number] } }) =>
-        `<b>${x.data.name}</b><br/>${m.name}: ${x.data.value[1].toFixed(m.digits)}${m.unit ? ` ${m.unit}` : ''}` +
+        `<b>${escapeHtml(x.data.name)}</b><br/>${m.name}: ${x.data.value[1].toFixed(m.digits)}${m.unit ? ` ${m.unit}` : ''}` +
         (kind === 'rez' && x.data.total !== null ? `<br/>Ukupno: ${x.data.total.toFixed(decimal ? 1 : 0)}` : ''),
     },
     xAxis: { ...axis, type: 'time', splitNumber: 5, splitLine: { show: false }, axisLabel: { ...axis.axisLabel, hideOverlap: true, formatter: fmtDate } },

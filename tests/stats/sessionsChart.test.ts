@@ -21,3 +21,12 @@ describe('sessionsOption', () => {
     expect(sessionsOption(pts, 'grupa', true).series[0].data.map((d: { value: [string, number] }) => d.value[1])).toEqual([9.1, 7.5]);
   });
 });
+
+describe('sessionsOption tooltip', () => {
+  it('escapes the session name, which the user typed', () => {
+    const o = sessionsOption([{ ...pts[0], name: '<img src=x onerror=alert(1)>' }], 'rez', true);
+    const html = o.tooltip.formatter({ data: o.series[0].data[0] });
+    expect(html).not.toContain('<img');
+    expect(html).toContain('&lt;img src=x onerror=alert(1)&gt;');
+  });
+});
