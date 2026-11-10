@@ -1,7 +1,7 @@
 import { beforeAll, describe, expect, it } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { alignMatch, proposeSelection, selectMatchShots } from '@/lib/alignment/align';
+import { alignMatch, proposeSelection, selectMatchShots, storedMismatch } from '@/lib/alignment/align';
 import { decodeText } from '@/lib/parsers/decode';
 import { parseSiusCsv } from '@/lib/parsers/siusCsv';
 import { readScatt, type ScattShot } from '@/lib/parsers/scatt';
@@ -124,5 +124,17 @@ describe('clock change on 2026-10-25 (Review Focus 3)', () => {
     const r = alignMatch(small, selectMatchShots(shots, { kind: 'first', n: 4 }), []);
     expect(r.shots.map((s) => s.scatt!.id)).toEqual([1, 2, 3, 4]);
     expect(r.countMismatch).toBe(0);
+  });
+});
+
+describe('storedMismatch (a saved match, as the report sees it)', () => {
+  it('compares the SIUS shots with the selected SCATT shots that were not ignored', () => {
+    expect(storedMismatch({ kind: 'last', n: 60, ignoredScattIds: [] }, 60)).toBe(0);
+    expect(storedMismatch({ kind: 'last', n: 62, ignoredScattIds: [5, 9] }, 60)).toBe(0);
+    expect(storedMismatch({ kind: 'first', n: 58 }, 60)).toBe(2);
+    expect(storedMismatch({ kind: 'from', fromShotId: 3, n: 61, ignoredScattIds: [] }, 60)).toBe(-1);
+  });
+  it('is null without a selection (nothing to align)', () => {
+    expect(storedMismatch(null, 60)).toBeNull();
   });
 });

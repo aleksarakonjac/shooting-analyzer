@@ -1,4 +1,5 @@
 'use server';
+import { requireOne, requireUuid } from '@/lib/actionGuard';
 import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import { buildShareRow, type ShareArgs, type ShareScope } from '@/lib/shares';
@@ -32,7 +33,7 @@ export async function setShare(scope: ShareScope, args: ShareArgs): Promise<bool
 
 export async function removeShare(shareId: string): Promise<void> {
   const supabase = await createClient();
-  await supabase.from('shares').delete().eq('id', shareId);
+  requireOne(await supabase.from('shares').delete().eq('id', requireUuid(shareId)).select('id'));
 }
 
 // ---- form actions used by the pages ----

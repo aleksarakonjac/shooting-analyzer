@@ -1,4 +1,6 @@
 'use server';
+import { requireOne, requireUuid } from '@/lib/actionGuard';
+import { storedMismatch, type StoredSelection } from '@/lib/alignment/align';
 import { redirect } from 'next/navigation';
 import { revalidatePath } from 'next/cache';
 import { createClient } from '@/lib/supabase/server';
@@ -10,7 +12,7 @@ import { parseSessionEdit } from '@/lib/sessions/edit';
  * The event is found by name among the shooter's events of the same type, or created on the session's day.
  */
 export async function updateTrainingForm(form: FormData): Promise<void> {
-  const id = String(form.get('id') ?? '');
+  const id = requireUuid(form.get('id'));
   const parsed = parseSessionEdit(form);
   if (!parsed.ok) redirect(`/trening/${id}?izmena=1&greska=1`);
   const { patch, eventName } = parsed;
@@ -36,34 +38,31 @@ export async function updateTrainingForm(form: FormData): Promise<void> {
       eventId = made.id;
     }
   }
-  const { error } = await supabase.from('trainings').update({ ...patch, event_id: eventId }).eq('id', id);
-  if (error) throw new Error(error.message);
+  requireOne(await supabase.from('trainings').update({ ...patch, event_id: eventId }).eq('id', id).select('id'));
   revalidatePath(`/trening/${id}`);
   redirect(`/trening/${id}`);
 }
 
 /** Soft delete: the training goes to the trash and is purged after the retention period. */
 export async function deleteTrainingForm(form: FormData): Promise<void> {
-  const id = String(form.get('id') ?? '');
+  const id = requireUuid(form.get('id'));
   const supabase = await createClient();
-  const { error } = await supabase.from('trainings').update({ deleted_at: new Date().toISOString() }).eq('id', id);
-  if (error) throw new Error(error.message);
+  requireOne(await supabase.from('trainings').update({ deleted_at: new Date().toISOString() }).eq('id', id).select('id'));
   redirect('/');
 }
 
 /** Takes a training out of the trash. RLS decides who may. */
 export async function restoreTrainingForm(form: FormData): Promise<void> {
-  const id = String(form.get('id') ?? '');
+  const id = requireUuid(form.get('id'));
   const supabase = await createClient();
-  const { error } = await supabase.from('trainings').update({ deleted_at: null }).eq('id', id);
-  if (error) throw new Error(error.message);
+  requireOne(await supabase.from('trainings').update({ deleted_at: null }).eq('id', id).select('id'));
   revalidatePath('/korpa');
   redirect('/korpa');
 }
 
 /** Deletes a trashed training for good, including its stored source files. */
 export async function purgeTrainingForm(form: FormData): Promise<void> {
-  const id = String(form.get('id') ?? '');
+  const id = requireUuid(form.get('id'));
   const supabase = await createClient();
   const bucket = supabase.storage.from('source-files');
   await purgeTraining(
@@ -93,17 +92,22 @@ export async function purgeTrainingForm(form: FormData): Promise<void> {
 
 /** Confirms a proposed alignment from the report. RLS decides who may. */
 export async function confirmAlignmentForm(form: FormData): Promise<void> {
-  const matchId = String(form.get('match_id') ?? '');
-  const trainingId = String(form.get('training_id') ?? '');
+  const matchId = requireUuid(form.get('match_id'));
+  const trainingId = requireUuid(form.get('training_id'));
   const supabase = await createClient();
-  const { error } = await supabase.from('matches').update({ align_state: 'confirmed' }).eq('id', matchId);
-  if (error) throw new Error(error.message);
+  // Same rule as the form: a match whose shot counts differ cannot be confirmed.
+  const { data: m } = await supabase.from('matches').select('selection,series(shots(idx))').eq('id', matchId).maybeSingle();
+  const row = m as { selection: StoredSelection | null; series: { shots: unknown[] }[] } | null;
+  if (!row) throw new Error('Match not found');
+  const off = storedMismatch(row.selection, row.series.reduce((n, se) => n + se.shots.length, 0));
+  if (off !== null && off !== 0) throw new Error('Shot counts differ; fix the selection first');
+  requireOne(await supabase.from('matches').update({ align_state: 'confirmed' }).eq('id', matchId).select('id'));
   revalidatePath(`/trening/${trainingId}`);
 }
 
 /** Saves the heart-rate offset and the file's clock zone, with the average recomputed over the shot window. */
 export async function updateHrAlignmentForm(form: FormData): Promise<void> {
-  const id = String(form.get('training_id') ?? '');
+  const id = requireUuid(form.get('training_id'));
   const offset = Math.round(Number(form.get('offset_ms')));
   const zone = String(form.get('zone') ?? '').trim() || null;
   const avgRaw = String(form.get('avg_bpm') ?? '');
@@ -117,8 +121,7 @@ export async function updateHrAlignmentForm(form: FormData): Promise<void> {
     }
   }
   const supabase = await createClient();
-  const { error } = await supabase.from('hr_samples_ref').update({ offset_ms: offset, zone, avg_bpm: avg }).eq('training_id', id);
-  if (error) throw new Error(error.message);
+  requireOne(await supabase.from('hr_samples_ref').update({ offset_ms: offset, zone, avg_bpm: avg }).eq('training_id', id).select('training_id'));
   revalidatePath(`/trening/${id}`);
   redirect(`/trening/${id}`);
 }

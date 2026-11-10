@@ -18,6 +18,8 @@ import { pipTopFor } from '@/lib/report/target';
 import { buildReportView, type RawSeries } from '@/lib/report/viewModel';
 import { createClient } from '@/lib/supabase/server';
 import { confirmAlignmentForm } from '@/lib/trainings';
+import { storedMismatch, type StoredSelection } from '@/lib/alignment/align';
+import { MismatchNotice } from '@/components/MismatchNotice';
 import { SessionEditor } from '@/components/SessionEditor';
 import { Workspace } from '@/components/Workspace';
 import { shooterEvents } from '@/lib/events';
@@ -30,7 +32,7 @@ interface TrainingRow {
   stage: 'slobodno' | 'eliminacije' | 'kvalifikacije' | 'finale';
   tz: string;
   events: { id: string; name: string } | null;
-  matches: { id: string; label: string; align_state: 'proposed' | 'confirmed'; series: RawSeries[] }[];
+  matches: { id: string; label: string; align_state: 'proposed' | 'confirmed'; selection: StoredSelection | null; series: RawSeries[] }[];
   loose_shots: { kind: 'warmup' | 'attempt'; t_ms: number }[];
   hr_samples_ref: { offset_ms: number; zone: string | null } | { offset_ms: number; zone: string | null }[] | null;
   source_files: { kind: string; storage_path: string }[];
@@ -62,7 +64,7 @@ async function Body({ params, searchParams }: { params: Promise<{ id: string }>;
     .from('trainings')
     .select(
       'id,shooter_id,name,discipline,trained_on,place,notes,started_at,ended_at,kind,stage,tz,events(id,name),' +
-        'matches(id,label,align_state,series(id,idx,position,total,total_decimal,mpi_x,mpi_y,group_mm,shots(idx,value,inner,t_ms,scatt_shot_id))),' +
+        'matches(id,label,align_state,selection,series(id,idx,position,total,total_decimal,mpi_x,mpi_y,group_mm,shots(idx,value,inner,t_ms,scatt_shot_id))),' +
         'loose_shots(kind,t_ms),hr_samples_ref(offset_ms,zone),source_files(kind,storage_path),' +
         'finals(id,placement,eliminated_after_shot,created_at,final_shots(idx,stage_idx,value))',
     )
@@ -80,6 +82,7 @@ async function Body({ params, searchParams }: { params: Promise<{ id: string }>;
   const nt = sr.newTraining;
   // A training holds one match in practice; a second match would follow the first in the same board.
   const match = tr.matches[0] ?? null;
+  const mismatch = match ? storedMismatch(match.selection, match.series.reduce((n, se) => n + se.shots.length, 0)) : null;
   // The pip rule is the viewer's own display setting.
   const { data: me } = profile ? await supabase.from('profiles').select('pip_top').eq('id', profile.id).maybeSingle() : { data: null };
   const view = buildReportView(tr.matches.flatMap((m) => m.series), tr.discipline, pipTopFor(me?.pip_top as Record<string, unknown> | null, tr.discipline));
@@ -202,7 +205,8 @@ async function Body({ params, searchParams }: { params: Promise<{ id: string }>;
       {match && (
         <div className="align-state">
           <FlagBadge state={match.align_state} />
-          {match.align_state === 'proposed' && canEdit && (
+          {match.align_state === 'proposed' && canEdit && mismatch !== null && mismatch !== 0 && <MismatchNotice mismatch={mismatch} />}
+          {match.align_state === 'proposed' && canEdit && (mismatch === null || mismatch === 0) && (
             <form action={confirmAlignmentForm}>
               <input type="hidden" name="match_id" value={match.id} />
               <input type="hidden" name="training_id" value={tr.id} />

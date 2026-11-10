@@ -57,3 +57,14 @@ export function alignMatch(
 export function proposeSelection(sius: ParsedSiusResult, _scattShots: ScattShot[]): MatchSelection {
   return { kind: 'last', n: siusShots(sius).length };
 }
+
+/**
+ * SIUS shots minus usable SCATT shots of a saved match (the selection's count less the ignored shots),
+ * or null when the match has no SCATT selection. Only 0 may be confirmed.
+ */
+export type StoredSelection = MatchSelection & { ignoredScattIds?: number[] };
+
+export function storedMismatch(selection: StoredSelection | null, siusShots: number): number | null {
+  if (!selection) return null;
+  return siusShots - (selection.n - (selection.ignoredScattIds?.length ?? 0));
+}
