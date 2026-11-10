@@ -194,3 +194,22 @@ describe('buildSavePayload: session fields', () => {
     expect(p.hr_zone).toBe('Europe/Belgrade');
   });
 });
+
+import { replaceTrainingData } from '../../src/lib/import/saveTraining';
+
+describe('replaceTrainingData', () => {
+  it('sends the same payload to replace_training_data for the existing session', async () => {
+    const calls: [string, { tid: string; payload: { training: { name: string } } }][] = [];
+    const client = {
+      rpc: async (name: string, args: unknown) => {
+        calls.push([name, args as (typeof calls)[number][1]]);
+        return { data: 'old-id', error: null };
+      },
+    };
+    const r = await replaceTrainingData('old-id', { ...base, name: 'Preimenovana' }, 'user-1', client);
+    expect(r).toEqual({ trainingId: 'old-id' });
+    expect(calls[0][0]).toBe('replace_training_data');
+    expect(calls[0][1].tid).toBe('old-id');
+    expect(calls[0][1].payload.training.name).toBe('Preimenovana');
+  });
+});

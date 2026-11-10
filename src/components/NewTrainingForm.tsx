@@ -1,12 +1,13 @@
 'use client';
 import Link from 'next/link';
-import { useCallback, useMemo, useState, type ChangeEvent } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type ChangeEvent } from 'react';
+import { useRouter } from 'next/navigation';
 import { proposeSelection, selectMatchShots, type MatchSelection } from '@/lib/alignment/align';
 import { DISCIPLINES } from '@/lib/domain/disciplines';
 import type { DisciplineId, ParsedSiusResult } from '@/lib/domain/types';
 import { sr } from '@/lib/i18n/sr';
 import { buildPreview, groupByPosition } from '@/lib/import/draft';
-import { defaultTrainingName, saveTraining, type SessionKind, type SessionStage, type TrainingDraft } from '@/lib/import/saveTraining';
+import { defaultTrainingName, replaceTrainingData, saveTraining, type SessionKind, type SessionStage, type TrainingDraft } from '@/lib/import/saveTraining';
 import { findImported, type ImportedMatch } from '@/lib/import/duplicates';
 import { MAX_UPLOAD_BYTES, sha256Hex, uploadSource, type SourceKind } from '@/lib/import/uploadSource';
 import { decodeText } from '@/lib/parsers/decode';
@@ -52,6 +53,32 @@ interface HrData {
   missingOffset: boolean;
 }
 
+/** A saved session opened for changing its files and alignment. */
+export interface SessionEdit {
+  trainingId: string;
+  initial: {
+    disciplineId: DisciplineId;
+    trainedOn: string;
+    timeFrom: string;
+    timeTo: string;
+    kind: SessionKind;
+    stage: SessionStage;
+    eventName: string;
+    tz: string;
+    name: string;
+    place: string;
+    notes: string;
+  };
+  /** Stored original files of the session. */
+  files: { kind: SourceKind; path: string }[];
+  /** The saved result when it was typed or pasted (no SIUS file). */
+  storedSius: ParsedSiusResult | null;
+  selection: (MatchSelection & { ignoredScattIds?: number[] }) | null;
+  confirmed: boolean;
+  hrOffsetS: number;
+  hrZone: string | null;
+}
+
 export function NewTrainingForm({
   userId,
   tz,
@@ -59,7 +86,10 @@ export function NewTrainingForm({
   places = [],
   title = sr.newTraining.title,
   events = [],
+  edit,
 }: {
+  /** Change a saved session instead of creating one: its files are loaded back into the form. */
+  edit?: SessionEdit;
   /** The shooter's events, offered when the session belongs to a competition or control match. */
   events?: EventOption[];
   userId: string;
@@ -69,32 +99,35 @@ export function NewTrainingForm({
   places?: string[];
   title?: string;
 }) {
-  const [disciplineId, setDisciplineId] = useState<DisciplineId | ''>('');
-  const [trainedOn, setTrainedOn] = useState(today);
-  const [dateTouched, setDateTouched] = useState(false);
-  const [timeFrom, setTimeFrom] = useState('');
-  const [timeTo, setTimeTo] = useState('');
+  const init = edit?.initial;
+  const router = useRouter();
+  const [disciplineId, setDisciplineId] = useState<DisciplineId | ''>(init?.disciplineId ?? '');
+  const [trainedOn, setTrainedOn] = useState(init?.trainedOn ?? today);
+  const [dateTouched, setDateTouched] = useState(Boolean(edit));
+  const [timeFrom, setTimeFrom] = useState(init?.timeFrom ?? '');
+  const [timeTo, setTimeTo] = useState(init?.timeTo ?? '');
   const [tab, setTab] = useState('file');
-  const [kind, setKind] = useState<SessionKind>('trening');
-  const [stage, setStage] = useState<SessionStage>('slobodno');
-  const [eventName, setEventName] = useState('');
-  const [venueTz, setVenueTz] = useState(tz);
+  const [kind, setKind] = useState<SessionKind>(init?.kind ?? 'trening');
+  const [stage, setStage] = useState<SessionStage>(init?.stage ?? 'slobodno');
+  const [eventName, setEventName] = useState(init?.eventName ?? '');
+  const [venueTz, setVenueTz] = useState(init?.tz ?? tz);
   const zones = useMemo(() => zoneNames(tz), [tz]);
   const [foldFrom, setFoldFrom] = useState<Fold>('earlier');
   const [foldTo, setFoldTo] = useState<Fold>('earlier');
   const [finalDraft, setFinalDraft] = useState<FinalDraft | null>(null);
   const onFinalDraft = useCallback((d: FinalDraft) => setFinalDraft(d), []);
   const [hrZoneChosen, setHrZoneChosen] = useState<string | null>(null);
-  const [name, setName] = useState('');
-  const [place, setPlace] = useState('');
-  const [notes, setNotes] = useState('');
+  const [name, setName] = useState(init?.name ?? '');
+  const [place, setPlace] = useState(init?.place ?? '');
+  const [notes, setNotes] = useState(init?.notes ?? '');
+  const [restoring, setRestoring] = useState(Boolean(edit));
 
   const [siusFile, setSiusFile] = useState<Loaded<ParsedSiusResult> | null>(null);
   const [manual, setManual] = useState<ParsedSiusResult | null>(null);
   const [scattLoaded, setScattLoaded] = useState<Loaded<ScattData> | null>(null);
   const [hrLoaded, setHrLoaded] = useState<Loaded<HrData> | null>(null);
-  const [hrOffsetS, setHrOffsetS] = useState(0);
-  const [hrZone, setHrZone] = useState(tz);
+  const [hrOffsetS, setHrOffsetS] = useState(edit?.hrOffsetS ?? 0);
+  const [hrZone, setHrZone] = useState(edit?.hrZone ?? tz);
 
   const [selection, setSelection] = useState<MatchSelection | undefined>();
   const [ignored, setIgnored] = useState<number[]>([]);
@@ -157,19 +190,7 @@ export function NewTrainingForm({
     const file = ev.target.files?.[0];
     if (!file || tooLarge(file, 'sius')) return;
     try {
-      const bytes = new Uint8Array(await file.arrayBuffer());
-      const sha = await sha256Hex(bytes);
-      let parsed: ParsedSiusResult;
-      if (/\.pdf$/i.test(file.name) || String.fromCharCode(...bytes.slice(0, 4)) === '%PDF') {
-        const [{ parseSiusPdf }, { configurePdfWorker }] = await Promise.all([
-          import('@/lib/parsers/siusPdf'),
-          import('@/lib/parsers/browser'),
-        ]);
-        configurePdfWorker();
-        parsed = await parseSiusPdf(bytes);
-      } else {
-        parsed = parseSiusCsv(decodeText(bytes), { tz });
-      }
+      const { parsed, sha } = await parseSiusFile(file, tz);
       applySius(parsed, file, sha);
     } catch {
       setErrors((e) => ({ ...e, sius: t.unreadable }));
@@ -180,13 +201,8 @@ export function NewTrainingForm({
     const file = ev.target.files?.[0];
     if (!file || tooLarge(file, 'scatt')) return;
     try {
-      const [{ readScatt }, { scattBrowserOptions }] = await Promise.all([
-        import('@/lib/parsers/scatt'),
-        import('@/lib/parsers/browser'),
-      ]);
-      const bytes = new Uint8Array(await file.arrayBuffer());
-      const data = await readScatt(bytes, scattBrowserOptions);
-      setScattLoaded({ file, data, sha: await sha256Hex(bytes) });
+      const { data, sha } = await parseScattFile(file);
+      setScattLoaded({ file, data, sha });
       setErrors((e) => ({ ...e, scatt: undefined }));
       repropose(sius, data);
     } catch {
@@ -198,15 +214,58 @@ export function NewTrainingForm({
     const file = ev.target.files?.[0];
     if (!file || tooLarge(file, 'hr')) return;
     try {
-      const xml = await file.text();
-      const parsed = parseTcx(xml);
-      setHrLoaded({ file, data: { samples: parsed.samples, xml, missingOffset: parsed.missingOffset }, sha: await sha256Hex(new TextEncoder().encode(xml)) });
+      const { data, sha } = await parseHrFile(file);
+      setHrLoaded({ file, data, sha });
       setHrZoneChosen(null);
       setErrors((e) => ({ ...e, hr: undefined }));
     } catch {
       setErrors((e) => ({ ...e, hr: t.unreadable }));
     }
   };
+
+  // Editing: load the stored files back once, then restore the saved alignment on top of the fresh proposal.
+  const restored = useRef(false);
+  useEffect(() => {
+    if (!edit || restored.current) return;
+    restored.current = true;
+    (async () => {
+      const supabase = createClient();
+      const load = async (kind: SourceKind[]) => {
+        const f = edit.files.find((x) => kind.includes(x.kind));
+        if (!f) return null;
+        const { data } = await supabase.storage.from('source-files').download(f.path);
+        return data ? new File([data], f.path.split('/').pop() ?? f.kind, { type: data.type }) : null;
+      };
+      try {
+        const [siusF, scattF, hrF] = await Promise.all([load(['sius_csv', 'sius_pdf']), load(['scatt']), load(['tcx'])]);
+        const siusP = siusF ? await parseSiusFile(siusF, tz) : null;
+        const scattP = scattF ? await parseScattFile(scattF) : null;
+        const hrP = hrF ? await parseHrFile(hrF) : null;
+        if (siusF && siusP) setSiusFile({ file: siusF, data: siusP.parsed, sha: siusP.sha });
+        else if (edit.storedSius) setManual(edit.storedSius);
+        if (scattF && scattP) setScattLoaded({ file: scattF, data: scattP.data, sha: scattP.sha });
+        if (hrF && hrP) {
+          const zone = edit.hrZone;
+          setHrLoaded({ file: hrF, data: zone ? { ...hrP.data, samples: reinterpretAsZone(hrP.data.xml, zone) } : hrP.data, sha: hrP.sha });
+          setHrZoneChosen(zone);
+        }
+        const sel = edit.selection;
+        if (sel) {
+          const { ignoredScattIds, ...rest } = sel;
+          setSelection(rest);
+          setIgnored(ignoredScattIds ?? []);
+          setConfirmed(edit.confirmed);
+        } else {
+          const s = siusP?.parsed ?? edit.storedSius ?? undefined;
+          setSelection(s && scattP ? proposeSelection(s, scattP.data.shots) : undefined);
+        }
+      } catch {
+        setErrors((e) => ({ ...e, save: t.restoreFailed }));
+      } finally {
+        setRestoring(false);
+      }
+    })();
+  }, [edit, tz]);
 
   const applyZone = () => {
     if (!hrLoaded) return;
@@ -243,6 +302,7 @@ export function NewTrainingForm({
     }
     const draft: TrainingDraft = {
       disciplineId,
+      shooterId: userId,
       kind,
       stage,
       tz: venueTz,
@@ -263,8 +323,8 @@ export function NewTrainingForm({
       confirmed,
     };
     try {
-      const { trainingId } = await saveTraining(draft, userId);
-      if (stage === 'finale' && finalDraft?.ok) {
+      const { trainingId } = edit ? await replaceTrainingData(edit.trainingId, draft, userId) : await saveTraining(draft, userId);
+      if (!edit && stage === 'finale' && finalDraft?.ok) {
         const { error } = await createClient().rpc('save_final', { payload: { training_id: trainingId, ...finalDraft.payload } });
         if (error) throw new Error(error.message);
       }
@@ -281,6 +341,12 @@ export function NewTrainingForm({
         } catch {
           failedUploads++;
         }
+      }
+      if (edit) {
+        await dropReplacedFiles(trainingId, [siusFile?.sha, scattLoaded?.sha, hrLoaded?.sha]);
+        router.push(`/trening/${trainingId}`);
+        router.refresh();
+        return;
       }
       setSaved({ id: trainingId, failedUploads });
     } catch {
@@ -324,6 +390,7 @@ export function NewTrainingForm({
     if (!disciplineId) return;
     const hasFinal = stage === 'finale' && finalDraft?.ok === true;
     if (!sius && !scatt && !hr && !hasFinal) setAskEmpty(true);
+    else if (edit) void doSave();
     else void checkThenSave();
   };
 
@@ -348,7 +415,6 @@ export function NewTrainingForm({
   const coverage = hr ? hrCoverage(hr, shotTimes, hrOffsetS * 1000) : null;
   const cfg = disciplineId ? DISCIPLINES[disciplineId] : null;
   const shotTotal = sius ? sius.series.reduce((a, s) => a + s.shots.length, 0) : 0;
-  const backwards = Boolean(timeFrom && timeTo && timeTo < timeFrom);
   let cursor = 0;
 
   const strip = (
@@ -386,11 +452,12 @@ export function NewTrainingForm({
             <button type="button" className="button--quiet" onClick={() => setAskEmpty(false)}>{t.emptyNo}</button>
           </div>
         ) : (
-          <button type="submit" form="new-training" disabled={!disciplineId || saving || backwards}>
-            {saving ? t.saving : t.save}
+          <button type="submit" form="new-training" disabled={!disciplineId || saving || restoring}>
+            {saving ? t.saving : edit ? t.editSave : t.save}
           </button>
         )}
       </div>
+      {restoring && <p role="status" className="strip-alert">{t.restoring}</p>}
       {errors.save && <p role="alert" className="strip-alert">{errors.save}</p>}
     </>
   );
@@ -484,7 +551,7 @@ export function NewTrainingForm({
   );
 
   const finaleResults =
-    stage !== 'finale' ? null : disciplineId && isFinalDiscipline(disciplineId) ? (
+    stage !== 'finale' || edit ? null : disciplineId && isFinalDiscipline(disciplineId) ? (
       <FinalEntry key={disciplineId} discipline={disciplineId} tz={venueTz} onDraft={onFinalDraft} />
     ) : (
       <p className="panel__empty">{t.finaleNoDiscipline}</p>
@@ -657,4 +724,38 @@ export function NewTrainingForm({
       />
     </form>
   );
+}
+
+/** Reads a SIUS CSV or PDF. */
+async function parseSiusFile(file: File, tz: string): Promise<{ parsed: ParsedSiusResult; sha: string }> {
+  const bytes = new Uint8Array(await file.arrayBuffer());
+  const sha = await sha256Hex(bytes);
+  if (/\.pdf$/i.test(file.name) || String.fromCharCode(...bytes.slice(0, 4)) === '%PDF') {
+    const [{ parseSiusPdf }, { configurePdfWorker }] = await Promise.all([import('@/lib/parsers/siusPdf'), import('@/lib/parsers/browser')]);
+    configurePdfWorker();
+    return { parsed: await parseSiusPdf(bytes), sha };
+  }
+  return { parsed: parseSiusCsv(decodeText(bytes), { tz }), sha };
+}
+
+async function parseScattFile(file: File): Promise<{ data: ScattData; sha: string }> {
+  const [{ readScatt }, { scattBrowserOptions }] = await Promise.all([import('@/lib/parsers/scatt'), import('@/lib/parsers/browser')]);
+  const bytes = new Uint8Array(await file.arrayBuffer());
+  return { data: await readScatt(bytes, scattBrowserOptions), sha: await sha256Hex(bytes) };
+}
+
+async function parseHrFile(file: File): Promise<{ data: HrData; sha: string }> {
+  const xml = await file.text();
+  const parsed = parseTcx(xml);
+  return { data: { samples: parsed.samples, xml, missingOffset: parsed.missingOffset }, sha: await sha256Hex(new TextEncoder().encode(xml)) };
+}
+
+/** After an edit: stored files the session no longer uses (replaced or removed) are deleted with their rows. */
+async function dropReplacedFiles(trainingId: string, keep: (string | undefined)[]): Promise<void> {
+  const supabase = createClient();
+  const { data } = await supabase.from('source_files').select('id, sha256, storage_path').eq('training_id', trainingId);
+  const gone = ((data ?? []) as { id: string; sha256: string; storage_path: string }[]).filter((f) => !keep.includes(f.sha256));
+  if (!gone.length) return;
+  await supabase.storage.from('source-files').remove(gone.map((f) => f.storage_path));
+  await supabase.from('source_files').delete().in('id', gone.map((f) => f.id));
 }

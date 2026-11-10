@@ -188,3 +188,15 @@ export async function saveTraining(
   if (error) throw new Error(error.message);
   return { trainingId: String(data) };
 }
+
+/** Rewrites an existing session with a new draft in one transaction (files or alignment changed); its id stays. */
+export async function replaceTrainingData(
+  trainingId: string,
+  draft: TrainingDraft,
+  userId: string,
+  client: RpcClient = createClient(),
+): Promise<{ trainingId: string }> {
+  const { error } = await client.rpc('replace_training_data', { tid: trainingId, payload: buildSavePayload(draft, userId) });
+  if (error) throw new Error(error.message);
+  return { trainingId };
+}

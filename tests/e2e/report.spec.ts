@@ -114,6 +114,20 @@ test('editing changes the name', async () => {
   await expect(page.getByRole('heading', { level: 1, name: 'Preimenovan trening' })).toBeVisible();
 });
 
+test('files and alignment open with the stored files and save back into the same session', async () => {
+  await page.goto(reportUrl);
+  await openMore(page);
+  await page.getByRole('link', { name: 'Izmeni' }).click();
+  await page.getByRole('link', { name: 'Fajlovi i poravnanje' }).click();
+  await expect(page).toHaveURL(/\/trening\/[0-9a-f-]{36}\/podaci$/);
+  await expect(page.getByText('Učitavanje sačuvanih fajlova…')).toHaveCount(0, { timeout: 20_000 });
+  await expect(page.locator('.lane-plate__value:visible')).toHaveText('841.1');
+  await page.getByRole('button', { name: 'Sačuvaj izmene' }).click();
+  await expect(page).toHaveURL(reportUrl);
+  await expect(page.locator('.lane-plate__value:visible')).toHaveText('841.1');
+  await expect(page.getByTestId('series')).toHaveCount(8);
+});
+
 test('delete moves the training to the trash and the report is gone', async () => {
   await page.goto(reportUrl);
   await openMore(page);

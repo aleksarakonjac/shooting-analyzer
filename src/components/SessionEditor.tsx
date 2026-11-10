@@ -84,7 +84,9 @@ export function SessionEditor({
         <textarea name="notes" rows={3} defaultValue={value.notes} />
       </label>
       {invalid && <p role="alert" className="span-2">{r.editInvalid}</p>}
-      <p className="panel__empty span-2">{r.editLater}</p>
+      <p className="span-2">
+        <Link href={`/trening/${value.id}/podaci`}>{r.editData}</Link> <span className="panel__empty">{r.editDataHint}</span>
+      </p>
       <div className="session-edit__actions span-2">
         <button type="submit">{r.save}</button>
         <Link className="button button--quiet" href={`/trening/${value.id}`}>{r.cancel}</Link>
