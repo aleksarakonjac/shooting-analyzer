@@ -99,12 +99,13 @@ export function EChart({
     return () => cancelAnimationFrame(raf);
   }, [option]);
 
-  // Our own wheel handling runs first (capture) and keeps the chart's coarse built-in wheel zoom out;
+  // The mouse wheel scrolls the page. Only a trackpad pinch (a wheel with ctrlKey) zooms the chart;
   // touch pinch and drag stay with ECharts.
   useEffect(() => {
     const box = wrap.current;
     if (!box) return;
     const onWheel = (e: WheelEvent) => {
+      if (!e.ctrlKey) return;
       const c = chart.current;
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       if (!c || !(c.getOption() as any).dataZoom?.length) return;

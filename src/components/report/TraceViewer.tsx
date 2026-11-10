@@ -1,11 +1,12 @@
 'use client';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Segmented } from '@/components/ui/Segmented';
 import { sr } from '@/lib/i18n/sr';
 import { ringAtRadius, viewRadiusMm, type TargetSpec } from '@/lib/report/target';
-import { angleAt, endFor, pointAt, segmentsUpTo, type Replay, type SegmentKind } from '@/lib/scatt/replay';
+import { angleAt, endFor, pointAt, segmentsUpTo, startFor, type Replay, type SegmentKind } from '@/lib/scatt/replay';
 import type { ScattTarget } from '@/lib/scatt/targets';
 import { useRingZoom } from './useRingZoom';
+import { HIT_COLOURS, useReplaySettings, type Palette } from './replaySettings';
+import { TraceSettings } from './TraceSettings';
 
 const t = sr.report;
 
@@ -17,8 +18,13 @@ export const TRACE_COLOURS: Record<SegmentKind, string> = {
   after: '#cc3641',
 };
 
-const SPEEDS = ['0.25', '0.5', '1', '2'] as const;
-const AFTERS = ['0.5', '1', '2'] as const;
+/** Selectable trace palettes: SCATT's own, a cool one, and a grey one that keeps the last quarter second bright. */
+const PALETTE_COLOURS: Record<Palette, Record<SegmentKind, string>> = {
+  scatt: TRACE_COLOURS,
+  cool: { before: '#7aa7ff', control: '#39c6f0', last250: '#3de0c4', after: '#ffd23f' },
+  mono: { before: '#7d8799', control: '#b4bccb', last250: '#ffffff', after: '#ff6b74' },
+};
+
 /** Degrees at the ends of the level vial. */
 const LEVEL_MAX = 10;
 /** Seconds before the shot that the automatic view fits (SCATT aimingTraceDisplaySecondsBeforeShot). */
@@ -34,6 +40,8 @@ export function TraceViewer({
   target,
   shotN,
   score,
+  stats,
+  onNext,
   onBack,
 }: {
   replay: Replay;
@@ -41,14 +49,26 @@ export function TraceViewer({
   target: ScattTarget;
   shotN: number;
   score: string;
+  /** SCATT figures of this shot, drawn over the target like the SCATT program does. */
+  stats?: { speed250: number | null; aimingS: number | null; hold10: number | null; speed1: number | null };
+  /** Go on with the next shot (autoplay); absent when this is the last one. */
+  onNext?: () => void;
   onBack: () => void;
 }) {
-  const [after, setAfter] = useState<(typeof AFTERS)[number]>('1');
-  const [speed, setSpeed] = useState<(typeof SPEEDS)[number]>('1');
+  const settings = useReplaySettings();
+  const after = settings?.after ?? '1';
+  const speed = settings?.speed ?? '1';
+  const before = settings?.before ?? '60';
+  const overlay = settings?.overlay ?? ['score', 'speed250', 'aiming'];
+  const look = { hit: HIT_COLOURS[settings?.hit ?? 'white'], colours: PALETTE_COLOURS[settings?.palette ?? 'scatt'] };
+  const autoplay = settings?.autoplay ?? 'off';
   const end = endFor(replay, Number(after));
+  const start = startFor(replay, Number(before));
   const [posState, setPos] = useState<{ replay: Replay; pos: number } | null>(null);
-  const pos = posState && posState.replay === replay ? Math.min(posState.pos, end) : end;
+  const pos = posState && posState.replay === replay ? Math.max(start, Math.min(posState.pos, end)) : end;
   const [playing, setPlaying] = useState(false);
+  const chain = useRef(false);
+  const endTimer = useRef<number | undefined>(undefined);
   const wrap = useRef<HTMLDivElement>(null);
   const canvas = useRef<HTMLCanvasElement>(null);
   const [size, setSize] = useState({ w: 0, h: 0, dpr: 1 });
@@ -84,12 +104,27 @@ export function TraceViewer({
       cur = Math.min(end, cur + ((now - last) / 1000) * replay.rate * Number(speed));
       last = now;
       setPos({ replay, pos: cur });
-      if (cur >= end) setPlaying(false);
-      else raf = requestAnimationFrame(tick);
+      if (cur >= end) {
+        setPlaying(false);
+        // Autoplay: run the same shot again, or hand over to the next one after a short beat.
+        if (autoplay === 'loop') endTimer.current = window.setTimeout(() => { setPos({ replay, pos: start }); setPlaying(true); }, 600);
+        else if (autoplay === 'next' && onNext) endTimer.current = window.setTimeout(() => { chain.current = true; onNext(); }, 600);
+      } else raf = requestAnimationFrame(tick);
     };
     raf = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(raf);
-  }, [playing, replay, end, speed]);
+  }, [playing, replay, end, speed, start, autoplay, onNext]);
+
+  // A shot that follows an autoplayed one starts by itself; leaving or changing shots cancels a pending hand-over.
+  useEffect(() => {
+    if (chain.current) {
+      chain.current = false;
+      setPos({ replay, pos: start });
+      setPlaying(true);
+    }
+    return () => window.clearTimeout(endTimer.current);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [replay]);
 
   useEffect(() => {
     const c = canvas.current;
@@ -98,12 +133,13 @@ export function TraceViewer({
     c.height = Math.round(size.h * size.dpr);
     const g = c.getContext('2d');
     if (!g) return;
-    draw(g, size, replay, target, spec, zoom.R, pos, end);
-  }, [size, replay, target, spec, zoom.R, pos, end]);
+    draw(g, size, replay, target, spec, zoom.R, pos, end, start, look);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [size, replay, target, spec, zoom.R, pos, end, start, look.hit, look.colours]);
 
   const toggle = () => {
     if (playing) return setPlaying(false);
-    if (pos >= end - 0.5) setPos({ replay, pos: 0 });
+    if (pos >= end - 0.5) setPos({ replay, pos: start });
     setPlaying(true);
   };
   const k = Math.floor(pos);
@@ -113,15 +149,6 @@ export function TraceViewer({
 
   return (
     <figure className="trace">
-      <div className="trace__head">
-        <button type="button" className="button--quiet" onClick={onBack}>
-          ← {t.traceBack}
-        </button>
-        <span className="trace__score num">{score}</span>
-        <span className="trace__hold">
-          {t.traceHold} <strong className="num">Ø {(2 * replay.hold.r).toFixed(1)} mm</strong>
-        </span>
-      </div>
       <div ref={wrap} className="trace__canvas">
         <canvas
           ref={canvas}
@@ -129,9 +156,22 @@ export function TraceViewer({
           aria-label={`${t.traceTitle(shotN)}: ${score}, ${t.traceHold} ${(2 * replay.hold.r).toFixed(1)} mm`}
           onDoubleClick={zoom.fit}
         />
-        <div className="trace__zoom" role="group" aria-label={t.zoomRing(ring)}>
-          <button type="button" onClick={zoom.zoomIn} aria-label={t.zoomIn} title={t.zoomIn}>+</button>
-          <button type="button" onClick={zoom.zoomOut} aria-label={t.zoomOut} title={t.zoomOut}>−</button>
+        <button type="button" className="trace__back" onClick={onBack}>
+          ← {t.traceBack}
+        </button>
+        {overlay.length > 0 && (
+          <dl className="trace__stats">
+            {overlay.includes('shot') && <div><dt>{t.traceShot}</dt><dd className="num">{shotN}</dd></div>}
+            {overlay.includes('score') && <div className="trace__stat--score"><dt>{t.traceScore}</dt><dd className="num">{score}</dd></div>}
+            {overlay.includes('speed250') && <div><dt>{t.traceSpeed250}</dt><dd className="num">{stats?.speed250 == null ? '—' : stats.speed250.toFixed(1)}</dd></div>}
+            {overlay.includes('aiming') && <div><dt>{t.traceAiming}</dt><dd className="num">{stats?.aimingS == null ? '—' : `${stats.aimingS.toFixed(1)} s`}</dd></div>}
+            {overlay.includes('hold') && <div><dt>{t.traceHold}</dt><dd className="num">Ø {(2 * replay.hold.r).toFixed(1)}</dd></div>}
+            {overlay.includes('hold10') && <div><dt>{t.scattHoldLabel}</dt><dd className="num">{stats?.hold10 == null ? '—' : `${stats.hold10}%`}</dd></div>}
+            {overlay.includes('speed1') && <div><dt>{t.scattSpeed1}</dt><dd className="num">{stats?.speed1 == null ? '—' : stats.speed1.toFixed(1)}</dd></div>}
+          </dl>
+        )}
+        <div className="trace__cog-wrap"><TraceSettings /></div>
+        <div className="trace__zoom" role="status" aria-label={t.zoomRing(ring)}>
           {zoom.zoomed && (
             <button type="button" onClick={zoom.fit} title={t.zoomFit}>
               {t.zoomFit}
@@ -139,16 +179,19 @@ export function TraceViewer({
           )}
         </div>
       </div>
+      <div className="trace__foot">
       <div className="trace__bar">
-        <button type="button" className="trace__play" onClick={toggle} aria-pressed={playing}>
-          {playing ? `❚❚ ${t.tracePause}` : `▶ ${t.tracePlay}`}
+        <button type="button" className="trace__play" onClick={toggle} aria-pressed={playing} aria-label={playing ? t.tracePause : t.tracePlay} title={playing ? t.tracePause : t.tracePlay}>
+          <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true" fill="currentColor">
+            {playing ? <path d="M3.5 2.5h3v11h-3zM9.5 2.5h3v11h-3z" /> : <path d="M4 2.2v11.6a.5.5 0 0 0 .76.43l9.2-5.8a.5.5 0 0 0 0-.86l-9.2-5.8A.5.5 0 0 0 4 2.2z" />}
+          </svg>
         </button>
         <input
           type="range"
           className="trace__scrub"
           aria-label={t.tracePos}
           aria-valuetext={t.traceFromShot(secs.toFixed(2))}
-          min={0}
+          min={start}
           max={end}
           step={1}
           value={k}
@@ -157,21 +200,9 @@ export function TraceViewer({
             setPos({ replay, pos: Number(e.target.value) });
           }}
         />
-        <span className="trace__time num">{t.traceFromShot((secs >= 0 ? '+' : '') + secs.toFixed(2))}</span>
-      </div>
-      <div className="trace__opts">
-        <Segmented label={t.traceSpeed} full={false} value={speed} onChange={setSpeed} options={SPEEDS.map((s) => ({ id: s, label: `${s.replace('.', ',')}×` }))} />
-        <Segmented label={t.traceAfter} full={false} value={after} onChange={setAfter} options={AFTERS.map((s) => ({ id: s, label: `${s.replace('.', ',')} s` }))} />
       </div>
       <Level angle={tilt} />
-      <figcaption className="trace__legend">
-        {(Object.keys(TRACE_COLOURS) as SegmentKind[]).map((kind) => (
-          <span key={kind}>
-            <i className="key key--trace" style={{ background: TRACE_COLOURS[kind] }} aria-hidden="true" /> {t.traceLegend[kind]}
-          </span>
-        ))}
-        <span>{t.zoomRing(ring)}</span>
-      </figcaption>
+      </div>
     </figure>
   );
 }
@@ -186,7 +217,10 @@ function Level({ angle }: { angle: number | null }) {
   const level = angle !== null && Math.abs(angle) <= 0.5;
   return (
     <div className="level">
-      <span className="level__label">{t.traceLevel}</span>
+      <div className="level__head">
+        <span className="level__label">{t.traceLevel}</span>
+        <span className="level__value num">{angle === null ? t.traceNoTilt : `${angle >= 0 ? '+' : ''}${angle.toFixed(1)}°`}</span>
+      </div>
       <svg viewBox={`0 -12 ${W} ${H + 26}`} role="img" aria-label={angle === null ? t.traceNoTilt : `${t.traceLevel} ${angle.toFixed(1)}°`}>
         {ticks.map((d) => (
           <line key={d} x1={x(d)} x2={x(d)} y1={-2} y2={d % 5 === 0 ? -10 : -6} className={d % 5 === 0 ? 'level__tick level__tick--major' : 'level__tick'} />
@@ -201,7 +235,6 @@ function Level({ angle }: { angle: number | null }) {
           </text>
         ))}
       </svg>
-      <span className="level__value num">{angle === null ? t.traceNoTilt : `${angle >= 0 ? '+' : ''}${angle.toFixed(1)}°`}</span>
     </div>
   );
 }
@@ -221,6 +254,8 @@ function draw(
   R: number,
   pos: number,
   end: number,
+  start: number,
+  look: { hit: string; colours: Record<SegmentKind, string> },
 ) {
   const { w, h, dpr } = size;
   const S = Math.min(w, h) / 2 / (R * 1.04);
@@ -228,6 +263,7 @@ function draw(
   const Y = (mm: number) => h / 2 - mm * S;
   const card = cssVar('--target-card', '#e9ecef');
   const ink = cssVar('--target-ink', '#14181b');
+  const dim = cssVar('--target-dim', '#7f8aa8');
   g.setTransform(dpr, 0, 0, dpr, 0, 0);
   g.fillStyle = card;
   g.fillRect(0, 0, w, h);
@@ -250,9 +286,9 @@ function draw(
   for (let n = 1; n <= 10; n++) {
     const rad = tg.rings[n] / 2;
     if (n === 10 && (!tg.innerTen || rad * S < 3)) disc(Math.max(rad, 1.5 / S), card);
-    else circle(rad, rad > black + 1e-9 ? ink : card, pen);
+    else circle(rad, rad > black + 1e-9 ? ink : dim, pen);
   }
-  if (tg.innerTen) circle(tg.innerTen / 2, card, pen);
+  if (tg.innerTen) circle(tg.innerTen / 2, dim, pen);
   const fontPx = Math.min(30, spec.stepMm * 0.22 * S);
   if (fontPx >= 7) {
     g.font = `600 ${fontPx.toFixed(1)}px system-ui, sans-serif`;
@@ -261,7 +297,7 @@ function draw(
     for (let n = 1; n <= 8; n++) {
       const ro = tg.rings[n] / 2;
       const rr = ro - (tg.rings[n] - tg.rings[n + 1]) / 4;
-      g.fillStyle = ro > black + 1e-9 ? ink : card;
+      g.fillStyle = ro > black + 1e-9 ? ink : dim;
       for (const [sx, sy] of [[0, 1], [1, 0], [0, -1], [-1, 0]]) g.fillText(String(n), X(rr * sx), Y(rr * sy));
     }
   }
@@ -273,25 +309,25 @@ function draw(
   g.lineWidth = 1.25;
   g.stroke();
   g.setLineDash([]);
+  // The hit, a solid pellet of the real calibre, once the replay reaches it. Drawn first so the trace runs over it.
+  if (pos >= r.shot) {
+    g.beginPath();
+    g.arc(X(r.x[r.shot]), Y(r.y[r.shot]), Math.max(3, (tg.caliber / 2) * S), 0, 2 * Math.PI);
+    g.fillStyle = look.hit;
+    g.fill();
+    g.strokeStyle = ink;
+    g.lineWidth = 1.5;
+    g.stroke();
+  }
   // Trace.
   g.lineJoin = 'round';
   g.lineCap = 'round';
   g.lineWidth = Math.max(1, tg.traceW * 0.6 * S); // thinner than SCATT's default (owner's choice)
-  for (const s of segmentsUpTo(r, pos, end)) {
+  for (const s of segmentsUpTo(r, pos, end, start)) {
     g.beginPath();
     g.moveTo(X(r.x[s.from]), Y(r.y[s.from]));
     for (let i = s.from + 1; i <= s.to; i++) g.lineTo(X(r.x[i]), Y(r.y[i]));
-    g.strokeStyle = TRACE_COLOURS[s.kind];
-    g.stroke();
-  }
-  // The hit, as a pellet of the real calibre, once the replay reaches it.
-  if (pos >= r.shot) {
-    g.beginPath();
-    g.arc(X(r.x[r.shot]), Y(r.y[r.shot]), Math.max(3, (tg.caliber / 2) * S), 0, 2 * Math.PI);
-    g.fillStyle = 'rgba(204,54,65,.12)';
-    g.fill();
-    g.strokeStyle = TRACE_COLOURS.after;
-    g.lineWidth = 2;
+    g.strokeStyle = look.colours[s.kind];
     g.stroke();
   }
   const p = pointAt(r, Math.min(pos, end));

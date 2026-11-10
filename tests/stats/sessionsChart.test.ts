@@ -12,13 +12,17 @@ describe('sessionsOption', () => {
     const o = sessionsOption(pts, 'rez', true);
     const line = o.series[0];
     expect(line.data.map((d: { id: string }) => d.id)).toEqual(['a', 'c']);
-    expect(line.data[0].value).toEqual(['2026-10-01', 103.2]);
+    expect(line.data[0].value).toEqual([Date.parse('2026-10-01T00:00:00'), 103.2]);
+    // Day ticks only, and at least a day of room on each side of the points.
+    const x = sessionsOption(pts, 'rez', true).xAxis;
+    expect(x.minInterval).toBe(86_400_000);
+    expect(x.min).toBeLessThanOrEqual(Date.parse('2026-10-01T00:00:00') - 86_400_000);
     expect(o.xAxis.type).toBe('time');
   });
 
   it('plots the heart rate or the group when chosen', () => {
     expect(sessionsOption(pts, 'puls', true).series[0].data.map((d: { id: string }) => d.id)).toEqual(['a']);
-    expect(sessionsOption(pts, 'grupa', true).series[0].data.map((d: { value: [string, number] }) => d.value[1])).toEqual([9.1, 7.5]);
+    expect(sessionsOption(pts, 'grupa', true).series[0].data.map((d: { value: [number, number] }) => d.value[1])).toEqual([9.1, 7.5]);
   });
 });
 

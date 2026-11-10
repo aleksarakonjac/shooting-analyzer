@@ -18,15 +18,22 @@ const CHART_META: Record<ChartKind, { name: string; unit: string; pick: (p: Sess
 
 /** One figure per session over the calendar: average series, average heart rate or average group. */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
+const DAY_MS = 86_400_000;
+
 export function sessionsOption(points: SessionPoint[], kind: ChartKind, decimal: boolean): any {
   const m = CHART_META[kind];
   const data = points
     .map((p) => ({ p, v: m.pick(p) }))
     .filter((x): x is { p: SessionPoint; v: number } => x.v !== null)
-    .map(({ p, v }) => ({ id: p.id, name: p.name, total: p.total, value: [p.trainedOn, v] }));
+    .map(({ p, v }) => ({ id: p.id, name: p.name, total: p.total, value: [Date.parse(`${p.trainedOn}T00:00:00`), v] }));
+  // Ticks never fall within a day, so a date is never labelled twice; a short span is padded to at least a day each side.
+  const xs = data.map((d) => d.value[0]);
+  const lo = xs.length ? Math.min(...xs) : 0;
+  const hi = xs.length ? Math.max(...xs) : 0;
+  const padX = Math.max(DAY_MS, (hi - lo) * 0.04);
   const fmtDate = (ms: number) => {
     const d = new Date(ms);
-    return `${d.getUTCDate()}. ${d.getUTCMonth() + 1}.`;
+    return `${d.getDate()}. ${d.getMonth() + 1}.`; // ECharts puts day ticks at local midnight
   };
   return {
     animationDuration: 300,
@@ -37,11 +44,20 @@ export function sessionsOption(points: SessionPoint[], kind: ChartKind, decimal:
       borderColor: CHART.select,
       textStyle: { color: '#0b1530', fontFamily: CHART.font, fontSize: 12 },
       extraCssText: 'border-radius:2px;box-shadow:0 8px 24px -8px rgba(0,0,0,.6);',
-      formatter: (x: { data: { name: string; total: number | null; value: [string, number] } }) =>
+      formatter: (x: { data: { name: string; total: number | null; value: [number, number] } }) =>
         `<b>${escapeHtml(x.data.name)}</b><br/>${m.name}: ${x.data.value[1].toFixed(m.digits)}${m.unit ? ` ${m.unit}` : ''}` +
         (kind === 'rez' && x.data.total !== null ? `<br/>Ukupno: ${x.data.total.toFixed(decimal ? 1 : 0)}` : ''),
     },
-    xAxis: { ...axis, type: 'time', splitNumber: 5, splitLine: { show: false }, axisLabel: { ...axis.axisLabel, hideOverlap: true, formatter: fmtDate } },
+    xAxis: {
+      ...axis,
+      type: 'time',
+      splitNumber: 5,
+      minInterval: DAY_MS,
+      min: lo - padX,
+      max: hi + padX,
+      splitLine: { show: false },
+      axisLabel: { ...axis.axisLabel, hideOverlap: true, formatter: fmtDate },
+    },
     yAxis: { ...axis, type: 'value', name: m.unit || 'Serija', nameLocation: 'middle', nameGap: 38, nameRotate: 90, scale: true },
     series: [
       {

@@ -19,7 +19,6 @@ export interface TrainingSummary {
   discipline: DisciplineId;
   matches: { alignState: 'proposed' | 'confirmed'; series: SeriesSummary[] }[];
   /** Warm-up shots and failed attempts. */
-  looseShots: number;
   /** Average heart rate over the match shots, computed when the training was saved. */
   hrAvg: number | null;
   kind?: 'trening' | 'kontrolni' | 'takmicenje';
@@ -28,6 +27,7 @@ export interface TrainingSummary {
   eventName?: string | null;
   /** Start instant (ISO) and the venue zone it is read in. */
   startedAt?: string | null;
+  endedAt?: string | null;
   tz?: string;
 }
 
@@ -102,13 +102,13 @@ export interface SetStats {
 }
 
 /** A session's heart rate counts only when its shots are aligned to the clock (not only proposed). */
-const hrCounts = (t: TrainingSummary) => t.hrAvg !== null && !(t.matches.length > 0 && t.matches.every((m) => m.alignState === 'proposed'));
+export const hrCounts = (t: TrainingSummary) => t.hrAvg !== null && !(t.matches.length > 0 && t.matches.every((m) => m.alignState === 'proposed'));
 
-/** Figures over a set of sessions: count, shots (match plus warm-up and attempts), averages. */
+/** Figures over a set of sessions: count, shots (matched series only; hidden SCATT probe shots are not counted), averages. */
 export function setStats(trainings: TrainingSummary[]): SetStats {
   const hr = trainings.filter(hrCounts).map((t) => t.hrAvg as number);
   const shots = trainings.reduce(
-    (a, t) => a + t.looseShots + t.matches.reduce((b, m) => b + m.series.reduce((c, s) => c + s.shotCount, 0), 0),
+    (a, t) => a + t.matches.reduce((b, m) => b + m.series.reduce((c, s) => c + s.shotCount, 0), 0),
     0,
   );
   return {

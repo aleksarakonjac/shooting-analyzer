@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   FINAL_FORMATS,
   maxFinalShots,
+  parseFinalPaste,
   parseTimestamps,
   stageOfShot,
   stageTotals,
@@ -135,17 +136,31 @@ import { buildFinalPayload } from '@/lib/finals/format';
 describe('buildFinalPayload', () => {
   it('turns typed cells into shots with stage indexes and times, ignoring trailing blanks', () => {
     const cells = ['10.1', '10,2', '10.3', '10.4', '10.5', '9.9', '', ...Array(17).fill('')];
-    const r = buildFinalPayload('air_rifle', cells, '3', '', [1000, 2000]);
+    const r = buildFinalPayload('air_rifle', cells, '3', [1000, 2000]);
     if (!r.ok) throw new Error('expected ok');
     expect(r.payload.placement).toBe(3);
-    expect(r.payload.eliminated_after_shot).toBeNull();
+    expect(r.payload.eliminated_after_shot).toBe(6);
     expect(r.payload.shots.map((s) => [s.idx, s.stage_idx, s.value, s.t_ms])).toEqual([
       [1, 0, 10.1, 1000], [2, 0, 10.2, 2000], [3, 0, 10.3, null], [4, 0, 10.4, null], [5, 0, 10.5, null], [6, 1, 9.9, null],
     ]);
   });
 
   it('reports the first problem', () => {
-    expect(buildFinalPayload('air_rifle', ['10.95'], '', '', [])).toEqual({ ok: false, error: 'decimals' });
-    expect(buildFinalPayload('air_rifle', [], '', '', [])).toEqual({ ok: false, error: 'empty' });
+    expect(buildFinalPayload('air_rifle', ['10.95'], '', [])).toEqual({ ok: false, error: 'decimals' });
+    expect(buildFinalPayload('air_rifle', [], '', [])).toEqual({ ok: false, error: 'empty' });
+  });
+});
+
+describe('parseFinalPaste', () => {
+  it('reads values with optional times, keeping each time on its own shot', () => {
+    const r = parseFinalPaste('1. 10.6 19:03:09\n2. 10,4\n3. 9.8 19:04:10', '2026-10-21', 'UTC', 24);
+    expect(r.ok).toBe(true);
+    if (!r.ok) return;
+    expect(r.cells).toEqual(['10.6', '10.4', '9.8']);
+    expect(r.tMs).toEqual([Date.UTC(2026, 9, 21, 19, 3, 9), null, Date.UTC(2026, 9, 21, 19, 4, 10)]);
+  });
+  it('rejects a bad line and too many shots', () => {
+    expect(parseFinalPaste('10.6\nabc', '2026-10-21', 'UTC', 24)).toEqual({ ok: false, error: 'invalid', line: 2 });
+    expect(parseFinalPaste('10.6\n10.5', '2026-10-21', 'UTC', 1)).toEqual({ ok: false, error: 'toomany' });
   });
 });

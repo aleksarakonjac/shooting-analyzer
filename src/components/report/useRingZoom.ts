@@ -1,15 +1,18 @@
 'use client';
 import { useEffect, useRef, useState, type RefObject } from 'react';
-import { zoomRing, type TargetSpec } from '@/lib/report/target';
+import { ringRadiusMm, type TargetSpec } from '@/lib/report/target';
 
-/** Wheel travel (pixels) for one ring step. */
-const WHEEL_STEP = 80;
-/** Pinch: finger distance ratio for one ring step. */
-const PINCH_STEP = 1.25;
+/** Wheel travel: view radius changes by this factor per pixel (as an exponent). */
+const WHEEL_RATE = 0.0018;
+/** A trackpad pinch arrives as a wheel with ctrlKey and tiny deltas. */
+const PINCH_WHEEL_RATE = 0.012;
+/** Button step. */
+const STEP = 1.4;
 
 /**
- * Ring-by-ring zoom about the target centre, as in SCATT. `fitR` is the automatic view; once the
- * user zooms, their ring holds until "Prilagodi". The wheel and a two-finger pinch on `el` step too.
+ * Smooth zoom about the target centre. `fitR` is the automatic view; once the user zooms, their radius holds until
+ * the view is reset. The wheel, a trackpad pinch and a two-finger touch pinch on `el` scale the view continuously
+ * (between ring 1 and a little inside the ten); there are no buttons.
  */
 export function useRingZoom(spec: TargetSpec, fitR: number, el: RefObject<HTMLElement | SVGSVGElement | null>, resetKey: unknown) {
   const [chosen, setChosen] = useState<{ key: unknown; R: number } | null>(null);
@@ -19,27 +22,25 @@ export function useRingZoom(spec: TargetSpec, fitR: number, el: RefObject<HTMLEl
     live.current = { spec, fitR, resetKey };
   });
 
-  // Functional update: several wheel steps in one event each start from the previous one.
-  const [step] = useState(() => (dir: 'in' | 'out') =>
+  // Functional update: several wheel events in one frame each start from the previous result.
+  const [scale] = useState(() => (factor: number) =>
     setChosen((prev) => {
       const { spec: s, fitR: f, resetKey: k } = live.current;
       const cur = prev && prev.key === k ? prev.R : f;
-      return { key: k, R: zoomRing(s, cur, dir) };
+      const lo = ringRadiusMm(s, 10) * 0.7;
+      const hi = ringRadiusMm(s, 1);
+      return { key: k, R: Math.min(hi, Math.max(lo, cur * factor)) };
     }),
   );
 
   useEffect(() => {
     const node = el.current;
     if (!node) return;
-    let acc = 0;
     const onWheel = (e: Event) => {
       const w = e as WheelEvent;
       w.preventDefault();
-      acc += w.deltaY;
-      while (Math.abs(acc) >= WHEEL_STEP) {
-        step(acc < 0 ? 'in' : 'out');
-        acc -= Math.sign(acc) * WHEEL_STEP;
-      }
+      // Wheel down zooms out, up zooms in.
+      scale(Math.exp(w.deltaY * (w.ctrlKey ? PINCH_WHEEL_RATE : WHEEL_RATE)));
     };
     const pts = new Map<number, [number, number]>();
     let base = 0;
@@ -58,11 +59,9 @@ export function useRingZoom(spec: TargetSpec, fitR: number, el: RefObject<HTMLEl
       pts.set(p.pointerId, [p.clientX, p.clientY]);
       if (pts.size !== 2 || !base) return;
       const d = dist();
-      if (d / base >= PINCH_STEP) {
-        step('in');
-        base = d;
-      } else if (base / d >= PINCH_STEP) {
-        step('out');
+      if (d > 0) {
+        // Fingers apart zoom in: the view radius shrinks by the same ratio.
+        scale(base / d);
         base = d;
       }
     };
@@ -82,13 +81,13 @@ export function useRingZoom(spec: TargetSpec, fitR: number, el: RefObject<HTMLEl
       node.removeEventListener('pointerup', up);
       node.removeEventListener('pointercancel', up);
     };
-  }, [el, step]);
+  }, [el, scale]);
 
   return {
     R,
     zoomed: chosen !== null && chosen.key === resetKey,
-    zoomIn: () => step('in'),
-    zoomOut: () => step('out'),
+    zoomIn: () => scale(1 / STEP),
+    zoomOut: () => scale(STEP),
     fit: () => setChosen(null),
   };
 }

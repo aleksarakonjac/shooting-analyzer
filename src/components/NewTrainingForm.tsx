@@ -15,7 +15,6 @@ import type { ScattData } from '@/lib/parsers/scatt';
 import { parseSiusCsv } from '@/lib/parsers/siusCsv';
 import { parseTcx, reinterpretAsZone, type HrSample } from '@/lib/parsers/tcx';
 import { hrCoverage } from '@/lib/report/derive';
-import { zoneNames } from '@/lib/time/zone';
 import { isRepeatedHour, toInstantRange, type Fold } from '@/lib/import/times';
 import { isFinalDiscipline } from '@/lib/finals/format';
 import { createClient } from '@/lib/supabase/client';
@@ -29,7 +28,6 @@ import { LanePlate } from './LanePlate';
 import { MatchSelector } from './MatchSelector';
 import { MismatchNotice } from './MismatchNotice';
 import { SourceCard } from './SourceCard';
-import { Workspace } from './Workspace';
 import { ComboField } from './ui/ComboField';
 import { DateTimeRange } from './ui/DateTimeRange';
 import { FileField } from './ui/FileField';
@@ -110,8 +108,8 @@ export function NewTrainingForm({
   const [kind, setKind] = useState<SessionKind>(init?.kind ?? 'trening');
   const [stage, setStage] = useState<SessionStage>(init?.stage ?? 'slobodno');
   const [eventName, setEventName] = useState(init?.eventName ?? '');
-  const [venueTz, setVenueTz] = useState(init?.tz ?? tz);
-  const zones = useMemo(() => zoneNames(tz), [tz]);
+  // No zone input: a session is entered where it happened, so the device clock and the venue clock agree.
+  const venueTz = init?.tz ?? tz;
   const [foldFrom, setFoldFrom] = useState<Fold>('earlier');
   const [foldTo, setFoldTo] = useState<Fold>('earlier');
   const [finalDraft, setFinalDraft] = useState<FinalDraft | null>(null);
@@ -120,6 +118,10 @@ export function NewTrainingForm({
   const [name, setName] = useState(init?.name ?? '');
   const [place, setPlace] = useState(init?.place ?? '');
   const [notes, setNotes] = useState(init?.notes ?? '');
+  // Eliminations exist only in small-bore three positions.
+  const stageOptions = (['slobodno', 'eliminacije', 'kvalifikacije', 'finale'] as const).filter(
+    (id) => id !== 'eliminacije' || disciplineId === 'smallbore_3p',
+  );
   const [restoring, setRestoring] = useState(Boolean(edit));
 
   const [siusFile, setSiusFile] = useState<Loaded<ParsedSiusResult> | null>(null);
@@ -294,7 +296,7 @@ export function NewTrainingForm({
     const range = toInstantRange(trainedOn, timeFrom, timeTo, venueTz, { from: foldFrom, to: foldTo });
     let eventId: string | null = null;
     try {
-      eventId = kind === 'trening' ? null : await resolveEvent();
+      eventId = kind === 'takmicenje' ? await resolveEvent() : null;
     } catch {
       setErrors((e) => ({ ...e, save: t.saveFailed }));
       setSaving(false);
@@ -421,7 +423,7 @@ export function NewTrainingForm({
     <>
       <div className="ws__head">
         <h1 className="ws__title">{title}</h1>
-        <p className="ws__meta">{effectiveName || t.chooseDiscipline}</p>
+        {effectiveName && <p className="ws__meta">{effectiveName}</p>}
       </div>
       {sius && (
         <LanePlate
@@ -470,7 +472,10 @@ export function NewTrainingForm({
           placeholder={t.chooseDiscipline}
           isRequired
           value={disciplineId || null}
-          onChange={(id) => setDisciplineId(id as DisciplineId)}
+          onChange={(id) => {
+            setDisciplineId(id as DisciplineId);
+            if (id !== 'smallbore_3p' && stage === 'eliminacije') setStage('slobodno');
+          }}
           items={(Object.keys(DISCIPLINES) as DisciplineId[]).map((id) => ({ id, label: DISCIPLINES[id].nameSr }))}
         />
       </div>
@@ -487,10 +492,10 @@ export function NewTrainingForm({
           label={t.stage}
           value={stage}
           onChange={setStage}
-          options={(['slobodno', 'eliminacije', 'kvalifikacije', 'finale'] as const).map((id) => ({ id, label: t.stages[id] }))}
+          options={stageOptions.map((id) => ({ id, label: t.stages[id] }))}
         />
       </div>
-      {kind !== 'trening' && (
+      {kind === 'takmicenje' && (
         <div className="span-2">
           <ComboField
             label={t.event}
@@ -527,9 +532,6 @@ export function NewTrainingForm({
           )}
         </div>
       )}
-      <div className="span-2">
-        <ComboField label={t.venueTz} value={venueTz} onChange={setVenueTz} suggestions={zones} description={t.venueTzHint} />
-      </div>
       <label>
         {t.name}
         <input value={name} placeholder={effectiveName} onChange={(e) => setName(e.target.value)} />
@@ -552,7 +554,7 @@ export function NewTrainingForm({
 
   const finaleResults =
     stage !== 'finale' || edit ? null : disciplineId && isFinalDiscipline(disciplineId) ? (
-      <FinalEntry key={disciplineId} discipline={disciplineId} tz={venueTz} onDraft={onFinalDraft} />
+      <FinalEntry key={disciplineId} discipline={disciplineId} tz={venueTz} date={trainedOn} onDraft={onFinalDraft} />
     ) : (
       <p className="panel__empty">{t.finaleNoDiscipline}</p>
     );
@@ -568,13 +570,13 @@ export function NewTrainingForm({
             id: 'file',
             label: t.tabFile,
             content: (
-              <SourceCard title={t.siusTitle} hint={t.siusHint} error={errors.sius}>
+              <SourceCard title={t.siusTitle} error={errors.sius}>
                 <FileField label={t.siusFile} accept=".csv,.pdf,text/csv,application/pdf" onChange={onSius} fileName={siusFile?.file.name} />
               </SourceCard>
             ),
           },
           { id: 'manual', label: t.tabManual, content: <ManualEntry disciplineId={disciplineId} onApply={(r) => applySius(r, null)} /> },
-          { id: 'paste', label: t.tabPaste, content: <PasteEntry disciplineId={disciplineId} date={trainedOn} tz={tz} onApply={(r) => applySius(r, null)} /> },
+          { id: 'paste', label: t.tabPaste, content: <PasteEntry disciplineId={disciplineId} date={trainedOn} tz={venueTz} onApply={(r) => applySius(r, null)} /> },
         ]}
       />
       {loadedSummary}
@@ -616,15 +618,13 @@ export function NewTrainingForm({
             </div>
           ))}
         </section>
-      ) : (
-        <p className="panel__empty">{t.noResults}</p>
-      )}
+      ) : null}
     </div>
   );
 
   const sources = (
     <div className="sources">
-      <SourceCard title={t.scattTitle} hint={t.scattHint} error={errors.scatt}>
+      <SourceCard title={t.scattTitle} error={errors.scatt}>
         <FileField label={t.scattFile} accept=".scatt-expert,application/octet-stream" onChange={onScatt} fileName={scattLoaded?.file.name} />
         {scatt && (
           <p className="source-card__loaded">
@@ -633,7 +633,7 @@ export function NewTrainingForm({
           </p>
         )}
       </SourceCard>
-      <SourceCard title={t.hrTitle} hint={t.hrHint} error={errors.hr}>
+      <SourceCard title={t.hrTitle} error={errors.hr}>
         <FileField label={t.hrFile} accept=".tcx,application/xml,text/xml" onChange={onHr} fileName={hrLoaded?.file.name} />
         {hrLoaded && (
           <>
@@ -704,24 +704,32 @@ export function NewTrainingForm({
         onSave();
       }}
     >
-      <Workspace
-        label={t.panels}
-        strip={strip}
-        rows={6}
-        panels={[
-          { id: 'basics', title: t.basics, col: '1 / 5', row: '1 / 7', children: basics },
-          {
-            id: 'results',
-            title: t.results,
-            range: stage === 'finale' ? t.stages.finale : sius ? `${sius.series.length} serija · ${shotTotal} pogodaka` : cfg?.nameSr,
-            col: '5 / 9',
-            row: '1 / 7',
-            children: results,
-          },
-          { id: 'sources', title: t.sources, col: '9 / 13', row: '1 / 5', children: sources },
-          { id: 'align', title: t.alignment, col: '9 / 13', row: '5 / 7', children: alignment },
-        ]}
-      />
+      <header className="ws__strip entry-bar">{strip}</header>
+      <div className="entry-cols">
+        <section className="entry-col entry-basics" aria-labelledby="entry-basics">
+          <h2 id="entry-basics" className="entry-sec__title">{t.basics}</h2>
+          {basics}
+        </section>
+        <div className="entry-col">
+          <section className="entry-sec" aria-labelledby="entry-results">
+            <h2 id="entry-results" className="entry-sec__title">
+              {t.results}
+              <span className="panel__range">
+                {stage === 'finale' ? t.stages.finale : sius ? `${sius.series.length} serija · ${shotTotal} pogodaka` : cfg?.nameSr}
+              </span>
+            </h2>
+            {results}
+          </section>
+          <section className="entry-sec" aria-labelledby="entry-sources">
+            <h2 id="entry-sources" className="entry-sec__title">{t.sources}</h2>
+            {sources}
+          </section>
+          <section className="entry-sec" aria-labelledby="entry-align">
+            <h2 id="entry-align" className="entry-sec__title">{t.alignment}</h2>
+            {alignment}
+          </section>
+        </div>
+      </div>
     </form>
   );
 }

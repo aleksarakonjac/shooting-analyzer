@@ -58,7 +58,8 @@ describe('timelineOption', () => {
 
   it('starts the score axis just below the lowest shot', () => {
     const o = timelineOption(v, { series: 1, shot: null }, 'Europe/Belgrade');
-    expect(o.yAxis[0].min).toBe(9.5); // lowest timed shot 9.8
+    expect(o.yAxis[0].min).toBe(9.7); // lowest timed shot 9.8, a tenth below it
+    expect(o.yAxis[0].interval).toBe(0.1);
   });
 });
 

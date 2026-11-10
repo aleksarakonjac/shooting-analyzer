@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { renderToStaticMarkup } from 'react-dom/server';
-import { TargetPlot } from '../../src/components/report/TargetPlot';
+import { TargetNotes, TargetPlot } from '../../src/components/report/TargetPlot';
 import { buildReportView } from '../../src/lib/report/viewModel';
 
 const html = (el: React.ReactElement) => renderToStaticMarkup(el);
@@ -15,7 +15,7 @@ describe('TargetPlot', () => {
   );
 
   it('states the group and the MPI direction in words, not only by drawing', () => {
-    const out = html(<TargetPlot discipline="air_rifle" series={view.series} selected={1} />);
+    const out = html(<TargetNotes series={view.series} selected={1} />) + html(<TargetPlot discipline="air_rifle" series={view.series} selected={1} />);
     expect(out).toContain('8.0 mm');
     expect(out).toContain('0.5 mm levo');
     expect(out).toContain('0.4 mm dole');
@@ -41,7 +41,7 @@ describe('TargetPlot', () => {
   });
 
   it('asks for a series when none is selected', () => {
-    expect(html(<TargetPlot discipline="air_rifle" series={view.series} selected={null} />)).toContain('Izaberite seriju');
+    expect(html(<TargetNotes series={view.series} selected={null} />)).toContain('Izaberite seriju');
   });
 });
 
@@ -55,7 +55,7 @@ describe('TargetPlot drift view', () => {
   );
 
   it('magnifies the series MPIs on their own scale, each numbered, with the scale stated', () => {
-    const out = html(<TargetPlot discipline="air_rifle" series={view.series} selected={1} />);
+    const out = html(<TargetNotes series={view.series} selected={1} />);
     expect(out).toContain('target__drift');
     expect(out.match(/data-drift=/g)).toHaveLength(2);
     expect(out).toContain('±1.5 mm'); // 1.2 mm * 1.25, rounded up to half a millimetre

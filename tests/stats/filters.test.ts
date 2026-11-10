@@ -7,17 +7,20 @@ const tz = 'Europe/Belgrade';
 describe('parseFilters', () => {
   it('defaults to the recent sessions with no other filter and the result chart', () => {
     expect(parseFilters({}, now, tz)).toEqual({
-      quick: 'recent', from: null, to: null, discipline: null, kind: null, stage: null, place: null, event: null, chart: 'rez',
+      quick: 'recent', year: null, month: null, from: null, to: null, discipline: null, kind: null, stage: null, place: null, event: null, chart: 'rez', side: false, limit: 30,
     });
   });
 
-  it('turns a quick period into its date range', () => {
-    expect(parseFilters({ p: 'month' }, now, tz)).toMatchObject({ quick: 'month', from: '2026-11-01', to: '2026-12-01' });
-    expect(parseFilters({ p: 'year' }, now, tz)).toMatchObject({ from: '2026-01-01', to: '2027-01-01' });
+  it('turns a year, or a month of a year, into its date range', () => {
+    expect(parseFilters({ y: '2026', mo: '11' }, now, tz)).toMatchObject({ quick: 'period', year: '2026', month: '11', from: '2026-11-01', to: '2026-12-01' });
+    expect(parseFilters({ y: '2025' }, now, tz)).toMatchObject({ year: '2025', month: null, from: '2025-01-01', to: '2026-01-01' });
+    expect(parseFilters({ y: '2025', mo: '12' }, now, tz)).toMatchObject({ from: '2025-12-01', to: '2026-01-01' });
+    expect(parseFilters({ mo: '3' }, now, tz)).toMatchObject({ year: '2026', month: '03', from: '2026-03-01', to: '2026-04-01' });
+    expect(parseFilters({ y: 'abc', mo: '13' }, now, tz).quick).toBe('recent');
   });
 
   it('takes an explicit range (end inclusive) over a quick period', () => {
-    expect(parseFilters({ p: 'week', od: '2026-10-01', do: '2026-10-31' }, now, tz)).toMatchObject({
+    expect(parseFilters({ y: '2026', od: '2026-10-01', do: '2026-10-31' }, now, tz)).toMatchObject({
       quick: 'range', from: '2026-10-01', to: '2026-11-01',
     });
   });
@@ -38,8 +41,27 @@ describe('filtersHref', () => {
     expect(filtersHref('/', parseFilters({ od: '2026-10-01', do: '2026-10-31' }, now, tz), { kind: 'trening' })).toBe('/?od=2026-10-01&do=2026-10-31&v=trening');
   });
 
-  it('switching to a quick period drops an explicit range', () => {
-    const f = parseFilters({ od: '2026-10-01', do: '2026-10-31', m: 'Novi Sad' }, now, tz);
-    expect(filtersHref('/', f, { quick: 'week' })).toBe('/?p=week&m=Novi+Sad');
+  it('keeps the side panel open across other changes and writes it only when open', () => {
+    const f = parseFilters({ s: '1', d: 'air_rifle' }, now, tz);
+    expect(f.side).toBe(true);
+    expect(filtersHref('/', f, { chart: 'puls' })).toBe('/?d=air_rifle&g=puls&s=1');
+    expect(filtersHref('/', f, { side: false })).toBe('/?d=air_rifle');
+  });
+
+  it('writes a year and month', () => {
+    expect(filtersHref('/', parseFilters({ y: '2026', mo: '4' }, now, tz), {})).toBe('/?y=2026&mo=04');
+  });
+
+  it('reads the list size, clamped to at least one page', () => {
+    expect(parseFilters({ n: '90' }, now, tz).limit).toBe(90);
+    expect(parseFilters({ n: '5' }, now, tz).limit).toBe(30);
+    expect(parseFilters({ n: 'x' }, now, tz).limit).toBe(30);
+  });
+
+  it('keeps a longer list across a chart switch, and starts it over on any other change', () => {
+    const f = parseFilters({ y: '2026', n: '60' }, now, tz);
+    expect(filtersHref('/', f, { chart: 'puls' })).toBe('/?y=2026&g=puls&n=60');
+    expect(filtersHref('/', f, { limit: 90 })).toBe('/?y=2026&n=90');
+    expect(filtersHref('/', f, { discipline: 'air_rifle' })).toBe('/?y=2026&d=air_rifle');
   });
 });

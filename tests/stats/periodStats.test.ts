@@ -16,7 +16,7 @@ const training = (over: Partial<TrainingSummary> & { trainedOn: string }): Train
   name: over.trainedOn,
   discipline: 'air_rifle',
   matches: [],
-  looseShots: 0,
+ 
   hrAvg: null,
   ...over,
 });
@@ -31,11 +31,10 @@ describe('periodStats', () => {
     expect(s.buckets.every((b) => b.avgSeries === null && b.avgGroupMm === null)).toBe(true);
   });
 
-  it('counts the shots of two trainings in one month (match shots plus warm-up and attempts)', () => {
+  it('counts the shots of two trainings in one month (match series only)', () => {
     const a = training({
       trainedOn: '2026-10-21',
       matches: [{ alignState: 'confirmed', series: [series(1, 104, 104.5, 8.0), series(2, 103, 103.7, 10.0)] }],
-      looseShots: 49,
     });
     const b = training({
       trainedOn: '2026-10-05',
@@ -43,7 +42,7 @@ describe('periodStats', () => {
     });
     const s = periodStats([a, b], 'month', NOW, TZ);
     expect(s.trainings).toBe(2);
-    expect(s.shots).toBe(10 + 10 + 49 + 8);
+    expect(s.shots).toBe(10 + 10 + 8);
     expect(s.avgSeries).toBe(103.2); // (104.5 + 103.7 + 101.3) / 3, decimal discipline
     expect(s.avgGroupMm).toBe(10); // (8 + 10 + 12) / 3
   });
@@ -58,7 +57,7 @@ describe('periodStats', () => {
   });
 
   it('ignores trainings outside the period', () => {
-    const s = periodStats([training({ trainedOn: '2026-09-30', looseShots: 5 })], 'month', NOW, TZ);
+    const s = periodStats([training({ trainedOn: '2026-09-30' })], 'month', NOW, TZ);
     expect(s.trainings).toBe(0);
     expect(s.shots).toBe(0);
   });
@@ -90,13 +89,11 @@ describe('periodStats', () => {
   it('week boundaries follow the Belgrade calendar, not UTC', () => {
     // 23:30 UTC on Sunday 1 Nov 2026 is already Monday 2 Nov, 00:30 in Belgrade.
     const now = new Date('2026-11-01T23:30:00Z');
-    const sunday = training({ trainedOn: '2026-11-01', looseShots: 1 });
-    const monday = training({ trainedOn: '2026-11-02', looseShots: 2 });
+    const sunday = training({ trainedOn: '2026-11-01' });
+    const monday = training({ trainedOn: '2026-11-02' });
     const s = periodStats([sunday, monday], 'week', now, TZ);
     expect(s.trainings).toBe(1);
-    expect(s.shots).toBe(2);
     expect(periodStats([sunday, monday], 'week', now, 'UTC').trainings).toBe(1);
-    expect(periodStats([sunday, monday], 'week', now, 'UTC').shots).toBe(1);
   });
 
   it('makes seven daily buckets for a week, per-day buckets for a month and twelve monthly buckets for a year', () => {

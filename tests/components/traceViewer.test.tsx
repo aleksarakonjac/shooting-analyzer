@@ -3,6 +3,7 @@ import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { TraceViewer } from '../../src/components/report/TraceViewer';
+import { ReplaySettingsProvider, ReplaySettingsSection } from '../../src/components/report/replaySettings';
 import { TargetPlot } from '../../src/components/report/TargetPlot';
 import { buildReportView } from '../../src/lib/report/viewModel';
 import { targetSpec } from '../../src/lib/report/target';
@@ -36,7 +37,7 @@ describe('TraceViewer', () => {
   it('starts on the whole trace with the shot score, hold circle and tilt', () => {
     viewer();
     expect(screen.getByRole('img', { name: /Putanja · pogodak 4: 10.4/ })).toBeTruthy();
-    expect(screen.getByText(/\+1\.00 s od pucnja/)).toBeTruthy();
+    expect(screen.getByRole('slider', { name: 'Položaj u putanji' }).getAttribute('aria-valuetext')).toMatch(/^1\.00 s od pucnja/);
     expect(screen.getByText('+2.0°')).toBeTruthy();
   });
 
@@ -47,33 +48,38 @@ describe('TraceViewer', () => {
     expect(screen.getByRole('button', { name: /Pauza/ })).toBeTruthy();
     fireEvent.change(screen.getByRole('slider', { name: 'Položaj u putanji' }), { target: { value: String(replay.shot) } });
     expect(screen.getByRole('button', { name: /Pusti/ })).toBeTruthy();
-    expect(screen.getByText(/0\.00 s od pucnja/)).toBeTruthy();
+    expect(screen.getByRole('slider', { name: 'Položaj u putanji' }).getAttribute('aria-valuetext')).toMatch(/0\.00 s od pucnja/);
   });
 
   it('shows less after the shot when asked', async () => {
     const user = userEvent.setup();
-    viewer();
+    render(
+      <ReplaySettingsProvider>
+        <ReplaySettingsSection />
+        <TraceViewer replay={replay} spec={targetSpec('air_rifle')} target={SCATT_TARGETS.ar10} shotN={4} score="10.4" onBack={() => {}} />
+      </ReplaySettingsProvider>,
+    );
     await user.click(screen.getByRole('radio', { name: '0,5 s' }));
-    expect(screen.getByText(/\+0\.50 s od pucnja/)).toBeTruthy();
+    expect(screen.getByRole('slider', { name: 'Položaj u putanji' }).getAttribute('aria-valuetext')).toMatch(/^0\.50 s od pucnja/);
   });
 
-  it('zooms ring by ring and fits again', async () => {
+  it('zooms smoothly with the wheel and fits again', async () => {
     const user = userEvent.setup();
     viewer();
-    const ring = () => screen.getByText(/^do prstena \d+$/).textContent;
+    const ring = () => screen.getByRole('status').getAttribute('aria-label');
     const before = ring();
-    await user.click(screen.getByRole('button', { name: 'Umanji' }));
+    fireEvent.wheel(screen.getByRole('img', { name: /hold|zadržavanja/i }), { deltaY: 400 });
     expect(ring()).not.toBe(before);
-    await user.click(screen.getByRole('button', { name: 'Prilagodi' }));
+    await user.click(screen.getByRole('button', { name: 'Reset' }));
     expect(ring()).toBe(before);
-    expect(screen.queryByRole('button', { name: 'Prilagodi' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Reset' })).toBeNull();
   });
 
   it('goes back to the series', async () => {
     const user = userEvent.setup();
     const back = vi.fn();
     viewer(back);
-    await user.click(screen.getByRole('button', { name: /Nazad na seriju/ }));
+    await user.click(screen.getByRole('button', { name: /Nazad/ }));
     expect(back).toHaveBeenCalledOnce();
   });
 });
@@ -89,9 +95,9 @@ describe('TargetPlot zoom', () => {
     const { container } = render(<TargetPlot discipline="air_rifle" series={view.series} selected={1} />);
     const vb = () => container.querySelector('svg')!.getAttribute('viewBox');
     const fitted = vb();
-    await user.click(screen.getByRole('button', { name: 'Umanji' }));
+    fireEvent.wheel(container.querySelector('svg')!, { deltaY: 400 });
     expect(vb()).not.toBe(fitted);
-    await user.click(screen.getByRole('button', { name: 'Prilagodi' }));
+    await user.click(screen.getByRole('button', { name: 'Reset' }));
     expect(vb()).toBe(fitted);
   });
 

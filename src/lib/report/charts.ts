@@ -1,7 +1,10 @@
 import type { HrSample } from '@/lib/parsers/tcx';
 import { hrAt } from './hrAt';
 import type { Rhythm } from './rhythm';
-import type { ShotAnalysis, ShotMetrics } from '@/lib/scatt/analysis';
+import type { ShotAnalysis } from '@/lib/scatt/analysis';
+import { decimalScore } from '@/lib/scatt/display';
+import type { ScattTarget } from '@/lib/scatt/targets';
+import type { Replay } from '@/lib/scatt/replay';
 import type { ScoreBand } from './target';
 import type { ReportView } from './viewModel';
 
@@ -14,6 +17,9 @@ export const CHART = {
   panelSunk: '#0a1430',
   data: '#39c6f0',
   select: '#ffffff',
+  /** SCATT's own colours for its analysis charts: green for aiming, orange for speed. */
+  green: '#3ddc8a',
+  orange: '#ffa21f',
   band: { top: '#39c6f0', ten: '#2a8fb4', nine: '#5c6e9c', low: '#ff6b74' } satisfies Record<ScoreBand, string>,
   font: 'Barlow, system-ui, sans-serif',
 };
@@ -54,7 +60,7 @@ const timeAxis = (fmt: (ms: number) => string) => ({
 });
 
 const zoom = [
-  { type: 'inside', xAxisIndex: 0, filterMode: 'none' },
+  { type: 'inside', xAxisIndex: 0, filterMode: 'none', zoomOnMouseWheel: false, moveOnMouseWheel: false, moveOnMouseMove: true },
   {
     type: 'slider', xAxisIndex: 0, height: 18, bottom: 6, filterMode: 'none',
     borderColor: CHART.rule, backgroundColor: CHART.panelSunk, fillerColor: 'rgba(57,198,240,0.15)',
@@ -69,9 +75,9 @@ const zoom = [
 export function timelineOption(v: ReportView, sel: Selection, tz: string, hr?: HrSample[]): any {
   const fmt = clock(tz);
   const shots = v.series.flatMap((s) => s.shots).filter((s) => s.tMs !== null);
-  // The score axis starts just below the lowest shot (half a ring for decimals), so the points use the height.
+  // The score axis starts just below the lowest shot (a tenth for decimals, with a label at every tenth), so the points use the height.
   const low = shots.length ? Math.min(...shots.map((s) => s.value)) : 9;
-  const minY = v.decimal ? Math.max(0, Math.floor((low - 0.2) * 2) / 2) : Math.max(0, Math.floor(low) - 1);
+  const minY = v.decimal ? Math.max(0, Math.floor((low - 0.1) * 10) / 10) : Math.max(0, Math.floor(low) - 1);
   // Heart rate gets the lower third: its axis is stretched upwards so the line stays under the shots.
   const hrLo = hr?.length ? Math.min(...hr.map((x) => x.bpm)) : 0;
   const hrHi = hr?.length ? Math.max(...hr.map((x) => x.bpm)) : 0;
@@ -121,7 +127,7 @@ export function timelineOption(v: ReportView, sel: Selection, tz: string, hr?: H
     dataZoom: zoom,
     xAxis: timeAxis(fmt),
     yAxis: [
-      { ...axisCommon, type: 'value', name: 'Pogodak', nameLocation: 'middle', nameGap: 30, nameRotate: 90, min: minY, max: v.decimal ? 10.9 : 10, interval: v.decimal ? 0.5 : 1 },
+      { ...axisCommon, type: 'value', name: 'Pogodak', nameLocation: 'middle', nameGap: 30, nameRotate: 90, min: minY, max: v.decimal ? 10.9 : 10, interval: v.decimal ? 0.1 : 1, axisLabel: { ...axisCommon.axisLabel, formatter: (n: number) => (v.decimal ? n.toFixed(1) : String(n)) } },
       ...(hr?.length
         ? [{
             ...axisCommon, type: 'value', name: 'otk/min', nameLocation: 'middle', nameGap: 30, nameRotate: -90, position: 'right',
@@ -288,45 +294,186 @@ export function rhythmOption(r: Rhythm, sel: Selection): any {
   };
 }
 
-export type ScattMetric = 'speed250' | 'speed' | 'hold10Abs' | 'holdCircleD';
+export type ScattMetric = 'speed250' | 'speed' | 'hold10Abs' | 'holdCircleD' | 'aiming';
 
 const METRIC: Record<ScattMetric, { name: string; unit: string; digits: number; max?: number }> = {
   speed250: { name: 'Brzina 0,25 s', unit: 'mm/s', digits: 1 },
   speed: { name: 'Brzina 1 s', unit: 'mm/s', digits: 1 },
   hold10Abs: { name: 'U desetki (10a0)', unit: '%', digits: 0, max: 100 },
   holdCircleD: { name: 'Krug držanja', unit: 'mm', digits: 1 },
+  aiming: { name: 'Vreme nišanjenja', unit: 's', digits: 1 },
 };
 
 /** A SCATT metric per shot (aim stability, speed): one bar per shot with SCATT data, coloured by score band. */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function scattMetricOption(v: ReportView, byShot: Map<number, ShotAnalysis>, metric: ScattMetric, sel: Selection): any {
   const m = METRIC[metric];
-  const shots = v.series
+  const isSpeed = metric === 'speed250' || metric === 'speed' || metric === 'aiming';
+  // Speed over a series or the whole match: dots with a line at the average. A series is chosen by selecting it.
+  const pool = isSpeed && sel.series !== null ? v.series.filter((s) => s.idx === sel.series) : v.series;
+  const shots = pool
     .flatMap((s) => s.shots)
-    .map((s) => ({ s, a: s.scattId !== null ? byShot.get(s.scattId)?.metrics : undefined }))
-    .filter((x): x is { s: (typeof x)['s']; a: ShotMetrics } => Boolean(x.a));
-  const data = shots.map(({ s, a }) => {
+    .map((s) => {
+      const an = s.scattId !== null ? byShot.get(s.scattId) : undefined;
+      const val = !an ? undefined : metric === 'aiming' ? an.aimingMs / 1000 : an.metrics?.[metric];
+      return { s, val };
+    })
+    .filter((x): x is { s: (typeof x)['s']; val: number } => x.val !== undefined);
+  const round = (n: number) => Math.round(n * 10 ** m.digits) / 10 ** m.digits;
+  const dotColor = metric === 'aiming' ? CHART.green : CHART.orange;
+  const firstOfSeries = new Map(shots.filter(({ s }, i) => i === 0 || shots[i - 1].s.series !== s.series).map(({ s }) => [String(s.n), s.series]));
+  const data = shots.map(({ s, val }) => {
     const on = s.n === sel.shot;
     const inSeries = sel.series !== null && s.series === sel.series;
     return {
       n: s.n,
       series: s.series,
-      value: [String(s.n), Math.round(a[metric] * 10 ** m.digits) / 10 ** m.digits],
-      itemStyle: { color: on ? CHART.select : CHART.band[s.band], opacity: sel.series === null || inSeries || on ? 1 : 0.45, borderRadius: [2, 2, 0, 0] },
+      value: [String(s.n), round(val)],
+      ...(isSpeed ? { symbolSize: on ? 11 : 8 } : {}),
+      itemStyle: isSpeed
+        ? on
+          ? { color: 'transparent', borderColor: CHART.select, borderWidth: 2 }
+          : { color: dotColor, opacity: sel.series === null || inSeries ? 1 : 0.45 }
+        : { color: on ? CHART.select : CHART.band[s.band], opacity: sel.series === null || inSeries || on ? 1 : 0.45, borderRadius: [2, 2, 0, 0] },
     };
   });
+  const avg = shots.length ? shots.reduce((t, { val }) => t + val, 0) / shots.length : null;
   return {
     animationDuration: 300,
-    grid: { left: 46, right: 12, top: 26, bottom: 48 },
+    grid: { left: 46, right: 12, top: 14, bottom: isSpeed ? 28 : 48 },
     tooltip: {
       ...tooltipCommon,
       trigger: 'item',
       formatter: (p: { data: { n: number; series: number; value: [string, number] } }) =>
-        `<b>Pogodak ${p.data.n}</b> · Serija ${p.data.series}<br/>${m.name}: ${p.data.value[1].toFixed(m.digits)} ${m.unit}`,
+        `<b>Pogodak ${p.data?.n}</b> · Serija ${p.data?.series}<br/>${m.name}: ${p.data?.value[1].toFixed(m.digits)} ${m.unit}`,
     },
-    dataZoom: zoom,
-    xAxis: { ...axisCommon, type: 'category', name: 'Pogodak', nameLocation: 'middle', nameGap: 26, data: shots.map(({ s }) => String(s.n)), splitLine: { show: false } },
-    yAxis: { ...axisCommon, type: 'value', name: m.unit, nameLocation: 'middle', nameGap: 30, nameRotate: 90, min: 0, ...(m.max ? { max: m.max } : {}) },
-    series: [{ type: 'bar', name: m.name, data, barMaxWidth: 14 }],
+    ...(isSpeed ? {} : { dataZoom: zoom }),
+    xAxis: { ...axisCommon, type: 'category', name: isSpeed ? '' : 'Pogodak', nameLocation: 'middle', nameGap: 26, data: shots.map(({ s }) => String(s.n)), splitLine: { show: false }, ...(isSpeed ? { axisLabel: { ...axisCommon.axisLabel, interval: 0, formatter: (n: string) => (firstOfSeries.has(n) ? `Serija ${firstOfSeries.get(n)}` : '') } } : {}) },
+    yAxis: { ...axisCommon, type: 'value', name: isSpeed ? '' : m.unit, nameLocation: 'middle', nameGap: 30, nameRotate: 90, min: 0, ...(m.max ? { max: m.max } : {}) },
+    series: [
+      isSpeed
+        ? {
+            type: 'scatter',
+            name: m.name,
+            data,
+            markLine: {
+              silent: true,
+              symbol: 'none',
+              data: avg === null ? [] : [{ yAxis: avg, lineStyle: { color: CHART.data, width: 1.5, type: 'dashed' }, label: { color: CHART.data, fontFamily: CHART.font, fontSize: 12, position: 'insideEndTop', formatter: `prosek ${avg.toFixed(m.digits)}` } }],
+            },
+          }
+        : { type: 'bar', name: m.name, data, barMaxWidth: 14 },
+    ],
   };
+}
+
+/** One shot's aim trace picked for a chart: its replay, shot number, and whether it is the selected shot. */
+export interface TracePick {
+  r: Replay;
+  n: number;
+  selected: boolean;
+}
+
+/** Values of one shot at `k` samples from the shot (k from -nb to na), or null where the trace has no sample. */
+function perSample(r: Replay, nb: number, na: number, f: (i: number) => number): ([number, number] | null)[] {
+  const out: ([number, number] | null)[] = [];
+  for (let k = -nb; k <= na; k++) {
+    const i = r.shot + k;
+    out.push(i >= 1 && i < r.x.length ? [Math.round((k / r.rate) * 100) / 100, f(i)] : null);
+  }
+  return out;
+}
+
+/** Mean over shots at each time step, skipping steps where fewer than half of the shots have a sample. */
+function meanLine(lines: ([number, number] | null)[][]): [number, number][] {
+  const out: [number, number][] = [];
+  const len = lines[0]?.length ?? 0;
+  for (let k = 0; k < len; k++) {
+    const vals = lines.map((l) => l[k]).filter((p): p is [number, number] => p !== null);
+    if (vals.length * 2 >= lines.length && vals.length) out.push([vals[0][0], vals.reduce((a, p) => a + p[1], 0) / vals.length]);
+  }
+  return out;
+}
+
+const round1 = (n: number) => Math.round(n * 10) / 10;
+
+/** Moving-average speed (mm/s) at sample i: distance between neighbouring samples times the rate, over 50 ms. */
+const speedAt = (r: Replay, i: number): number => {
+  const win = Math.max(1, Math.round(r.rate * 0.05));
+  let sum = 0;
+  let n = 0;
+  for (let k = Math.max(1, i - win + 1); k <= i; k++) {
+    sum += Math.hypot(r.x[k] - r.x[k - 1], r.y[k] - r.y[k - 1]) * r.rate;
+    n++;
+  }
+  return sum / n;
+};
+
+/** Shared frame of the over-time charts: a value x axis in seconds from the shot, the dashed shot line, the lines. */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function overTimeOption(picks: TracePick[], beforeS: number, afterS: number, colour: string, areaRgb: string, f: (r: Replay, i: number) => number, y: Record<string, unknown>, fmt: (n: number) => string, smooth: boolean): any {
+  const rate = picks[0]?.r.rate ?? 200;
+  const nb = Math.max(0, Math.round(beforeS * rate));
+  const na = Math.max(0, Math.round(afterS * rate));
+  const many = picks.length > 1;
+  const lines = picks.map((p) => perSample(p.r, Math.min(nb, p.r.shot - 1), Math.min(na, p.r.x.length - 1 - p.r.shot), (i) => f(p.r, i)));
+  const clean = (l: ([number, number] | null)[]) => l.filter((p): p is [number, number] => p !== null);
+  const base = { type: 'line', showSymbol: false, smooth, animation: false };
+  const series = many
+    ? [
+        ...picks.map((p, i) => ({ ...base, name: `Pogodak ${p.n}`, data: clean(lines[i]), silent: true, lineStyle: { color: colour, width: p.selected ? 2 : 1, opacity: p.selected ? 1 : many && picks.length > 20 ? 0.18 : 0.3 }, z: p.selected ? 3 : 2 })),
+        { ...base, name: 'Prosek', data: meanLine(lines), silent: true, smooth: false, lineStyle: { color: CHART.ink, width: 1.75 }, z: 4, markLine: SHOT_LINE },
+      ]
+    : [
+        {
+          ...base,
+          name: 'Vrednost',
+          data: clean(lines[0] ?? []),
+          lineStyle: { color: colour, width: 1.5 },
+          areaStyle: { origin: 'auto', color: { type: 'linear', x: 0, y: 0, x2: 0, y2: 1, colorStops: [{ offset: 0, color: `rgba(${areaRgb},0.45)` }, { offset: 1, color: `rgba(${areaRgb},0.03)` }] } },
+          markLine: SHOT_LINE,
+        },
+      ];
+  const xs = clean(lines[0] ?? []);
+  return {
+    animation: false,
+    grid: { left: 40, right: 12, top: 14, bottom: 30 },
+    tooltip: many
+      ? { show: false }
+      : { ...tooltipCommon, trigger: 'axis', formatter: (p: { data: [number, number] }[]) => `${p[0].data[0] >= 0 ? '+' : ''}${p[0].data[0].toFixed(2)} s<br/>${fmt(p[0].data[1])}` },
+    xAxis: { ...axisCommon, type: 'value', min: xs[0]?.[0] ?? -beforeS, max: xs.at(-1)?.[0] ?? afterS, splitLine: { show: false }, axisLabel: { ...axisCommon.axisLabel, formatter: (n: number) => (n === 0 ? '' : `${n > 0 ? '+' : ''}${n}s`) } },
+    yAxis: { ...axisCommon, type: 'value', ...y },
+    series,
+  };
+}
+
+/**
+ * How fast the aim point moved while aiming, over time, with a dashed line at the moment of the shot: one shot
+ * as an area, or many shots (a series, the match) as thin lines aligned at the shot with a bold mean.
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export function shotSpeedOption(picks: TracePick[], beforeS: number, afterS: number): any {
+  return overTimeOption(picks, beforeS, afterS, CHART.orange, '255,162,31', speedAt, { min: 0, name: 'mm/s', nameLocation: 'end', nameGap: 4 }, (n) => `${round1(n).toFixed(1)} mm/s`, false);
+}
+
+/** The dashed vertical line at the moment of the shot (time 0). */
+const SHOT_LINE = {
+  silent: true,
+  symbol: 'none',
+  data: [{ xAxis: 0, lineStyle: { color: CHART.muted, width: 1.25, type: 'dashed' }, label: { color: CHART.muted, fontFamily: CHART.font, fontSize: 12, formatter: 'pucanj', position: 'end' } }],
+};
+
+/**
+ * Coordination as SCATT draws it: how close to the centre the aim point was over time, as the decimal score of
+ * that point (10 at the bottom). One shot as an area, or many as thin lines with a bold mean.
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export function coordinationOption(picks: TracePick[], tg: ScattTarget, beforeS: number, afterS: number): any {
+  const score = (r: Replay, i: number) => Math.min(10.9, decimalScore(r.x[i], r.y[i], tg.rings, tg.caliber));
+  const low = Math.min(10, ...picks.flatMap((p) => [score(p.r, Math.max(0, p.r.shot - Math.round(beforeS * p.r.rate)))]));
+  const o = overTimeOption(picks, beforeS, afterS, CHART.green, '61,220,138', score, { inverse: true, min: Math.floor(Math.max(0, low - 0.5)), max: 10.9, axisLabel: { ...axisCommon.axisLabel, formatter: (n: number) => (n > 10.05 ? '' : String(Math.round(n))) } }, (n) => n.toFixed(1), true);
+  // The area fills towards the ten (bottom), not towards the axis start.
+  if (picks.length === 1 && o.series[0].areaStyle) o.series[0].areaStyle.origin = 'end';
+  if (picks.length === 1) o.series[0].areaStyle.color = { type: 'linear', x: 0, y: 1, x2: 0, y2: 0, colorStops: [{ offset: 0, color: 'rgba(61,220,138,0.4)' }, { offset: 1, color: 'rgba(61,220,138,0.03)' }] };
+  return o;
 }

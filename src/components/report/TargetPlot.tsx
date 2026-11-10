@@ -54,17 +54,10 @@ export function TargetPlot({
   const vb = `${-R - pad} ${-R - pad} ${2 * (R + pad)} ${2 * (R + pad)}`;
   const rings = Array.from({ length: 10 }, (_, i) => 10 - i).filter((n) => ringRadiusMm(spec, n) <= R + 0.001);
   const stroke = R / 160;
-  const dir = sel?.mpi ? offsetDirection(sel.mpi) : null;
-  // Drift view: the MPIs alone on their own scale, so series-to-series movement is readable.
-  const withMpi = series.filter((s) => s.mpi);
-  const reach = Math.max(0.4, ...withMpi.map((s) => Math.max(Math.abs(s.mpi!.x), Math.abs(s.mpi!.y))));
-  const S = Math.ceil(reach * 1.25 * 2) / 2;
 
   return (
     <figure className="target">
       <div className="trace__zoom target__zoom" role="group" aria-label={t.zoomRing(ringAtRadius(spec, R))}>
-        <button type="button" onClick={zoom.zoomIn} aria-label={t.zoomIn} title={t.zoomIn}>+</button>
-        <button type="button" onClick={zoom.zoomOut} aria-label={t.zoomOut} title={t.zoomOut}>−</button>
         {zoom.zoomed && (
           <button type="button" onClick={zoom.fit} title={t.zoomFit}>
             {t.zoomFit}
@@ -113,6 +106,20 @@ export function TargetPlot({
           </g>
         )}
       </svg>
+    </figure>
+  );
+}
+
+/** What the target shows in numbers: the series' group and mean point of impact, and the drift of the means across series. */
+export function TargetNotes({ series, selected }: { series: SeriesView[]; selected: number | null }) {
+  const sel = series.find((s) => s.idx === selected) ?? null;
+  const dir = sel?.mpi ? offsetDirection(sel.mpi) : null;
+  // Drift view: the MPIs alone on their own scale, so series-to-series movement is readable.
+  const withMpi = series.filter((s) => s.mpi);
+  const reach = Math.max(0.4, ...withMpi.map((s) => Math.max(Math.abs(s.mpi!.x), Math.abs(s.mpi!.y))));
+  const S = Math.ceil(reach * 1.25 * 2) / 2;
+  return (
+    <div className="notes">
       {withMpi.length > 0 && (
         <div className="target__drift">
           <svg viewBox={`${-S} ${-S} ${2 * S} ${2 * S}`} role="img" aria-label={`${t.drift} ±${S.toFixed(1)} mm`}>
@@ -132,7 +139,7 @@ export function TargetPlot({
           <span className="target__drift-label">{t.drift} <span className="num">±{S.toFixed(1)} mm</span></span>
         </div>
       )}
-      <figcaption className="target__legend">
+      <div className="target__legend">
         {sel ? (
           <>
             <span><i className="key key--group" aria-hidden="true" /> {t.group} <strong className="num">{sel.groupMm !== null ? `${sel.groupMm.toFixed(1)} mm` : '—'}</strong></span>
@@ -149,7 +156,7 @@ export function TargetPlot({
         ) : (
           <span>{t.pickSeries}</span>
         )}
-      </figcaption>
-    </figure>
+      </div>
+    </div>
   );
 }

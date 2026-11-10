@@ -1,4 +1,5 @@
 import type { DisciplineId, Position } from '@/lib/domain/types';
+import { parseShotLine } from '@/lib/import/paste';
 import { zonedWallTimeToUtcMs } from '@/lib/time/zone';
 
 export type FinalDiscipline = 'air_rifle' | 'air_pistol' | 'smallbore_3p';
@@ -147,19 +148,43 @@ export function parseTimestamps(text: string, tz: string, maxShots: number): Tim
   return { ok: true, tMs };
 }
 
+export type FinalPasteResult =
+  | { ok: true; cells: string[]; tMs: (number | null)[] }
+  | { ok: false; error: 'invalid'; line: number }
+  | { ok: false; error: 'toomany' };
+
+/**
+ * Pasted final shots, one per line: optional number, value, optional time ("1. 10.6 19:03:09").
+ * Wall-clock times are read on `date` in `tz`. Returns the cell texts and each shot's time (null = none).
+ */
+export function parseFinalPaste(text: string, date: string, tz: string, maxShots: number): FinalPasteResult {
+  const cells: string[] = [];
+  const tMs: (number | null)[] = [];
+  const lines = text.split(/\r?\n/);
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i].trim();
+    if (line === '') continue;
+    const shot = parseShotLine(line, (v) => validateFinalShot(v).ok, date, tz);
+    if (!shot) return { ok: false, error: 'invalid', line: i + 1 };
+    cells.push(String(shot.value));
+    tMs.push(shot.tMs ?? null);
+  }
+  if (cells.length > maxShots) return { ok: false, error: 'toomany' };
+  return { ok: true, cells, tMs };
+}
+
 export interface FinalPayload {
   placement: number | null;
   eliminated_after_shot: number | null;
   shots: { idx: number; stage_idx: number; value: number; t_ms: number | null }[];
 }
 
-/** Typed cells ("10,4" or "10.4", blank = not fired) into the save_final payload, or the first problem. */
+/** Typed cells ("10,4" or "10.4", blank = not fired; elimination follows from how many were fired) into the save_final payload, or the first problem. */
 export function buildFinalPayload(
   d: FinalDiscipline,
   cells: string[],
   placement: string,
-  eliminated: string,
-  tMs: number[],
+  tMs: (number | null)[],
 ): { ok: true; payload: FinalPayload } | { ok: false; error: FinalError } {
   const values = cells.map((raw) => {
     const s = raw.trim().replace(',', '.');
@@ -167,7 +192,8 @@ export function buildFinalPayload(
   });
   const lastFilled = values.reduce<number>((n, v, i) => (v === null ? n : i + 1), 0);
   const shotValues = values.slice(0, lastFilled);
-  const elim = eliminated.trim() === '' ? null : Number(eliminated);
+  // Eliminated after the last shot fired; a full final means not eliminated.
+  const elim = lastFilled < maxFinalShots(d) ? lastFilled : null;
   const place = placement.trim() === '' ? null : Number(placement);
   const check = validateFinal(d, shotValues, elim, place);
   if (!check.ok) return check;

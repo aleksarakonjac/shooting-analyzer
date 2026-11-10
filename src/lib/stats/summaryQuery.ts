@@ -3,9 +3,9 @@ import type { TrainingSummary } from './periodStats';
 
 /** The PostgREST select that yields what `toSummary` needs. */
 export const SUMMARY_SELECT =
-  'id,name,trained_on,discipline,shooter_id,kind,stage,place,started_at,tz,events(name),' +
+  'id,name,trained_on,discipline,shooter_id,kind,stage,place,started_at,ended_at,tz,events(name),' +
   'matches(align_state,series(idx,total,total_decimal,group_mm,shots(count))),' +
-  'loose_shots(count),hr_samples_ref(avg_bpm)';
+  'hr_samples_ref(avg_bpm)';
 
 export interface SummaryRow {
   id: string;
@@ -17,6 +17,7 @@ export interface SummaryRow {
   stage?: TrainingSummary['stage'];
   place?: string;
   started_at?: string | null;
+  ended_at?: string | null;
   tz?: string;
   events?: { name: string } | null;
   matches: {
@@ -29,7 +30,6 @@ export interface SummaryRow {
       shots: { count: number }[];
     }[];
   }[];
-  loose_shots: { count: number }[];
   hr_samples_ref: { avg_bpm: number | null } | { avg_bpm: number | null }[] | null;
 }
 
@@ -40,13 +40,13 @@ export const toSummary = (r: SummaryRow): TrainingSummary => {
     name: r.name,
     trainedOn: r.trained_on,
     discipline: r.discipline,
-    looseShots: r.loose_shots[0]?.count ?? 0,
     hrAvg: ref?.avg_bpm ?? null,
     kind: r.kind,
     stage: r.stage,
     place: r.place,
     eventName: r.events?.name ?? null,
     startedAt: r.started_at ?? null,
+    endedAt: r.ended_at ?? null,
     tz: r.tz,
     matches: r.matches.map((m) => ({
       alignState: m.align_state,

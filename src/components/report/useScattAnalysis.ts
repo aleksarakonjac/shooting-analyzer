@@ -58,3 +58,20 @@ export function useReplay(state: ScattState, scattId: number | null): Replay | n
     return tr && shot ? buildReplay(tr, shot.offset, state.file.sampleRate) : null;
   }, [state, scattId]);
 }
+
+/** Replays of several SCATT shots at once (for charts over a series or the match), by SCATT shot id. */
+export function useReplays(state: ScattState, scattIds: number[]): Map<number, Replay> {
+  const key = scattIds.join(',');
+  return useMemo(() => {
+    const out = new Map<number, Replay>();
+    if (state.status !== 'ready') return out;
+    for (const id of scattIds) {
+      const a = state.byShot.get(id);
+      const shot = state.file.shots.find((x) => x.shotId === id);
+      const tr = a && !a.missed && shot ? state.file.traces.get(shot.traceId) : undefined;
+      if (tr && shot) out.set(id, buildReplay(tr, shot.offset, state.file.sampleRate));
+    }
+    return out;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state, key]);
+}

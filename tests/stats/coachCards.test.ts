@@ -13,7 +13,7 @@ const training = (trainedOn: string, total: number, over: Partial<TrainingSummar
   matches: [
     { alignState: 'confirmed', series: [{ idx: 1, total: Math.floor(total), totalDecimal: total, groupMm: 8, shotCount: 10 }] },
   ],
-  looseShots: 0,
+ 
   hrAvg: null,
   ...over,
 });

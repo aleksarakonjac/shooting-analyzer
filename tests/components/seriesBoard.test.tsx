@@ -1,7 +1,6 @@
 // @vitest-environment jsdom
 import { describe, expect, it } from 'vitest';
 import { render, screen } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
 import { SeriesBoard } from '../../src/components/report/SeriesBoard';
 import { buildReportView } from '../../src/lib/report/viewModel';
 
@@ -15,13 +14,12 @@ const view = buildReportView(
 );
 
 describe('SeriesBoard', () => {
-  it('opens every series into its shots with one control, and closes them again', async () => {
-    const user = userEvent.setup();
-    render(<SeriesBoard view={view} selection={{ series: null, shot: null }} onSelect={() => {}} tz="Europe/Belgrade" />);
-    expect(screen.queryAllByRole('table')).toHaveLength(0);
-    await user.click(screen.getByRole('button', { name: 'Prikaži sve pogotke' }));
+  it('shows every series with its shots, or only the selected one when collapsed', () => {
+    const { rerender } = render(<SeriesBoard view={view} selection={{ series: null, shot: null }} onSelect={() => {}} tz="Europe/Belgrade" />);
     expect(screen.getAllByRole('table')).toHaveLength(2);
-    await user.click(screen.getByRole('button', { name: 'Sakrij pogotke' }));
+    rerender(<SeriesBoard expanded={false} view={view} selection={{ series: null, shot: null }} onSelect={() => {}} tz="Europe/Belgrade" />);
     expect(screen.queryAllByRole('table')).toHaveLength(0);
+    rerender(<SeriesBoard expanded={false} view={view} selection={{ series: 2, shot: null }} onSelect={() => {}} tz="Europe/Belgrade" />);
+    expect(screen.getAllByRole('table')).toHaveLength(1);
   });
 });

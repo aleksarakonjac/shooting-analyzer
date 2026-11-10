@@ -5,6 +5,7 @@ import {
   buildFinalPayload,
   FINAL_FORMATS,
   maxFinalShots,
+  parseFinalPaste,
   parseTimestamps,
   stageTotals,
   type FinalDiscipline,
@@ -32,11 +33,14 @@ export function FinalEntry({
   trainingId,
   discipline,
   tz,
+  date,
   onDraft,
 }: {
   trainingId?: string;
   discipline: FinalDiscipline;
   tz: string;
+  /** Day the shots were fired (YYYY-MM-DD), for pasted times that carry no date. */
+  date: string;
   onDraft?: (draft: FinalDraft) => void;
 }) {
   const router = useRouter();
@@ -44,9 +48,9 @@ export function FinalEntry({
   const max = maxFinalShots(discipline);
   const [cells, setCells] = useState<string[]>(() => Array(max).fill(''));
   const [placement, setPlacement] = useState('');
-  const [eliminated, setEliminated] = useState('');
   const [stamps, setStamps] = useState('');
-  const [tMs, setTMs] = useState<number[]>([]);
+  const [tMs, setTMs] = useState<(number | null)[]>([]);
+  const [pasted, setPasted] = useState('');
   const [message, setMessage] = useState<{ kind: 'error' | 'status'; text: string } | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -57,8 +61,19 @@ export function FinalEntry({
   const setCell = (i: number, raw: string) => setCells((c) => c.map((x, j) => (j === i ? raw : x)));
 
   useEffect(() => {
-    onDraft?.(buildFinalPayload(discipline, cells, placement, eliminated, tMs));
-  }, [onDraft, discipline, cells, placement, eliminated, tMs]);
+    onDraft?.(buildFinalPayload(discipline, cells, placement, tMs));
+  }, [onDraft, discipline, cells, placement, tMs]);
+
+  function applyPaste() {
+    const r = parseFinalPaste(pasted, date, tz, max);
+    if (!r.ok) {
+      setMessage({ kind: 'error', text: r.error === 'invalid' ? t.errors.invalidShotLine(r.line) : t.errors.tooMany });
+      return;
+    }
+    setCells(Array.from({ length: max }, (_, i) => r.cells[i] ?? ''));
+    setTMs(r.tMs);
+    setMessage({ kind: 'status', text: t.pasteApplied(r.cells.length, r.tMs.filter((x) => x !== null).length) });
+  }
 
   function applyStamps() {
     const r = parseTimestamps(stamps, tz, max);
@@ -73,7 +88,7 @@ export function FinalEntry({
   async function save() {
     if (!trainingId) return;
     setMessage(null);
-    const built = buildFinalPayload(discipline, cells, placement, eliminated, tMs);
+    const built = buildFinalPayload(discipline, cells, placement, tMs);
     if (!built.ok) {
       setMessage({ kind: 'error', text: t.errors[built.error] });
       return;
@@ -90,8 +105,8 @@ export function FinalEntry({
     }
     setCells(Array(max).fill(''));
     setPlacement('');
-    setEliminated('');
     setStamps('');
+    setPasted('');
     setTMs([]);
     setMessage({ kind: 'status', text: t.saved });
     router.refresh();
@@ -135,13 +150,15 @@ export function FinalEntry({
       })}
 
       <label>
+        {t.pasteLabel}
+        <textarea rows={5} value={pasted} onChange={(e) => setPasted(e.target.value)} placeholder={'1. 10.6 19:03:09\n2. 10,4 19:03:41'} />
+      </label>
+      <div>
+        <button type="button" className="button--quiet" onClick={applyPaste} disabled={!pasted.trim()}>{t.pasteApply}</button>
+      </div>
+      <label>
         {t.placement}
         <input inputMode="numeric" value={placement} onChange={(e) => setPlacement(e.target.value)} />
-      </label>
-      <label>
-        {t.eliminated}
-        <input inputMode="numeric" value={eliminated} onChange={(e) => setEliminated(e.target.value)} />
-        <small>{t.eliminatedHint}</small>
       </label>
       <label>
         {t.timestamps}

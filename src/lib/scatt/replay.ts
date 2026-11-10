@@ -65,6 +65,9 @@ export function buildReplay(trace: TraceSamples, offset: number, srcRate: number
 /** Last index shown when the replay runs `afterS` seconds past the shot. */
 export const endFor = (r: Replay, afterS: number) => Math.min(r.x.length - 1, r.shot + Math.round(afterS * r.rate));
 
+/** First index shown when the replay starts `beforeS` seconds before the shot. */
+export const startFor = (r: Replay, beforeS: number) => Math.max(0, r.shot - Math.round(beforeS * r.rate));
+
 /** Aim point at a fractional sample position, clamped to the trace. */
 export function pointAt(r: Replay, pos: number): { x: number; y: number } {
   const last = r.x.length - 1;
@@ -75,10 +78,10 @@ export function pointAt(r: Replay, pos: number): { x: number; y: number } {
   return { x: r.x[k] + (r.x[k + 1] - r.x[k]) * f, y: r.y[k] + (r.y[k + 1] - r.y[k]) * f };
 }
 
-/** The segments as far as the replay has drawn them (up to `pos`, never past `end`). */
-export function segmentsUpTo(r: Replay, pos: number, end: number): Segment[] {
+/** The segments as far as the replay has drawn them (from `start`, up to `pos`, never past `end`). */
+export function segmentsUpTo(r: Replay, pos: number, end: number, start = 0): Segment[] {
   const k = Math.min(Math.floor(pos), end);
-  return r.segments.filter((s) => s.from < k).map((s) => ({ ...s, to: Math.min(s.to, k) }));
+  return r.segments.filter((s) => s.from < k && s.to > start).map((s) => ({ ...s, from: Math.max(s.from, start), to: Math.min(s.to, k) }));
 }
 
 /** Tilt at sample k averaged over the last 0.1 s, so the level bubble does not jitter. */

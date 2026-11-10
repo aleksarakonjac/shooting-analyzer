@@ -3,16 +3,16 @@ import { sessionPoints, setStats, type TrainingSummary } from '@/lib/stats/perio
 
 const s = (idx: number, dec: number, group: number | null) => ({ idx, total: Math.floor(dec), totalDecimal: dec, groupMm: group, shotCount: 10 });
 const tr = (over: Partial<TrainingSummary> & { id: string; trainedOn: string }): TrainingSummary => ({
-  name: over.id, discipline: 'air_rifle', matches: [], looseShots: 0, hrAvg: null, ...over,
+  name: over.id, discipline: 'air_rifle', matches: [], hrAvg: null, ...over,
 });
 
-const a = tr({ id: 'a', trainedOn: '2026-10-21', matches: [{ alignState: 'confirmed', series: [s(1, 104.5, 8), s(2, 103.5, 10)] }], looseShots: 5, hrAvg: 80 });
+const a = tr({ id: 'a', trainedOn: '2026-10-21', matches: [{ alignState: 'confirmed', series: [s(1, 104.5, 8), s(2, 103.5, 10)] }], hrAvg: 80 });
 const b = tr({ id: 'b', trainedOn: '2026-11-02', matches: [{ alignState: 'proposed', series: [s(1, 105, null)] }], hrAvg: 120 });
 const c = tr({ id: 'c', trainedOn: '2026-11-03', discipline: 'air_pistol' });
 
 describe('setStats', () => {
   it('sums sessions and shots and averages series, group and confirmed heart rate over the whole set', () => {
-    expect(setStats([a, b])).toEqual({ trainings: 2, shots: 35, avgSeries: 104.3, avgGroupMm: 9, avgHr: 80 });
+    expect(setStats([a, b])).toEqual({ trainings: 2, shots: 30, avgSeries: 104.3, avgGroupMm: 9, avgHr: 80 });
   });
 });
 

@@ -81,7 +81,8 @@
   --space-12: 3rem;
 
   --gutter: clamp(1rem, 3vw, 1.75rem);
-  --rail-w: 13rem;
+  --rail-w: 11rem;
+  --target-dim: #7f8aa8; /* ring lines and numbers on the black bull: softer than the card white */
   --control-h: 2.5rem; /* desktop; phones get 2.75rem */
 
   /* Shape and depth: square board corners, one soft offset shadow for popovers */

@@ -23,7 +23,7 @@ function clockToMs(m: RegExpExecArray, date: string, tz: string): number {
 }
 
 /** One shot per line: optional number ("12", "12." or "#12"), the value (comma or point, "*" = inner ten), optional time. */
-function parseLine(line: string, d: DisciplineId, date: string, tz: string): ParsedShot | null {
+export function parseShotLine(line: string, valid: (v: number) => boolean, date: string, tz: string): ParsedShot | null {
   let tokens = line.split(/[\s;]+/).filter(Boolean);
   let tMs: number | undefined;
 
@@ -54,7 +54,7 @@ function parseLine(line: string, d: DisciplineId, date: string, tz: string): Par
 
   const inner = tokens[0].endsWith('*');
   const value = Number(tokens[0].replace('*', '').replace(',', '.'));
-  if (!validateShot(d, value)) return null;
+  if (!valid(value)) return null;
   return { value, ...(inner ? { inner } : {}), ...(tMs !== undefined ? { tMs } : {}) };
 }
 
@@ -65,7 +65,7 @@ export function parsePastedShots(text: string, opts: { disciplineId: DisciplineI
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i].trim();
     if (!line) continue;
-    const shot = parseLine(line, opts.disciplineId, opts.date, opts.tz);
+    const shot = parseShotLine(line, (v) => validateShot(opts.disciplineId, v), opts.date, opts.tz);
     if (!shot) return { ok: false, error: 'invalid', line: i + 1 };
     shots.push(shot);
   }

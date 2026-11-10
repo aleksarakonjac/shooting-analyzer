@@ -1,5 +1,4 @@
 'use client';
-import { useState } from 'react';
 import { sr } from '@/lib/i18n/sr';
 import type { HrSample } from '@/lib/parsers/tcx';
 import type { Selection } from '@/lib/report/charts';
@@ -20,9 +19,12 @@ export function SeriesBoard({
   tz,
   hr,
   scatt,
+  expanded = true,
 }: {
   /** SCATT analysis by SCATT shot id: adds aiming time, hold in the 10 and aim speed columns. */
   scatt?: Map<number, ShotAnalysis>;
+  /** Every series open into its shots (otherwise only the selected one). */
+  expanded?: boolean;
   /** Heart-rate samples, when the training has them: adds a "Puls" column to the shots. */
   hr?: HrSample[];
   view: ReportView;
@@ -36,21 +38,15 @@ export function SeriesBoard({
     const b = tMs !== null && hr ? hrAt(hr, tMs) : null;
     return b === null ? '—' : Math.round(b);
   };
-  const [all, setAll] = useState(false);
   if (view.series.length === 0) return <p className="panel__empty">{t.noMatch}</p>;
   // Running match total after each series: the finals-scoreboard figure.
   const cumulative = view.series.reduce<number[]>((acc, s) => [...acc, Math.round(((acc.at(-1) ?? 0) + s.total) * 10) / 10], []);
   return (
     <div className="board-wrap">
-      <div className="board__tools">
-        <button type="button" className="button--quiet" onClick={() => setAll((a) => !a)}>
-          {all ? t.collapseAll : t.expandAll}
-        </button>
-      </div>
       <ol className="board" aria-label={t.series}>
       {view.series.map((s, i) => {
         const current = selection.series === s.idx;
-        const open = all || current;
+        const open = expanded || current;
         const prev = i > 0 ? view.series[i - 1].position : null;
         const posHead = s.position && s.position !== prev ? sr.newTraining.positionGroup[s.position] : null;
         return (
@@ -60,15 +56,10 @@ export function SeriesBoard({
               type="button"
               className="board__row"
               aria-expanded={open}
-              aria-current={current ? 'true' : undefined}
+                            aria-current={current ? 'true' : undefined}
               onClick={() => onSelect({ series: current ? null : s.idx, shot: null })}
             >
-              <span className="board__idx num">{s.idx}</span>
-              <span className="board__pips" aria-hidden="true">
-                {s.shots.map((sh) => (
-                  <i key={sh.n} className="pip" data-band={sh.band} data-inner={sh.inner || undefined} />
-                ))}
-              </span>
+                            <span className="board__name">{t.seriesLabel(s.idx)}</span>
               <span className="board__group num">{s.groupMm !== null ? `${s.groupMm.toFixed(1)} mm` : ''}</span>
               <span className="board__totals">
                 <strong className="board__total num">{fmt(s.total)}</strong>
@@ -125,7 +116,7 @@ function ScattCells({ a }: { a: ShotAnalysis | undefined }) {
   return (
     <>
       <td className="num">{a ? (a.aimingMs / 1000).toFixed(1) : '—'}</td>
-      <td className="num">{m ? m.hold10Abs : '—'}</td>
+      <td className="num">{m ? `${m.hold10Abs}%` : '—'}</td>
       <td className="num">{m ? m.speed.toFixed(1) : '—'}</td>
       <td className="num">{m ? m.speed250.toFixed(1) : '—'}</td>
     </>

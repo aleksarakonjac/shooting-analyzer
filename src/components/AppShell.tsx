@@ -10,6 +10,7 @@ const icon = (d: string) => (
     strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round"><path d={d} /></svg>
 );
 const ICON = {
+  stats: icon('M4 20V10M10 20V4M16 20v-7M22 20H2'),
   plus: icon('M12 5v14M5 12h14'),
   list: icon('M8 6h12M8 12h12M8 18h12M4 6h.01M4 12h.01M4 18h.01'),
   people: icon('M16 20v-1a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4v1M9.5 11a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7ZM21 20v-1a4 4 0 0 0-3-3.9M15.5 4.2a3.5 3.5 0 0 1 0 6.6'),
@@ -23,19 +24,19 @@ const ICON = {
   out: icon('M9 21H5a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h4M16 17l5-5-5-5M21 12H9'),
 };
 
+const ACCOUNT: NavItem = { href: '/nalog', label: sr.nav.account, icon: ICON.user };
+
 const NAV: Record<Role, NavItem[]> = {
   shooter: [
     { href: '/', label: sr.nav.trainings, icon: ICON.list },
+    { href: '/statistika', label: sr.nav.stats, icon: ICON.stats },
     { href: '/trening/novi', label: sr.newTraining.nav, icon: ICON.plus },
-    { href: '/nalog', label: sr.nav.account, icon: ICON.user },
   ],
   coach: [
     { href: '/strelci', label: sr.nav.shooters, icon: ICON.people },
-    { href: '/nalog', label: sr.nav.account, icon: ICON.user },
   ],
   admin: [
     { href: '/admin/approvals', label: sr.nav.approvals, icon: ICON.shield },
-    { href: '/nalog', label: sr.nav.account, icon: ICON.user },
   ],
 };
 
@@ -101,6 +102,9 @@ export function AppShell({
         </div>
         <nav className="shell__nav" aria-label={sr.nav.label}>
           <NavLinks items={NAV[role]} />
+        </nav>
+        <nav className="shell__account" aria-label={sr.nav.account}>
+          <NavLinks items={[ACCOUNT]} />
         </nav>
         {signOutAction && (
           <form action={signOutAction} className="shell__out">

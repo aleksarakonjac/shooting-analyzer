@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import { Suspense } from 'react';
 import { Workspace } from '@/components/Workspace';
 import { connection } from 'next/server';
@@ -81,7 +82,7 @@ async function Body() {
     <Workspace
       label={t.title}
       rows={1}
-      strip={<div className="ws__head"><h1 className="ws__title">{t.title}</h1><p className="ws__meta">{t.intro}</p></div>}
+      strip={<div className="ws__head"><Link className="ws__back" href="/nalog">{sr.account.title}</Link><h1 className="ws__title">{t.title}</h1><p className="ws__meta">{t.intro}</p></div>}
       panels={[{ id: 'audit', title: t.listTitle, col: '1 / 13', row: '1 / 2', flush: true, children: body }]}
     />
   );
