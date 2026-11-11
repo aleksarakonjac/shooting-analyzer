@@ -1205,3 +1205,7 @@ input[type='file']::file-selector-button { font: inherit; font-weight: 700; marg
 .shotnote__status { margin: 0; font-size: var(--fs-sm); color: var(--ink-faint); }
 .shotnote__status[data-state='failed'] { color: var(--danger); }
 .shotnote__status[data-state='saved'] { color: var(--ink-muted); }
+.shotfacts > .shotfacts__pair { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-4); align-items: start; }
+.shotfacts__pair > div { display: flex; justify-content: space-between; align-items: baseline; gap: var(--space-2); min-width: 0; }
+.shotfacts__pair > div { justify-content: flex-start; gap: var(--space-2); }
+.shotfacts > .shotfacts__pair { grid-template-columns: repeat(auto-fit, minmax(9.5rem, 1fr)); }

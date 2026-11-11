@@ -378,7 +378,10 @@ function ReportBoard({
               {selScattA?.metrics && (
                 <>
                   <div><dt title={t.scattHoldTitle}>{t.scattHoldLabel}</dt><dd className="num">{selScattA.metrics.hold10Abs}%</dd></div>
-                  <div><dt title={t.scattSpeed1Title}>{t.scattSpeed1}</dt><dd className="num">{selScattA.metrics.speed.toFixed(1)}</dd></div>
+                  <div className="shotfacts__pair">
+                    <div><dt title={t.scattSpeed1Title}>{t.traceSpeed1}</dt><dd className="num">{selScattA.metrics.speed.toFixed(1)}</dd></div>
+                    <div><dt title={t.scattSpeed250Title}>{t.traceSpeed250}</dt><dd className="num">{selScattA.metrics.speed250.toFixed(1)}</dd></div>
+                  </div>
                 </>
               )}
             </dl>

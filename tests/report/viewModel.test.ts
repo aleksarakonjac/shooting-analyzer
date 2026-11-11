@@ -38,7 +38,7 @@ describe('timelineOption', () => {
     expect(shots.find((d: { n: number }) => d.n === 3).symbolSize).toBeGreaterThan(shots.find((d: { n: number }) => d.n === 1).symbolSize);
     expect(o.series[0].markArea.data).toHaveLength(2);
     expect(o.dataZoom.length).toBeGreaterThan(0);
-    expect(o.yAxis[0].name).toBe('Pogodak');
+    expect(o.yAxis[0].name).toBeUndefined(); // no axis label
     expect(o.yAxis).toHaveLength(1);
   });
 

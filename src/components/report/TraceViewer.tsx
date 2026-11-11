@@ -174,7 +174,7 @@ export function TraceViewer({
                 aiming: [t.traceAiming, stats?.aimingS == null ? '—' : `${stats.aimingS.toFixed(1)} s`],
                 hold: [t.traceHold, `${(2 * replay.hold.r).toFixed(1)} mm`],
                 hold10: [t.scattHoldLabel, stats?.hold10 == null ? '—' : `${stats.hold10}%`],
-                speed1: [t.scattSpeed1, stats?.speed1 == null ? '—' : stats.speed1.toFixed(1)],
+                speed1: [t.traceSpeed1, stats?.speed1 == null ? '—' : stats.speed1.toFixed(1)],
               };
               const [label, value, cls] = item[k];
               return (

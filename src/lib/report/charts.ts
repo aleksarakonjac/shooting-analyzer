@@ -114,8 +114,8 @@ export function timelineOption(v: ReportView, sel: Selection, tz: string, hr?: H
     })
     .filter(Boolean);
   return {
-    animationDuration: 300,
-    grid: { left: 46, right: hr?.length ? 46 : 12, top: 26, bottom: 48 },
+    animation: false,
+    grid: { left: 34, right: hr?.length ? 46 : 12, top: 26, bottom: 48 },
     tooltip: {
       ...tooltipCommon,
       trigger: 'item',
@@ -126,7 +126,7 @@ export function timelineOption(v: ReportView, sel: Selection, tz: string, hr?: H
     dataZoom: zoom,
     xAxis: timeAxis(fmt),
     yAxis: [
-      { ...axisCommon, type: 'value', name: 'Pogodak', nameLocation: 'middle', nameGap: 30, nameRotate: 90, min: minY, max: v.decimal ? 10.9 : 10, interval: v.decimal ? 0.1 : 1, axisLabel: { ...axisCommon.axisLabel, formatter: (n: number) => (v.decimal ? n.toFixed(1) : String(n)) } },
+      { ...axisCommon, type: 'value', min: minY, max: v.decimal ? 10.9 : 10, interval: v.decimal ? 0.1 : 1, axisLabel: { ...axisCommon.axisLabel, formatter: (n: number) => (v.decimal ? n.toFixed(1) : String(n)) } },
       ...(hr?.length
         ? [{
             ...axisCommon, type: 'value', name: 'otk/min', nameLocation: 'middle', nameGap: 30, nameRotate: -90, position: 'right',
@@ -197,7 +197,7 @@ export function hrOption(samples: HrSample[], v: ReportView, sel: Selection, tz:
     });
   const picked = shots.find((d) => d.n === sel.shot);
   return {
-    animationDuration: 300,
+    animation: false,
     grid: { left: 46, right: 12, top: 26, bottom: 48 },
     tooltip: {
       ...tooltipCommon,
@@ -265,8 +265,8 @@ export function rhythmOption(r: Rhythm, sel: Selection): any {
       ? [[{ yAxis: Math.max(0, r.meanS - r.sdS), itemStyle: { color: 'rgba(57,198,240,0.08)' } }, { yAxis: r.meanS + r.sdS }]]
       : [];
   return {
-    animationDuration: 300,
-    grid: { left: 46, right: 12, top: 26, bottom: 48 },
+    animation: false,
+    grid: { left: 34, right: 6, top: 18, bottom: 48 },
     tooltip: {
       ...tooltipCommon,
       trigger: 'item',
@@ -275,7 +275,7 @@ export function rhythmOption(r: Rhythm, sel: Selection): any {
     },
     dataZoom: zoom,
     xAxis: { ...axisCommon, type: 'category', name: 'Pogodak', nameLocation: 'middle', nameGap: 26, data: bars.map((p) => String(p.n)), splitLine: { show: false } },
-    yAxis: { ...axisCommon, type: 'value', name: 's', nameLocation: 'middle', nameGap: 30, nameRotate: 90, min: 0 },
+    yAxis: { ...axisCommon, type: 'value', min: 0 },
     series: [
       {
         type: 'bar',
@@ -286,7 +286,7 @@ export function rhythmOption(r: Rhythm, sel: Selection): any {
         markLine: {
           silent: true,
           symbol: 'none',
-          data: r.meanS !== null ? [{ yAxis: r.meanS, lineStyle: { color: CHART.ink, width: 1.5, type: 'dashed' }, label: { color: CHART.ink, fontFamily: CHART.font, fontSize: 12, formatter: `prosek ${r.meanS.toFixed(1)} s` } }] : [],
+          data: r.meanS !== null ? [{ yAxis: r.meanS, lineStyle: { color: CHART.ink, width: 1.5, type: 'dashed' }, label: { color: CHART.ink, fontFamily: CHART.font, fontSize: 12, position: 'insideEndTop', formatter: `prosek ${r.meanS.toFixed(1)} s` } }] : [],
         },
       },
     ],
@@ -338,7 +338,7 @@ export function scattMetricOption(v: ReportView, byShot: Map<number, ShotAnalysi
   });
   const avg = shots.length ? shots.reduce((t, { val }) => t + val, 0) / shots.length : null;
   return {
-    animationDuration: 300,
+    animation: false,
     grid: { left: 46, right: 12, top: 14, bottom: isSpeed ? 28 : 48 },
     tooltip: {
       ...tooltipCommon,
