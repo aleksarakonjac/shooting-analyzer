@@ -40,6 +40,12 @@ button:disabled { opacity: 0.5; cursor: not-allowed; }
   background: transparent; color: var(--ink); border-color: var(--rule-strong);
 }
 .button--quiet:hover:not(:disabled), button.button--quiet:hover:not(:disabled) { background: var(--panel-raised); border-color: var(--ink-faint); color: var(--ink); }
+.button--google, button.button--google {
+  display: inline-flex; align-items: center; justify-content: center; gap: 10px;
+  background: #fff; color: #3c4043; border-color: #dadce0; font-weight: 500;
+}
+.button--google:hover:not(:disabled), button.button--google:hover:not(:disabled) { background: #f8f9fa; border-color: #d2e3fc; color: #3c4043; }
+.button--google:active:not(:disabled), button.button--google:active:not(:disabled) { background: #f1f3f4; }
 .button--danger, button.button--danger { background: transparent; color: var(--danger); border-color: var(--danger); }
 .button--danger:hover:not(:disabled), button.button--danger:hover:not(:disabled) { background: var(--danger-soft); color: var(--danger); border-color: var(--danger); }
 
