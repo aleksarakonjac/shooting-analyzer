@@ -158,6 +158,8 @@ function useSplit(cfg: { id: string; widths: number[]; minPx: number[] } | undef
     if (!cfg) return;
     try {
       const saved = JSON.parse(localStorage.getItem(key) ?? 'null') as number[] | null;
+      // Browser storage is only readable after mount, so the saved widths are applied here.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       if (Array.isArray(saved) && saved.length === cfg.widths.length && saved.every((n) => typeof n === 'number' && n > 0)) setValues(saved);
     } catch {
       /* storage blocked: keep the defaults */

@@ -2,7 +2,7 @@ import type { HrSample } from '@/lib/parsers/tcx';
 import { hrAt } from './hrAt';
 import type { Rhythm } from './rhythm';
 import type { ShotAnalysis } from '@/lib/scatt/analysis';
-import { decimalScore } from '@/lib/scatt/display';
+import { decimalScoreExact } from '@/lib/scatt/display';
 import type { ScattTarget } from '@/lib/scatt/targets';
 import type { Replay } from '@/lib/scatt/replay';
 import type { ScoreBand } from './target';
@@ -60,7 +60,6 @@ const timeAxis = (fmt: (ms: number) => string) => ({
 });
 
 const zoom = [
-  { type: 'inside', xAxisIndex: 0, filterMode: 'none', zoomOnMouseWheel: false, moveOnMouseWheel: false, moveOnMouseMove: true },
   {
     type: 'slider', xAxisIndex: 0, height: 18, bottom: 6, filterMode: 'none',
     borderColor: CHART.rule, backgroundColor: CHART.panelSunk, fillerColor: 'rgba(57,198,240,0.15)',
@@ -389,7 +388,7 @@ function meanLine(lines: ([number, number] | null)[][]): [number, number][] {
   const out: [number, number][] = [];
   const len = lines[0]?.length ?? 0;
   for (let k = 0; k < len; k++) {
-    const vals = lines.map((l) => l[k]).filter((p): p is [number, number] => p !== null);
+    const vals = lines.map((l) => l[k]).filter((p): p is [number, number] => Boolean(p));
     if (vals.length * 2 >= lines.length && vals.length) out.push([vals[0][0], vals.reduce((a, p) => a + p[1], 0) / vals.length]);
   }
   return out;
@@ -416,40 +415,35 @@ function overTimeOption(picks: TracePick[], beforeS: number, afterS: number, col
   const nb = Math.max(0, Math.round(beforeS * rate));
   const na = Math.max(0, Math.round(afterS * rate));
   const many = picks.length > 1;
-  const lines = picks.map((p) => perSample(p.r, Math.min(nb, p.r.shot - 1), Math.min(na, p.r.x.length - 1 - p.r.shot), (i) => f(p.r, i)));
+  // Every shot on the same time grid (nb before to na after the shot); samples a shot lacks are null.
+  const lines = picks.map((p) => perSample(p.r, nb, na, (i) => f(p.r, i)));
   const clean = (l: ([number, number] | null)[]) => l.filter((p): p is [number, number] => p !== null);
   const base = { type: 'line', showSymbol: false, smooth, animation: false };
-  const series = many
-    ? [
-        ...picks.map((p, i) => ({ ...base, name: `Pogodak ${p.n}`, data: clean(lines[i]), silent: true, lineStyle: { color: colour, width: p.selected ? 2 : 1, opacity: p.selected ? 1 : many && picks.length > 20 ? 0.18 : 0.3 }, z: p.selected ? 3 : 2 })),
-        { ...base, name: 'Prosek', data: meanLine(lines), silent: true, smooth: false, lineStyle: { color: CHART.ink, width: 1.75 }, z: 4, markLine: SHOT_LINE },
-      ]
-    : [
-        {
-          ...base,
-          name: 'Vrednost',
-          data: clean(lines[0] ?? []),
-          lineStyle: { color: colour, width: 1.5 },
-          areaStyle: { origin: 'auto', color: { type: 'linear', x: 0, y: 0, x2: 0, y2: 1, colorStops: [{ offset: 0, color: `rgba(${areaRgb},0.45)` }, { offset: 1, color: `rgba(${areaRgb},0.03)` }] } },
-          markLine: SHOT_LINE,
-        },
-      ];
-  const xs = clean(lines[0] ?? []);
+  // One shot: its own curve. A series or the match: the mean curve over its shots, not every shot at once.
+  const data = many ? meanLine(lines) : clean(lines[0] ?? []);
+  const series = [
+    {
+      ...base,
+      name: many ? 'Prosek' : 'Vrednost',
+      data,
+      lineStyle: { color: colour, width: 1.5 },
+      areaStyle: { origin: 'auto', color: { type: 'linear', x: 0, y: 0, x2: 0, y2: 1, colorStops: [{ offset: 0, color: `rgba(${areaRgb},0.45)` }, { offset: 1, color: `rgba(${areaRgb},0.03)` }] } },
+      markLine: SHOT_LINE,
+    },
+  ];
   return {
     animation: false,
     grid: { left: 40, right: 12, top: 14, bottom: 30 },
-    tooltip: many
-      ? { show: false }
-      : { ...tooltipCommon, trigger: 'axis', formatter: (p: { data: [number, number] }[]) => `${p[0].data[0] >= 0 ? '+' : ''}${p[0].data[0].toFixed(2)} s<br/>${fmt(p[0].data[1])}` },
-    xAxis: { ...axisCommon, type: 'value', min: xs[0]?.[0] ?? -beforeS, max: xs.at(-1)?.[0] ?? afterS, splitLine: { show: false }, axisLabel: { ...axisCommon.axisLabel, formatter: (n: number) => (n === 0 ? '' : `${n > 0 ? '+' : ''}${n}s`) } },
+    tooltip: { ...tooltipCommon, trigger: 'axis', formatter: (p: { data: [number, number] }[]) => `${p[0].data[0] >= 0 ? '+' : ''}${p[0].data[0].toFixed(2)} s<br/>${fmt(p[0].data[1])}` },
+    xAxis: { ...axisCommon, type: 'value', min: data[0]?.[0] ?? 0, max: data.at(-1)?.[0] ?? 0, splitLine: { show: false }, axisLabel: { ...axisCommon.axisLabel, formatter: (n: number) => (n === 0 ? '' : `${n > 0 ? '+' : ''}${n}s`) } },
     yAxis: { ...axisCommon, type: 'value', ...y },
     series,
   };
 }
 
 /**
- * How fast the aim point moved while aiming, over time, with a dashed line at the moment of the shot: one shot
- * as an area, or many shots (a series, the match) as thin lines aligned at the shot with a bold mean.
+ * How fast the aim point moved while aiming, over time, with a dashed line at the moment of the shot: one shot's
+ * curve, or for a series or the match the mean curve of its shots aligned at the shot.
  */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function shotSpeedOption(picks: TracePick[], beforeS: number, afterS: number): any {
@@ -465,15 +459,15 @@ const SHOT_LINE = {
 
 /**
  * Coordination as SCATT draws it: how close to the centre the aim point was over time, as the decimal score of
- * that point (10 at the bottom). One shot as an area, or many as thin lines with a bold mean.
+ * that point (10 at the bottom). One shot's curve, or for a series or the match the mean curve of its shots.
  */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function coordinationOption(picks: TracePick[], tg: ScattTarget, beforeS: number, afterS: number): any {
-  const score = (r: Replay, i: number) => Math.min(10.9, decimalScore(r.x[i], r.y[i], tg.rings, tg.caliber));
+  const score = (r: Replay, i: number) => Math.min(10.9, decimalScoreExact(r.x[i], r.y[i], tg.rings, tg.caliber));
   const low = Math.min(10, ...picks.flatMap((p) => [score(p.r, Math.max(0, p.r.shot - Math.round(beforeS * p.r.rate)))]));
   const o = overTimeOption(picks, beforeS, afterS, CHART.green, '61,220,138', score, { inverse: true, min: Math.floor(Math.max(0, low - 0.5)), max: 10.9, axisLabel: { ...axisCommon.axisLabel, formatter: (n: number) => (n > 10.05 ? '' : String(Math.round(n))) } }, (n) => n.toFixed(1), true);
   // The area fills towards the ten (bottom), not towards the axis start.
-  if (picks.length === 1 && o.series[0].areaStyle) o.series[0].areaStyle.origin = 'end';
-  if (picks.length === 1) o.series[0].areaStyle.color = { type: 'linear', x: 0, y: 1, x2: 0, y2: 0, colorStops: [{ offset: 0, color: 'rgba(61,220,138,0.4)' }, { offset: 1, color: 'rgba(61,220,138,0.03)' }] };
+  o.series[0].areaStyle.origin = 'end';
+  o.series[0].areaStyle.color = { type: 'linear', x: 0, y: 1, x2: 0, y2: 0, colorStops: [{ offset: 0, color: 'rgba(61,220,138,0.4)' }, { offset: 1, color: 'rgba(61,220,138,0.03)' }] };
   return o;
 }

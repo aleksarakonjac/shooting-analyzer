@@ -73,16 +73,16 @@ button:disabled { opacity: 0.5; cursor: not-allowed; }
   display: flex; flex-direction: column; gap: var(--space-6);
   background: var(--ground-deep); color: var(--ink);
   border-right: 1px solid var(--rule);
-  padding: var(--space-5) var(--space-3);
+  padding: var(--space-3) var(--space-3) var(--space-5);
 }
 .shell__brand {
   font-family: var(--font-display); font-weight: 800; text-transform: uppercase;
-  font-size: var(--fs-xl); line-height: 0.95; letter-spacing: 0.02em;
-  padding: var(--space-2) var(--space-3);
-  display: grid; gap: var(--space-2);
+  font-size: var(--fs-base); line-height: 1; letter-spacing: 0.04em; white-space: nowrap;
+  padding: var(--space-1) var(--space-3);
+  display: grid; gap: var(--space-1);
 }
 /* The broadcast bug: a small cyan bar over the wordmark. */
-.shell__brand::before { content: ''; width: 2rem; height: 3px; background: var(--data); }
+.shell__brand::before { content: ''; width: 1.5rem; height: 3px; background: var(--data); }
 .shell__nav { display: flex; flex-direction: column; gap: 2px; flex: 1; }
 .shell__link {
   display: flex; align-items: center; gap: var(--space-3);
@@ -741,11 +741,12 @@ input[type='file']::file-selector-button { font: inherit; font-weight: 700; marg
 /* ---------- collapsible rail ---------- */
 .shell { transition: grid-template-columns var(--dur) var(--ease-out); }
 .shell[data-collapsed] { grid-template-columns: 4.25rem minmax(0, 1fr); }
-.shell__top { display: flex; flex-direction: column-reverse; align-items: flex-start; gap: var(--space-4); }
+.shell__top { display: flex; flex-direction: column-reverse; align-items: flex-start; gap: var(--space-1); }
 .shell__toggle { align-self: flex-end; min-height: 2.25rem; width: 2.25rem; padding: 0; flex: none; background: transparent; color: var(--ink-faint); border-color: transparent; }
 .shell__toggle:hover:not(:disabled) { background: var(--panel); color: var(--ink); border-color: transparent; }
 .shell[data-collapsed] .shell__rail { padding-left: var(--space-2); padding-right: var(--space-2); }
-.shell[data-collapsed] .shell__brand, .shell[data-collapsed] .shell__link span, .shell[data-collapsed] .shell__out span { display: none; }
+.shell[data-collapsed] .shell__link span, .shell[data-collapsed] .shell__out span { display: none; }
+.shell[data-collapsed] .shell__brand { visibility: hidden; }
 .shell[data-collapsed] .shell__top { align-items: center; }
 .shell[data-collapsed] .shell__toggle { align-self: center; }
 .shell[data-collapsed] .shell__link, .shell[data-collapsed] .shell__out button { justify-content: center; padding: 0; }
@@ -988,7 +989,7 @@ input[type='file']::file-selector-button { font: inherit; font-weight: 700; marg
 .board__totals { grid-auto-flow: column; align-items: baseline; gap: var(--space-2); }
 .board__total { font-size: var(--fs-lg); }
 .board__pos { padding: var(--space-2) var(--space-3) var(--space-1); }
-.panel__body--flush { overflow-x: hidden; }
+.panel__body--flush { overflow-x: auto; }
 .shots { table-layout: auto; font-size: var(--fs-md); font-variant-numeric: tabular-nums; }
 .shots th { padding: 0.25rem 0.4rem; font-size: var(--fs-xs); letter-spacing: 0.04em; white-space: nowrap; }
 .shots td { padding: 0.25rem 0.4rem; white-space: nowrap; }
@@ -1115,3 +1116,92 @@ input[type='file']::file-selector-button { font: inherit; font-weight: 700; marg
 .scopebar__arrow { width: 1.75rem; min-height: 1.75rem; padding: 0; display: grid; place-items: center; background: transparent; border: 0; color: var(--ink-muted); }
 .scopebar__arrow:hover:not(:disabled) { background: var(--panel-raised); color: var(--ink); }
 .scopebar__arrow:disabled { opacity: 0.3; }
+
+.ts__swatches { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); }
+.ts__swatch { width: 1.75rem; height: 1.75rem; min-height: 0; padding: 0; border: 2px solid var(--rule-strong); border-radius: 50%; }
+.ts__swatch[aria-pressed='true'] { border-color: var(--ink); box-shadow: 0 0 0 2px var(--panel); }
+.ts__picker { width: 2.25rem; height: 1.75rem; min-height: 0; padding: 0; background: transparent; border: 1px solid var(--rule-strong); border-radius: var(--radius); cursor: pointer; }
+.ts__presets { display: flex; flex-wrap: wrap; gap: var(--space-2); }
+.ts__preset { gap: var(--space-2); }
+.ts__chips { display: inline-flex; gap: 2px; }
+.ts__chips i { width: 0.6rem; height: 0.9rem; border-radius: 1px; }
+.ts__rows { display: grid; gap: var(--space-2); }
+.ts__row { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); font-size: var(--fs-md); color: var(--ink-muted); }
+.ts__order { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--space-1); }
+.ts__orderrow { display: flex; align-items: center; justify-content: space-between; gap: var(--space-2); min-height: 1.75rem; }
+.ts__arrows { display: inline-flex; gap: 2px; }
+
+/* Collapsed rail: hovering it floats it open over the page (names beside the icons), closing again on leave */
+@media (min-width: 721px) {
+  .shell[data-collapsed] .shell__rail {
+    position: relative; z-index: 40; width: 4.25rem; overflow: hidden;
+    transition: width 220ms var(--ease-out), box-shadow 220ms var(--ease-out);
+  }
+  .shell[data-collapsed] .shell__link span,
+  .shell[data-collapsed] .shell__out span {
+    display: inline; max-width: 0; opacity: 0; overflow: hidden; white-space: nowrap;
+    transition: max-width 220ms var(--ease-out), opacity 160ms var(--ease-out);
+  }
+  .shell[data-collapsed] .shell__link,
+  .shell[data-collapsed] .shell__out button { justify-content: flex-start; padding: 0 1rem; }
+  .shell[data-collapsed] .shell__rail:hover,
+  .shell[data-collapsed] .shell__rail:has(:focus-visible) { width: var(--rail-w); box-shadow: var(--shadow-pop); }
+  .shell[data-collapsed] .shell__rail:hover .shell__link span,
+  .shell[data-collapsed] .shell__rail:hover .shell__out span,
+  .shell[data-collapsed] .shell__rail:has(:focus-visible) .shell__link span,
+  .shell[data-collapsed] .shell__rail:has(:focus-visible) .shell__out span { max-width: 9rem; opacity: 1; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .shell[data-collapsed] .shell__rail, .shell[data-collapsed] .shell__link span, .shell[data-collapsed] .shell__out span { transition: none; }
+}
+
+/* Playback scrubber: a thin track filled up to the position, with a round thumb */
+.trace__scrub { -webkit-appearance: none; appearance: none; height: 1.5rem; min-height: 0; padding: 0; background: transparent; border: 0; border-radius: 0; cursor: pointer; }
+.trace__scrub::-webkit-slider-runnable-track { height: 4px; border-radius: 2px; background: linear-gradient(to right, var(--data) var(--p, 100%), var(--rule-strong) var(--p, 100%)); }
+.trace__scrub::-moz-range-track { height: 4px; border-radius: 2px; background: var(--rule-strong); }
+.trace__scrub::-moz-range-progress { height: 4px; border-radius: 2px; background: var(--data); }
+.trace__scrub::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: 16px; height: 16px; margin-top: -6px; border-radius: 50%; background: var(--ink); border: 2px solid var(--ground); box-sizing: border-box; }
+.trace__scrub::-moz-range-thumb { width: 16px; height: 16px; border-radius: 50%; background: var(--ink); border: 2px solid var(--ground); box-sizing: border-box; }
+.trace__scrub:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+
+/* Hover on the collapsed rail opens the whole sidebar as it is when expanded (wordmark and toggle included), floating over the page */
+@media (min-width: 721px) {
+  .shell[data-collapsed] .shell__rail:hover .shell__top,
+  .shell[data-collapsed] .shell__rail:has(:focus-visible) .shell__top { align-items: flex-start; }
+  .shell[data-collapsed] .shell__rail:hover .shell__toggle,
+  .shell[data-collapsed] .shell__rail:has(:focus-visible) .shell__toggle { align-self: flex-end; }
+  .shell[data-collapsed] .shell__rail:hover,
+  .shell[data-collapsed] .shell__rail:has(:focus-visible) { padding-left: var(--space-3); padding-right: var(--space-3); }
+}
+
+/* The wordmark keeps its place when the rail is collapsed, so the page links stay put as the rail opens on hover */
+@media (min-width: 721px) {
+  .shell[data-collapsed] .shell__brand { display: grid; width: calc(var(--rail-w) - 1.5rem); overflow: hidden; visibility: visible; opacity: 0; transition: opacity 160ms var(--ease-out); }
+  .shell[data-collapsed] .shell__rail:hover .shell__brand,
+  .shell[data-collapsed] .shell__rail:has(:focus-visible) .shell__brand { opacity: 1; }
+}
+/* Visually hidden controls inside a scrolling panel must stay in it, or they stretch the page and focusing them scrolls it away */
+.panel__body { position: relative; }
+
+/* Charts follow the width of their panel both ways: the grid column and the wrapper may shrink below the canvas's current size */
+.chart-panel { grid-template-columns: minmax(0, 1fr); min-width: 0; }
+.chart-panel > * { min-width: 0; }
+.echart-wrap { min-width: 0; overflow: hidden; }
+.analysis, .analysis__sec { min-width: 0; }
+
+.secfield { display: inline-flex; align-items: center; gap: var(--space-2); }
+.secfield input { width: 5rem; text-align: right; font-variant-numeric: tabular-nums; }
+.secfield small { color: var(--ink-faint); }
+
+/* Comment on the selected shot */
+.analysis__tools { margin-left: auto; }
+.shotnote { display: inline-flex; align-items: center; gap: var(--space-2); min-height: 1.75rem; padding: 0 var(--space-3); background: transparent; color: var(--ink-muted); border: 1px solid var(--rule-strong); border-radius: var(--radius); font-size: var(--fs-sm); font-weight: 600; letter-spacing: 0; text-transform: none; }
+.shotnote:hover, .shotnote[data-pressed] { background: var(--panel-raised); color: var(--ink); }
+.shotnote--has { color: var(--ink); border-color: var(--data); }
+.shotnote[data-focus-visible] { outline: 2px solid var(--focus); outline-offset: 2px; }
+.shotnote__pop { width: min(22rem, calc(100vw - 2rem)); }
+.shotnote__dialog { display: grid; gap: var(--space-2); padding: var(--space-4); outline: none; }
+.shotnote__text { width: 100%; resize: vertical; min-height: 7rem; font: inherit; }
+.shotnote__status { margin: 0; font-size: var(--fs-sm); color: var(--ink-faint); }
+.shotnote__status[data-state='failed'] { color: var(--danger); }
+.shotnote__status[data-state='saved'] { color: var(--ink-muted); }

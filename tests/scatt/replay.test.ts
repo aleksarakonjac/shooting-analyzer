@@ -31,10 +31,10 @@ describe('buildReplay', () => {
     expect(r.segments[3].to).toBe(r.x.length - 1);
   });
 
-  it('keeps at most 60 s before and 2 s after the shot', () => {
+  it('keeps at most 60 s before and 3 s after the shot', () => {
     const r = buildReplay(ramp(10_000), 9000, 100);
     expect(r.shot).toBe(60 * OUT_RATE);
-    expect(r.x.length - 1 - r.shot).toBeLessThanOrEqual(2 * OUT_RATE);
+    expect(r.x.length - 1 - r.shot).toBeLessThanOrEqual(3 * OUT_RATE);
   });
 
   it('drops segments that are empty when the trace starts inside the control interval', () => {

@@ -66,7 +66,7 @@ async function Body({ params, searchParams }: { params: Promise<{ id: string }>;
     .from('trainings')
     .select(
       'id,shooter_id,name,discipline,trained_on,place,notes,started_at,ended_at,kind,stage,tz,events(id,name),' +
-        'matches(id,label,align_state,selection,series(id,idx,position,total,total_decimal,mpi_x,mpi_y,group_mm,shots(idx,value,inner,t_ms,scatt_shot_id))),' +
+        'matches(id,label,align_state,selection,series(id,idx,position,total,total_decimal,mpi_x,mpi_y,group_mm,shots(id,idx,value,inner,t_ms,scatt_shot_id))),' +
         'hr_samples_ref(offset_ms,zone),source_files(kind,storage_path),' +
         'finals(id,placement,eliminated_after_shot,created_at,final_shots(idx,stage_idx,value))',
     )
@@ -87,7 +87,15 @@ async function Body({ params, searchParams }: { params: Promise<{ id: string }>;
   const mismatch = match ? storedMismatch(match.selection, match.series.reduce((n, se) => n + se.shots.length, 0)) : null;
   // The pip rule is the viewer's own display setting.
   const { data: me } = profile ? await supabase.from('profiles').select('pip_top').eq('id', profile.id).maybeSingle() : { data: null };
-  const view = buildReportView(tr.matches.flatMap((m) => m.series), tr.discipline, pipTopFor(me?.pip_top as Record<string, unknown> | null, tr.discipline));
+  // Shot comments are read apart from the report, so the report still opens where the comment column does not exist yet.
+  const shotIds = tr.matches.flatMap((m) => m.series.flatMap((se) => se.shots.flatMap((sh) => (sh.id ? [sh.id] : []))));
+  const { data: commentRows, error: commentError } = shotIds.length
+    ? await supabase.from('shots').select('id, comment').in('id', shotIds)
+    : { data: [] as { id: string; comment: string | null }[], error: null };
+  const commentsEnabled = !commentError;
+  const commentOf = new Map((commentRows ?? []).map((r) => [r.id as string, (r.comment as string | null) ?? '']));
+  const series = tr.matches.flatMap((m) => m.series).map((se) => ({ ...se, shots: se.shots.map((sh) => ({ ...sh, comment: sh.id ? commentOf.get(sh.id) ?? '' : '' })) }));
+  const view = buildReportView(series, tr.discipline, pipTopFor(me?.pip_top as Record<string, unknown> | null, tr.discipline));
   const hrRef = Array.isArray(tr.hr_samples_ref) ? tr.hr_samples_ref[0] : tr.hr_samples_ref;
   const tcx = tr.source_files.find((f) => f.kind === 'tcx')?.storage_path ?? null;
   const scattPath = tr.source_files.find((f) => f.kind === 'scatt')?.storage_path ?? null;
@@ -252,6 +260,7 @@ async function Body({ params, searchParams }: { params: Promise<{ id: string }>;
       trainingId={tr.id}
       canEdit={canEdit}
       replayPrefs={replayPrefs}
+      commentsEnabled={commentsEnabled}
     />
   );
 }

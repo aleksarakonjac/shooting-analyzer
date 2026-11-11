@@ -52,14 +52,13 @@ describe('TraceViewer', () => {
   });
 
   it('shows less after the shot when asked', async () => {
-    const user = userEvent.setup();
     render(
       <ReplaySettingsProvider>
         <ReplaySettingsSection />
         <TraceViewer replay={replay} spec={targetSpec('air_rifle')} target={SCATT_TARGETS.ar10} shotN={4} score="10.4" onBack={() => {}} />
       </ReplaySettingsProvider>,
     );
-    await user.click(screen.getByRole('radio', { name: '0,5 s' }));
+    fireEvent.change(screen.getByLabelText('Posle pucnja'), { target: { value: '0.5' } });
     expect(screen.getByRole('slider', { name: 'Položaj u putanji' }).getAttribute('aria-valuetext')).toMatch(/^0\.50 s od pucnja/);
   });
 

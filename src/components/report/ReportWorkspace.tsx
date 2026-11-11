@@ -1,5 +1,5 @@
 'use client';
-import { useMemo, useState, type ReactNode } from 'react';
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import type { DisciplineId } from '@/lib/domain/types';
 import { sr } from '@/lib/i18n/sr';
 import { coordinationOption, rhythmOption, type TracePick, scattMetricOption, shotSpeedOption, timelineOption, type Selection } from '@/lib/report/charts';
@@ -17,6 +17,7 @@ import { SeriesBoard } from './SeriesBoard';
 import { TargetNotes, TargetPlot, type ShotHole } from './TargetPlot';
 import { useReplay, useReplays, useScattAnalysis } from './useScattAnalysis';
 import { ScopeBar } from './ScopeBar';
+import { ShotComment } from './ShotComment';
 import { TraceViewer } from './TraceViewer';
 import { ReplaySettingsProvider, useReplaySettings } from './replaySettings';
 import { scattTargetFor } from '@/lib/scatt/targets';
@@ -40,6 +41,8 @@ interface ReportProps {
   canEdit?: boolean;
   /** The viewer's saved replay settings (account metadata). */
   replayPrefs?: unknown;
+  /** Shots can carry a comment (the database has the column). */
+  commentsEnabled?: boolean;
   strip: ReactNode;
   view: ReportView;
   discipline: DisciplineId;
@@ -56,10 +59,13 @@ function ReportBoard({
   scattPath = null,
   trainingId,
   canEdit = false,
+  commentsEnabled = false,
 }: Omit<ReportProps, 'replayPrefs'>) {
   const [sel, setSel] = useState<Selection>({ series: view.series[0]?.idx ?? null, shot: null });
   const group = 'report-time';
   const [allShots, setAllShots] = useState(true);
+  // Comments saved on shots during this visit, by shot id (the server copy is older until the next load).
+  const [comments, setComments] = useState<Record<string, string>>({});
   // Offset and zone are previewed live; the stored values change only on save.
   const [hrOffsetS, setHrOffsetS] = useState(Math.round(hr.offsetMs / 1000));
   const [hrZone, setHrZone] = useState(hr.zone ?? '');
@@ -103,8 +109,8 @@ function ReportBoard({
     return i >= 0 && i < flat.length - 1 ? flat[i + 1] : null;
   }, [view, selShot]);
   const replaySettings = useReplaySettings();
-  const before = replaySettings?.before ?? '5';
-  const after = replaySettings?.after ?? '1';
+  const before = replaySettings?.before ?? 5;
+  const after = replaySettings?.after ?? 1;
   // SCATT's analysis charts: the selected shot over its aiming, and per shot for the series or the match (dots and an average).
   const scattTarget = useMemo(() => scattTargetFor(discipline), [discipline]);
   type Scope = 'shot' | 'series' | 'match';
@@ -118,6 +124,26 @@ function ReportBoard({
     const to = flatShots[i + d];
     return to ? () => setSel(to) : undefined;
   };
+  // Up / Down walk through the shot list (as long as no field, slider or popup has the keyboard).
+  const walk = useRef<(d: number) => void>(() => {});
+  useEffect(() => {
+    walk.current = (d) => {
+      const i = selShot ? flatShots.findIndex((x) => x.shot === selShot.n) : d > 0 ? -1 : flatShots.length;
+      const to = flatShots[Math.max(0, Math.min(flatShots.length - 1, i + d))];
+      if (to) setSel(to);
+    };
+  });
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.key !== 'ArrowUp' && e.key !== 'ArrowDown') || e.defaultPrevented || e.altKey || e.ctrlKey || e.metaKey || e.shiftKey) return;
+      const el = e.target as HTMLElement | null;
+      if (el?.closest('input, textarea, select, [contenteditable="true"], [role="slider"], [role="radio"], [role="radiogroup"], [role="dialog"], [role="listbox"], [role="menu"]')) return;
+      e.preventDefault();
+      walk.current(e.key === 'ArrowDown' ? 1 : -1);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, []);
   const stepSeries = (d: number) => {
     const i = view.series.findIndex((x) => x.idx === sel.series);
     const to = view.series[(i < 0 ? (d > 0 ? -1 : view.series.length) : i) + d];
@@ -131,21 +157,28 @@ function ReportBoard({
   const picksFor = (scope: Scope): TracePick[] =>
     shotsOf(scope).flatMap((sh) => {
       const r = sh.scattId !== null ? replays.get(sh.scattId) : undefined;
-      return r ? [{ r, n: sh.n, selected: sh.n === sel.shot }] : [];
+      return r ? [{ r, n: sh.n, selected: false }] : [];
     });
+  // A chart is rebuilt only when what it shows changes: the shot chart follows the selected shot, a series chart
+  // follows the series, the match chart never changes with the selection.
+  const scopeKey = (scope: Scope) => (scope === 'shot' ? (selShot?.n ?? 0) : scope === 'series' ? (series?.idx ?? 0) : 0);
+  const coordKey = scopeKey(coordScope);
+  const speedKey = scopeKey(speedScope);
   const coordChart = useMemo(() => {
     const picks = picksFor(coordScope);
     return picks.length ? coordinationOption(picks, scattTarget, Number(before), Number(after)) : null;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [replays, coordScope, sel, scattTarget, before, after]);
+  }, [replays, coordScope, coordKey, scattTarget, before, after]);
   const speedChart = useMemo(() => {
     const picks = picksFor(speedScope);
     return picks.length ? shotSpeedOption(picks, Number(before), Number(after)) : null;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [replays, speedScope, sel, before, after]);
-  const dotSel = (scope: 'series' | 'match') => (scope === 'match' ? { ...sel, series: null } : sel);
-  const aimingDots = useMemo(() => (byShot ? scattMetricOption(view, byShot, 'aiming', dotSel(aimScope)) : null), [byShot, view, sel, aimScope]); // eslint-disable-line react-hooks/exhaustive-deps
-  const speedDots = useMemo(() => (byShot ? scattMetricOption(view, byShot, 'speed250', dotSel(speedDotsScope)) : null), [byShot, view, sel, speedDotsScope]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [replays, speedScope, speedKey, before, after]);
+  // The dots charts show a series or the match whatever shot is selected.
+  const dotSel = (scope: 'series' | 'match') => ({ series: scope === 'match' ? null : sel.series, shot: null });
+  const dotSeries = sel.series;
+  const aimingDots = useMemo(() => (byShot ? scattMetricOption(view, byShot, 'aiming', dotSel(aimScope)) : null), [byShot, view, dotSeries, aimScope]); // eslint-disable-line react-hooks/exhaustive-deps
+  const speedDots = useMemo(() => (byShot ? scattMetricOption(view, byShot, 'speed250', dotSel(speedDotsScope)) : null), [byShot, view, dotSeries, speedDotsScope]); // eslint-disable-line react-hooks/exhaustive-deps
   const fmtClock = (ms: number) => new Intl.DateTimeFormat('sr-Latn-RS', { timeZone: tz, hour: '2-digit', minute: '2-digit', hour12: false }).format(ms);
   const times = view.series.flatMap((s) => s.shots).map((s) => s.tMs).filter((x): x is number => x !== null);
   const span = times.length ? `${fmtClock(Math.min(...times))}–${fmtClock(Math.max(...times))}` : undefined;
@@ -329,11 +362,19 @@ function ReportBoard({
     row: '1 / 7',
     children: (
       <div className="analysis">
-        {selShot && replay && (
+        {selShot && (
           <section className="analysis__sec" aria-labelledby="analysis-shot">
-            <h3 id="analysis-shot" className="analysis__title">{t.traceShot} {selShot.n}<span className="panel__range num">{selShot.value.toFixed(view.decimal ? 1 : 0)}</span></h3>
+            <h3 id="analysis-shot" className="analysis__title">
+              {t.traceShot} {selShot.n}<span className="panel__range num">{selShot.value.toFixed(view.decimal ? 1 : 0)}</span>
+              {selShot.id && commentsEnabled && (
+                <span className="analysis__tools">
+                  <ShotComment key={selShot.id} shotId={selShot.id} shotN={selShot.n} saved={comments[selShot.id] ?? selShot.comment} canEdit={canEdit} onSaved={(text) => setComments((c) => ({ ...c, [selShot.id!]: text }))} />
+                </span>
+              )}
+            </h3>
+            {replay && (
             <dl className="shotfacts">
-              <div><dt>{t.traceHold}</dt><dd className="num">Ø {(2 * replay.hold.r).toFixed(1)} mm</dd></div>
+              <div><dt>{t.traceHold}</dt><dd className="num">{(2 * replay.hold.r).toFixed(1)} mm</dd></div>
               {selScattA?.metrics && (
                 <>
                   <div><dt title={t.scattHoldTitle}>{t.scattHoldLabel}</dt><dd className="num">{selScattA.metrics.hold10Abs}%</dd></div>
@@ -341,15 +382,16 @@ function ReportBoard({
                 </>
               )}
             </dl>
+            )}
           </section>
         )}
-        <section className="analysis__sec">{notesP.children}</section>
         {section(timeP)}
         {byShot && chartCard(t.chartCoordination, coordChart ? chartEl(`coord-${coordScope}`, coordChart, t.chartCoordination) : none(coordScope === 'shot' ? t.pickShot : t.scattNone), 'coordination', scopedBar(coordScope, setCoordScope, scopeOptions, t.chartCoordination))}
         {byShot && chartCard(t.chartSpeed, speedChart ? chartEl(`speed-${speedScope}`, speedChart, t.chartSpeed) : none(speedScope === 'shot' ? t.pickShot : t.scattNone), 'speed-shot', scopedBar(speedScope, setSpeedScope, scopeOptions, t.chartSpeed))}
         {aimingDots && chartCard(t.chartAimingTime, chartEl(`aim-${aimScope}`, aimingDots, t.chartAimingTime), 'aiming', scopedBar(aimScope, setAimScope, dotScopes, t.chartAimingTime))}
         {speedDots && chartCard(`${t.chartSpeed} · ${t.perShot}`, chartEl(`dots-${speedDotsScope}`, speedDots, t.chartSpeed), 'speed-dots', scopedBar(speedDotsScope, setSpeedDotsScope, dotScopes, t.chartSpeed))}
         {section(hrP)}
+        <section className="analysis__sec">{notesP.children}</section>
       </div>
     ),
   };

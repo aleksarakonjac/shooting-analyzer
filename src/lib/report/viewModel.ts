@@ -11,10 +11,14 @@ export interface RawSeries {
   mpi_x: number | string | null;
   mpi_y: number | string | null;
   group_mm: number | string | null;
-  shots: { idx: number; value: number | string; inner: boolean | null; t_ms: number | string | null; scatt_shot_id?: number | null }[];
+  shots: { id?: string; idx: number; value: number | string; inner: boolean | null; t_ms: number | string | null; scatt_shot_id?: number | null; comment?: string | null }[];
 }
 
 export interface ShotView {
+  /** Database id of the shot, when it comes from the database. */
+  id: string | null;
+  /** The reviewer's comment on this shot. */
+  comment: string;
   /** Shot number through the whole match, 1-based. */
   n: number;
   idx: number;
@@ -66,7 +70,7 @@ export function buildReportView(raw: RawSeries[], discipline: DisciplineId, pipT
         .map((sh): ShotView => {
           n += 1;
           const value = Number(sh.value);
-          return { n, idx: sh.idx, value, inner: Boolean(sh.inner), tMs: num(sh.t_ms), band: scoreBand(value, decimal, top), series: s.idx, scattId: sh.scatt_shot_id ?? null };
+          return { id: sh.id ?? null, comment: sh.comment ?? '', n, idx: sh.idx, value, inner: Boolean(sh.inner), tMs: num(sh.t_ms), band: scoreBand(value, decimal, top), series: s.idx, scattId: sh.scatt_shot_id ?? null };
         });
       const mx = num(s.mpi_x);
       const my = num(s.mpi_y);

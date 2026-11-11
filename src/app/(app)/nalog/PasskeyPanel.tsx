@@ -10,6 +10,7 @@ type Item = { id: string; friendly_name?: string | null; created_at: string };
 export function PasskeyPanel() {
   const [items, setItems] = useState<Item[] | null>(null);
   const [error, setError] = useState(false);
+  const [detail, setDetail] = useState('');
 
   const load = useCallback(async () => {
     const { data } = await createClient().auth.passkey.list();
@@ -23,7 +24,11 @@ export function PasskeyPanel() {
   async function add() {
     setError(false);
     const { error: e } = await createClient().auth.registerPasskey();
-    if (e) setError(true);
+    if (e) {
+      console.error('registerPasskey failed', e);
+      setError(true);
+      setDetail([(e as { code?: string }).code, e.name, e.message].filter(Boolean).join(' · '));
+    }
     await load();
   }
   async function remove(id: string) {
@@ -49,7 +54,12 @@ export function PasskeyPanel() {
           ))}
         </ul>
       )}
-      {error && <p role="alert">{t.passkeyFailed}</p>}
+      {error && (
+        <p role="alert">
+          {t.passkeyFailed}
+          {detail && <small className="rows__muted"> ({detail})</small>}
+        </p>
+      )}
       <button type="button" onClick={add}>{t.passkeyAdd}</button>
     </section>
   );

@@ -88,7 +88,7 @@ export function AppShell({
       <a className="shell__skip" href="#sadrzaj">{sr.nav.skip}</a>
       <aside className="shell__rail">
         <div className="shell__top">
-          <div className="shell__brand">{sr.appName}</div>
+          <div className="shell__brand">{sr.brand}</div>
           <button
             type="button"
             className="shell__toggle"

@@ -91,11 +91,16 @@ export const displayIndex = (rawIndex: number, srcRate: number) => Math.floor((O
 
 /** Decimal score on a 10-ring target, distance measured from the centre; the pellet radius widens each ring. */
 export function decimalScore(x: number, y: number, rings: Record<number, number>, caliber: number): number {
+  return Math.min(Math.floor(decimalScoreExact(x, y, rings, caliber) * 10) / 10, 10.9);
+}
+
+/** The same score without rounding down to a tenth: a continuous value for drawing a smooth curve. */
+export function decimalScoreExact(x: number, y: number, rings: Record<number, number>, caliber: number): number {
   const d = Math.hypot(x, y);
   let inner = 0;
   for (let n = 10; n >= 1; n--) {
     const R = (rings[n] + caliber) / 2;
-    if (d <= R) return Math.min(Math.floor(((R - d) / (R - inner) + n) * 10) / 10, 10.9);
+    if (d <= R) return (R - d) / (R - inner) + n;
     inner = R;
   }
   return 0;

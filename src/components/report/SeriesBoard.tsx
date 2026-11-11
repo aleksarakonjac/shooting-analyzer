@@ -1,4 +1,5 @@
 'use client';
+import { useEffect, useRef } from 'react';
 import { sr } from '@/lib/i18n/sr';
 import type { HrSample } from '@/lib/parsers/tcx';
 import type { Selection } from '@/lib/report/charts';
@@ -38,11 +39,16 @@ export function SeriesBoard({
     const b = tMs !== null && hr ? hrAt(hr, tMs) : null;
     return b === null ? '—' : Math.round(b);
   };
+  const box = useRef<HTMLDivElement>(null);
+  // Keep the selected shot in view when it is changed from the keyboard.
+  useEffect(() => {
+    box.current?.querySelector('tr[aria-selected="true"]')?.scrollIntoView({ block: 'nearest' });
+  }, [selection.shot]);
   if (view.series.length === 0) return <p className="panel__empty">{t.noMatch}</p>;
   // Running match total after each series: the finals-scoreboard figure.
   const cumulative = view.series.reduce<number[]>((acc, s) => [...acc, Math.round(((acc.at(-1) ?? 0) + s.total) * 10) / 10], []);
   return (
-    <div className="board-wrap">
+    <div className="board-wrap" ref={box}>
       <ol className="board" aria-label={t.series}>
       {view.series.map((s, i) => {
         const current = selection.series === s.idx;

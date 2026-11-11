@@ -31,9 +31,9 @@ export interface Replay {
   hold: { x: number; y: number; r: number };
 }
 
-/** SCATT keeps 60 s before the shot (limitSecondsBeforeShot) and at most 2 s after it (maxSecondsAfterShot). */
+/** SCATT keeps 60 s before the shot (limitSecondsBeforeShot); we keep up to 3 s after it (SCATT itself stops at 2 s, so less may exist). */
 const BEFORE_S = 60;
-const AFTER_MAX_S = 2;
+const AFTER_MAX_S = 3;
 
 export function buildReplay(trace: TraceSamples, offset: number, srcRate: number): Replay {
   const D = displaySamples(trace.x, trace.y, srcRate);

@@ -26,3 +26,34 @@ describe('scattMetricOption', () => {
     expect(o.yAxis.max).toBe(100);
   });
 });
+
+import { coordinationOption, shotSpeedOption, type TracePick } from '@/lib/report/charts';
+import type { Replay } from '@/lib/scatt/replay';
+import { SCATT_TARGETS } from '@/lib/scatt/targets';
+
+describe('over-time charts for several shots', () => {
+  // Two shots with different amounts of trace before and after the shot.
+  const replay = (before: number, after: number): Replay => ({
+    rate: 100,
+    x: Array.from({ length: before + after + 1 }, (_, i) => i * 0.01),
+    y: Array.from({ length: before + after + 1 }, () => 0.2),
+    angle: null,
+    shot: before,
+    segments: [],
+    hold: { x: 0, y: 0, r: 1 },
+  });
+  const picks: TracePick[] = [
+    { r: replay(300, 150), n: 1, selected: false },
+    { r: replay(80, 40), n: 2, selected: true },
+  ];
+
+  it('aligns shots of different lengths on one time grid without failing', () => {
+    const o = coordinationOption(picks, SCATT_TARGETS.ar10, 5, 1);
+    expect(o.series).toHaveLength(1); // the mean over the shots, not one line per shot
+    expect(o.series[0].name).toBe('Prosek');
+    const s = shotSpeedOption(picks, 5, 1);
+    // Only the time the recordings really cover is drawn: 3 s before (the longer shot has 3 s, the other 0.8 s) up to the 1 s asked for after.
+    expect(s.xAxis.min).toBeCloseTo(-3, 1);
+    expect(s.xAxis.max).toBe(1);
+  });
+});

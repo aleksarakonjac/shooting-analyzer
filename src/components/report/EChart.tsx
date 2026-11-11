@@ -2,7 +2,7 @@
 import { useEffect, useRef, useState } from 'react';
 import type { ECharts } from 'echarts/core';
 import { sr } from '@/lib/i18n/sr';
-import { panWindow, wheelGesture, zoomWindow, type ZoomWindow } from '@/lib/report/zoom';
+import type { ZoomWindow } from '@/lib/report/zoom';
 
 /** Loads only the ECharts parts we use, on the client. */
 async function loadEcharts() {
@@ -38,7 +38,7 @@ function currentWindow(c: ECharts): ZoomWindow {
 /**
  * One ECharts canvas that follows its container size. Charts sharing a `group`
  * move their cursors and zoom together. `onPick` gets the clicked point's data.
- * Pinch and the mouse wheel zoom around the pointer, a sideways swipe or a drag pans, and a button resets.
+ * Charts with a zoom slider are zoomed only by that slider (no wheel, pinch or drag gestures); a button resets.
  */
 export function EChart({
   option,
@@ -98,34 +98,6 @@ export function EChart({
     apply();
     return () => cancelAnimationFrame(raf);
   }, [option]);
-
-  // The mouse wheel scrolls the page. Only a trackpad pinch (a wheel with ctrlKey) zooms the chart;
-  // touch pinch and drag stay with ECharts.
-  useEffect(() => {
-    const box = wrap.current;
-    if (!box) return;
-    const onWheel = (e: WheelEvent) => {
-      if (!e.ctrlKey) return;
-      const c = chart.current;
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      if (!c || !(c.getOption() as any).dataZoom?.length) return;
-      e.preventDefault();
-      e.stopPropagation();
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const grid = (c.getOption() as any).grid?.[0] ?? {};
-      const left = typeof grid.left === 'number' ? grid.left : 0;
-      const right = typeof grid.right === 'number' ? grid.right : 0;
-      const rect = box.getBoundingClientRect();
-      const plot = Math.max(1, rect.width - left - right);
-      const g = wheelGesture(e, plot);
-      const w = currentWindow(c);
-      const at = Math.min(1, Math.max(0, (e.clientX - rect.left - left) / plot));
-      const next = g.kind === 'zoom' ? zoomWindow(w, at, g.factor) : panWindow(w, g.share);
-      c.dispatchAction({ type: 'dataZoom', start: next.start, end: next.end });
-    };
-    box.addEventListener('wheel', onWheel, { capture: true, passive: false });
-    return () => box.removeEventListener('wheel', onWheel, { capture: true });
-  }, []);
 
   return (
     <div ref={wrap} className="echart-wrap">

@@ -5,25 +5,10 @@ import { ringAtRadius, viewRadiusMm, type TargetSpec } from '@/lib/report/target
 import { angleAt, endFor, pointAt, segmentsUpTo, startFor, type Replay, type SegmentKind } from '@/lib/scatt/replay';
 import type { ScattTarget } from '@/lib/scatt/targets';
 import { useRingZoom } from './useRingZoom';
-import { HIT_COLOURS, useReplaySettings, type Palette } from './replaySettings';
+import { DEFAULT_HIT, DEFAULT_TRACE_COLOURS, useReplaySettings, type OverlayKey } from './replaySettings';
 import { TraceSettings } from './TraceSettings';
 
 const t = sr.report;
-
-/** SCATT Expert's default trace colours (dark palette; the owner chose them for both themes). */
-export const TRACE_COLOURS: Record<SegmentKind, string> = {
-  before: '#09e57c',
-  control: '#eac223',
-  last250: '#2c97e7',
-  after: '#cc3641',
-};
-
-/** Selectable trace palettes: SCATT's own, a cool one, and a grey one that keeps the last quarter second bright. */
-const PALETTE_COLOURS: Record<Palette, Record<SegmentKind, string>> = {
-  scatt: TRACE_COLOURS,
-  cool: { before: '#7aa7ff', control: '#39c6f0', last250: '#3de0c4', after: '#ffd23f' },
-  mono: { before: '#7d8799', control: '#b4bccb', last250: '#ffffff', after: '#ff6b74' },
-};
 
 /** Degrees at the ends of the level vial. */
 const LEVEL_MAX = 10;
@@ -56,11 +41,11 @@ export function TraceViewer({
   onBack: () => void;
 }) {
   const settings = useReplaySettings();
-  const after = settings?.after ?? '1';
+  const after = settings?.after ?? 1;
   const speed = settings?.speed ?? '1';
-  const before = settings?.before ?? '60';
+  const before = settings?.before ?? 15;
   const overlay = settings?.overlay ?? ['score', 'speed250', 'aiming'];
-  const look = { hit: HIT_COLOURS[settings?.hit ?? 'white'], colours: PALETTE_COLOURS[settings?.palette ?? 'scatt'] };
+  const look = { hit: settings?.hit ?? DEFAULT_HIT, colours: settings?.colours ?? DEFAULT_TRACE_COLOURS };
   const autoplay = settings?.autoplay ?? 'off';
   const end = endFor(replay, Number(after));
   const start = startFor(replay, Number(before));
@@ -101,7 +86,8 @@ export function TraceViewer({
     let cur = posRef.current;
     let raf = 0;
     const tick = (now: number) => {
-      cur = Math.min(end, cur + ((now - last) / 1000) * replay.rate * Number(speed));
+      // Start from where the replay is now, so a jump with the arrow keys is picked up while playing.
+      cur = Math.min(end, posRef.current + ((now - last) / 1000) * replay.rate * Number(speed));
       last = now;
       setPos({ replay, pos: cur });
       if (cur >= end) {
@@ -142,6 +128,25 @@ export function TraceViewer({
     if (pos >= end - 0.5) setPos({ replay, pos: start });
     setPlaying(true);
   };
+  // Space plays or pauses, Left / Right go a second back or forward, unless a field, button, slider or popup has the keyboard.
+  const toggleRef = useRef(toggle);
+  const seekRef = useRef<(d: number) => void>(() => {});
+  useEffect(() => {
+    toggleRef.current = toggle;
+    seekRef.current = (d) => setPos({ replay, pos: Math.max(start, Math.min(end, posRef.current + d * replay.rate)) });
+  });
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.key !== ' ' && e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') || e.defaultPrevented || e.altKey || e.ctrlKey || e.metaKey || e.shiftKey) return;
+      const el = e.target as HTMLElement | null;
+      if (el?.closest('input, textarea, select, button, a, summary, [contenteditable="true"], [role="slider"], [role="radio"], [role="radiogroup"], [role="dialog"], [role="listbox"], [role="menu"]')) return;
+      e.preventDefault();
+      if (e.key === ' ') toggleRef.current();
+      else seekRef.current(e.key === 'ArrowRight' ? 1 : -1);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, []);
   const k = Math.floor(pos);
   const secs = (pos - replay.shot) / replay.rate;
   const tilt = angleAt(replay, k);
@@ -161,13 +166,21 @@ export function TraceViewer({
         </button>
         {overlay.length > 0 && (
           <dl className="trace__stats">
-            {overlay.includes('shot') && <div><dt>{t.traceShot}</dt><dd className="num">{shotN}</dd></div>}
-            {overlay.includes('score') && <div className="trace__stat--score"><dt>{t.traceScore}</dt><dd className="num">{score}</dd></div>}
-            {overlay.includes('speed250') && <div><dt>{t.traceSpeed250}</dt><dd className="num">{stats?.speed250 == null ? '—' : stats.speed250.toFixed(1)}</dd></div>}
-            {overlay.includes('aiming') && <div><dt>{t.traceAiming}</dt><dd className="num">{stats?.aimingS == null ? '—' : `${stats.aimingS.toFixed(1)} s`}</dd></div>}
-            {overlay.includes('hold') && <div><dt>{t.traceHold}</dt><dd className="num">Ø {(2 * replay.hold.r).toFixed(1)}</dd></div>}
-            {overlay.includes('hold10') && <div><dt>{t.scattHoldLabel}</dt><dd className="num">{stats?.hold10 == null ? '—' : `${stats.hold10}%`}</dd></div>}
-            {overlay.includes('speed1') && <div><dt>{t.scattSpeed1}</dt><dd className="num">{stats?.speed1 == null ? '—' : stats.speed1.toFixed(1)}</dd></div>}
+            {overlay.map((k) => {
+              const item: Record<OverlayKey, [string, string, string?]> = {
+                shot: [t.traceShot, String(shotN)],
+                score: [t.traceScore, score, 'trace__stat--score'],
+                speed250: [t.traceSpeed250, stats?.speed250 == null ? '—' : stats.speed250.toFixed(1)],
+                aiming: [t.traceAiming, stats?.aimingS == null ? '—' : `${stats.aimingS.toFixed(1)} s`],
+                hold: [t.traceHold, `${(2 * replay.hold.r).toFixed(1)} mm`],
+                hold10: [t.scattHoldLabel, stats?.hold10 == null ? '—' : `${stats.hold10}%`],
+                speed1: [t.scattSpeed1, stats?.speed1 == null ? '—' : stats.speed1.toFixed(1)],
+              };
+              const [label, value, cls] = item[k];
+              return (
+                <div key={k} className={cls}><dt>{label}</dt><dd className="num">{value}</dd></div>
+              );
+            })}
           </dl>
         )}
         <div className="trace__cog-wrap"><TraceSettings /></div>
@@ -195,6 +208,7 @@ export function TraceViewer({
           max={end}
           step={1}
           value={k}
+          style={{ '--p': `${end > start ? ((k - start) / (end - start)) * 100 : 100}%` } as React.CSSProperties}
           onChange={(e) => {
             setPlaying(false);
             setPos({ replay, pos: Number(e.target.value) });
@@ -228,7 +242,7 @@ function Level({ angle }: { angle: number | null }) {
         <rect x={0} y={0} width={W} height={H} rx={H / 2} className="level__vial" />
         <line x1={W / 2 - 22} x2={W / 2 - 22} y1={4} y2={H - 4} className="level__mark" />
         <line x1={W / 2 + 22} x2={W / 2 + 22} y1={4} y2={H - 4} className="level__mark" />
-        {angle !== null && <ellipse cx={x(angle)} cy={H / 2} rx={19} ry={12} className={level ? 'level__bubble level__bubble--ok' : 'level__bubble'} />}
+        {angle !== null && <circle cx={x(angle)} cy={H / 2} r={13} className={level ? 'level__bubble level__bubble--ok' : 'level__bubble'} />}
         {[-LEVEL_MAX, -5, 0, 5, LEVEL_MAX].map((d) => (
           <text key={d} x={x(d)} y={H + 12} textAnchor="middle" className="level__num">
             {d}
