@@ -1215,3 +1215,11 @@ input[type='file']::file-selector-button { font: inherit; font-weight: 700; marg
 .shotfacts__pair > div { display: flex; justify-content: space-between; align-items: baseline; gap: var(--space-2); min-width: 0; }
 .shotfacts__pair > div { justify-content: flex-start; gap: var(--space-2); }
 .shotfacts > .shotfacts__pair { grid-template-columns: repeat(auto-fit, minmax(9.5rem, 1fr)); }
+/* Chart scope bar: the selector and the pill with arrows are the same height */
+.scopebar { --scope-h: 2.25rem; }
+.scopebar .ui-seg__item { height: calc(var(--scope-h) - 2px); min-height: 0; padding: 0 var(--space-3); display: inline-flex; align-items: center; }
+.scopebar__pill { height: var(--scope-h); min-height: 0; box-sizing: border-box; }
+.scopebar__arrow { height: calc(var(--scope-h) - 2px); min-height: 0; }
+/* The total box in the report header is as tall as the "⋯" button next to it */
+.ws__strip .ws__score .lane-plate { height: var(--control-h); min-height: 0; padding-block: 0; box-sizing: border-box; align-items: center; }
+.ws__strip-end--row { align-items: center; }

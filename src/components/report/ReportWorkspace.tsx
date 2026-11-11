@@ -18,6 +18,7 @@ import { TargetNotes, TargetPlot, type ShotHole } from './TargetPlot';
 import { useReplay, useReplays, useScattAnalysis } from './useScattAnalysis';
 import { ScopeBar } from './ScopeBar';
 import { ShotComment } from './ShotComment';
+import { isTypingTarget } from './keys';
 import { TraceViewer } from './TraceViewer';
 import { ReplaySettingsProvider, useReplaySettings } from './replaySettings';
 import { scattTargetFor } from '@/lib/scatt/targets';
@@ -124,7 +125,8 @@ function ReportBoard({
     const to = flatShots[i + d];
     return to ? () => setSel(to) : undefined;
   };
-  // Up / Down walk through the shot list (as long as no field, slider or popup has the keyboard).
+  // Up / Down always walk through the shot list, even with a selector (Pogodak / Serija / Meč, Rezultat / Ritam)
+  // focused: they are caught first, so the selector does not move. Typing fields keep their own arrow keys.
   const walk = useRef<(d: number) => void>(() => {});
   useEffect(() => {
     walk.current = (d) => {
@@ -135,14 +137,14 @@ function ReportBoard({
   });
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if ((e.key !== 'ArrowUp' && e.key !== 'ArrowDown') || e.defaultPrevented || e.altKey || e.ctrlKey || e.metaKey || e.shiftKey) return;
-      const el = e.target as HTMLElement | null;
-      if (el?.closest('input, textarea, select, [contenteditable="true"], [role="slider"], [role="radio"], [role="radiogroup"], [role="dialog"], [role="listbox"], [role="menu"]')) return;
+      if ((e.key !== 'ArrowUp' && e.key !== 'ArrowDown') || e.altKey || e.ctrlKey || e.metaKey || e.shiftKey) return;
+      if (isTypingTarget(e.target)) return;
       e.preventDefault();
+      e.stopPropagation();
       walk.current(e.key === 'ArrowDown' ? 1 : -1);
     };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
+    window.addEventListener('keydown', onKey, true);
+    return () => window.removeEventListener('keydown', onKey, true);
   }, []);
   const stepSeries = (d: number) => {
     const i = view.series.findIndex((x) => x.idx === sel.series);

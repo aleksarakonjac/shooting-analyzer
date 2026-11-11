@@ -435,8 +435,9 @@ function overTimeOption(picks: TracePick[], beforeS: number, afterS: number, col
     animation: false,
     grid: { left: 40, right: 12, top: 14, bottom: 30 },
     tooltip: { ...tooltipCommon, trigger: 'axis', formatter: (p: { data: [number, number] }[]) => `${p[0].data[0] >= 0 ? '+' : ''}${p[0].data[0].toFixed(2)} s<br/>${fmt(p[0].data[1])}` },
-    xAxis: { ...axisCommon, type: 'value', min: data[0]?.[0] ?? 0, max: data.at(-1)?.[0] ?? 0, splitLine: { show: false }, axisLabel: { ...axisCommon.axisLabel, formatter: (n: number) => (n === 0 ? '' : `${n > 0 ? '+' : ''}${n}s`) } },
-    yAxis: { ...axisCommon, type: 'value', ...y },
+    xAxis: { ...axisCommon, axisLine: { ...axisCommon.axisLine, onZero: false }, type: 'value', min: data[0]?.[0] ?? 0, max: data.at(-1)?.[0] ?? 0, splitLine: { show: false }, axisLabel: { ...axisCommon.axisLabel, formatter: (n: number) => (n === 0 ? '' : `${n > 0 ? '+' : ''}${n}s`) } },
+    // The y axis stays at the left edge (not on the x = 0 line of the shot), so nothing of it sits on the shot line.
+    yAxis: { ...axisCommon, axisLine: { ...axisCommon.axisLine, onZero: false }, type: 'value', ...y },
     series,
   };
 }
@@ -447,14 +448,14 @@ function overTimeOption(picks: TracePick[], beforeS: number, afterS: number, col
  */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function shotSpeedOption(picks: TracePick[], beforeS: number, afterS: number): any {
-  return overTimeOption(picks, beforeS, afterS, CHART.orange, '255,162,31', speedAt, { min: 0, name: 'mm/s', nameLocation: 'end', nameGap: 4 }, (n) => `${round1(n).toFixed(1)} mm/s`, false);
+  return overTimeOption(picks, beforeS, afterS, CHART.orange, '255,162,31', speedAt, { min: 0 }, (n) => round1(n).toFixed(1), false);
 }
 
 /** The dashed vertical line at the moment of the shot (time 0). */
 const SHOT_LINE = {
   silent: true,
   symbol: 'none',
-  data: [{ xAxis: 0, lineStyle: { color: CHART.muted, width: 1.25, type: 'dashed' }, label: { color: CHART.muted, fontFamily: CHART.font, fontSize: 12, formatter: 'pucanj', position: 'end' } }],
+  data: [{ xAxis: 0, lineStyle: { color: CHART.muted, width: 1.25, type: 'dashed' }, label: { show: false } }],
 };
 
 /**

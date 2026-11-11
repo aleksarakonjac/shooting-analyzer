@@ -7,6 +7,7 @@ import type { ScattTarget } from '@/lib/scatt/targets';
 import { useRingZoom } from './useRingZoom';
 import { DEFAULT_HIT, DEFAULT_TRACE_COLOURS, useReplaySettings, type OverlayKey } from './replaySettings';
 import { TraceSettings } from './TraceSettings';
+import { isTypingTarget } from './keys';
 
 const t = sr.report;
 
@@ -128,7 +129,7 @@ export function TraceViewer({
     if (pos >= end - 0.5) setPos({ replay, pos: start });
     setPlaying(true);
   };
-  // Space plays or pauses, Left / Right go a second back or forward, unless a field, button, slider or popup has the keyboard.
+  // Space plays or pauses, Left / Right go a second back or forward.
   const toggleRef = useRef(toggle);
   const seekRef = useRef<(d: number) => void>(() => {});
   useEffect(() => {
@@ -137,15 +138,27 @@ export function TraceViewer({
   });
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if ((e.key !== ' ' && e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') || e.defaultPrevented || e.altKey || e.ctrlKey || e.metaKey || e.shiftKey) return;
-      const el = e.target as HTMLElement | null;
-      if (el?.closest('input, textarea, select, button, a, summary, [contenteditable="true"], [role="slider"], [role="radio"], [role="radiogroup"], [role="dialog"], [role="listbox"], [role="menu"]')) return;
+      if ((e.key !== ' ' && e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') || e.altKey || e.ctrlKey || e.metaKey || e.shiftKey) return;
+      // Typing fields keep their keys. Everything else (selectors, buttons, the slider) gives way: Space plays or
+      // pauses, Left / Right rewind or forward by a second.
+      if (isTypingTarget(e.target)) return;
       e.preventDefault();
+      e.stopPropagation();
       if (e.key === ' ') toggleRef.current();
       else seekRef.current(e.key === 'ArrowRight' ? 1 : -1);
     };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
+    // A focused button would still be "clicked" by Space on key release.
+    const onUp = (e: KeyboardEvent) => {
+      if (e.key !== ' ' || isTypingTarget(e.target)) return;
+      e.preventDefault();
+      e.stopPropagation();
+    };
+    window.addEventListener('keydown', onKey, true);
+    window.addEventListener('keyup', onUp, true);
+    return () => {
+      window.removeEventListener('keydown', onKey, true);
+      window.removeEventListener('keyup', onUp, true);
+    };
   }, []);
   const k = Math.floor(pos);
   const secs = (pos - replay.shot) / replay.rate;
