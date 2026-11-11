@@ -776,11 +776,6 @@ input[type='file']::file-selector-button { font: inherit; font-weight: 700; marg
 .ui-dtr__next { color: var(--proposed); font-weight: 700; margin-left: var(--space-1); }
 
 /* Session editor: two columns of fields, words and actions across both */
-.session-edit { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-4); align-content: start; }
-.session-edit .span-2 { grid-column: 1 / -1; }
-.session-edit textarea, .session-edit input { width: 100%; }
-.session-edit__actions { display: flex; gap: var(--space-2); }
-@media (max-width: 720px) { .session-edit { grid-template-columns: minmax(0, 1fr); } }
 
 /* Strip "⋯" menu */
 .more__trigger { min-width: var(--control-h); justify-content: center; font-size: var(--fs-lg); font-weight: 700; letter-spacing: 0.08em; }
@@ -919,6 +914,18 @@ input[type='file']::file-selector-button { font: inherit; font-weight: 700; marg
 }
 @media (max-width: 720px) {
   .entry-bar { position: static; }
+  .entry-col { padding-block: var(--space-4) var(--space-6); gap: var(--space-5); }
+  .entry-sec__title { flex-wrap: wrap; row-gap: var(--space-1); }
+  .entry .ws__title, .entry .ws__meta { overflow-wrap: anywhere; }
+  .entry .strip-confirm { flex: 1 0 100%; }
+  .entry .strip-confirm > button { flex: 1 1 auto; }
+  .entry .source-card__loaded { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); overflow-wrap: anywhere; }
+  .entry .preview__state { flex-wrap: wrap; }
+  .entry .preview__table { display: block; max-width: 100%; overflow-x: auto; }
+  .entry .shots th, .entry .shots td { padding-inline: var(--space-2); }
+  .entry .new-training__zone > * { flex: 1 1 100%; }
+  .entry .ui-timerange input, .entry input[type='file'] { min-width: 0; max-width: 100%; }
+  .entry button, .entry .button { min-height: 2.75rem; }
 }
 
 .ws__tabs[hidden] { display: none; }

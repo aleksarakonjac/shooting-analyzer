@@ -1,5 +1,5 @@
 import { Suspense } from 'react';
-import { notFound } from 'next/navigation';
+import { notFound, redirect } from 'next/navigation';
 import Link from 'next/link';
 import { DeleteTrainingButton } from '@/components/DeleteTrainingButton';
 import { FinalEntry } from '@/components/FinalEntry';
@@ -21,10 +21,7 @@ import { createClient } from '@/lib/supabase/server';
 import { confirmAlignmentForm } from '@/lib/trainings';
 import { storedMismatch, type StoredSelection } from '@/lib/alignment/align';
 import { MismatchNotice } from '@/components/MismatchNotice';
-import { SessionEditor } from '@/components/SessionEditor';
 import { Workspace } from '@/components/Workspace';
-import { shooterEvents } from '@/lib/events';
-import { recentPlaces } from '@/lib/import/places';
 
 interface TrainingRow {
   id: string; shooter_id: string; name: string; discipline: DisciplineId; trained_on: string; place: string; notes: string;
@@ -110,48 +107,8 @@ async function Body({ params, searchParams }: { params: Promise<{ id: string }>;
     .filter(Boolean)
     .join(', ');
 
-  if (canEdit && izmena) {
-    const [events, places] = await Promise.all([shooterEvents(tr.shooter_id), recentPlaces(tr.shooter_id)]);
-    const wall = (iso: string | null) => hm(iso) ?? '';
-    return (
-      <Workspace
-        label={t.editTitle}
-        rows={1}
-        strip={
-          <div className="ws__head">
-            <Link className="ws__back" href={`/trening/${tr.id}`}>{tr.name}</Link>
-            <h1 className="ws__title">{t.editTitle}</h1>
-          </div>
-        }
-        panels={[
-          {
-            id: 'edit',
-            title: t.editTitle,
-            col: '1 / 9',
-            row: '1 / 2',
-            children: (
-              <SessionEditor
-                invalid={Boolean(greska)}
-                events={events}
-                places={places}
-                value={{
-                  id: tr.id,
-                  name: tr.name,
-                  place: tr.place,
-                  notes: tr.notes,
-                  kind: tr.kind,
-                  stage: tr.stage,
-                  tz: tr.tz,
-                  eventName: tr.events?.name ?? '',
-                  when: { date: tr.trained_on, from: wall(tr.started_at), to: wall(tr.ended_at) },
-                }}
-              />
-            ),
-          },
-        ]}
-      />
-    );
-  }
+  // Editing opens the full form at once: words, type, event, time, files and alignment.
+  if (canEdit && izmena) redirect(`/trening/${tr.id}/podaci`);
 
   const menu = (
     <MoreMenu>
@@ -170,7 +127,7 @@ async function Body({ params, searchParams }: { params: Promise<{ id: string }>;
       {scattPath && <ReplaySettingsSection />}
       {canEdit && (
         <div className="more__actions">
-          <Link className="button button--quiet" href={`/trening/${tr.id}?izmena=1`}>{t.edit}</Link>
+          <Link className="button button--quiet" href={`/trening/${tr.id}/podaci`}>{t.edit}</Link>
           <DeleteTrainingButton id={tr.id} />
         </div>
       )}
