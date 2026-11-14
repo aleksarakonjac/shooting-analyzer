@@ -633,6 +633,8 @@ export const sr = {
     auditHint: 'Ko je i kada menjao sesije.',
     approvals: 'Odobrenja registracija',
     signOut: 'Odjavi se',
+    privacy: 'Politika privatnosti',
+    privacyHint: 'Koje podatke čuvamo i zašto.',
     display: 'Prikaz',
     pipIntro: 'Od koje vrednosti se pogodak crta kao puna tačka. Ispod nje, do desetke (kod celih krugova do devetke), crta se prsten.',
     pipFrom: (v: string) => `Puna od ${v}`,

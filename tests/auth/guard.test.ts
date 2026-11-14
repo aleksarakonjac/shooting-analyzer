@@ -13,6 +13,11 @@ describe('decideRoute', () => {
     expect(decideRoute('/admin/approvals', null, false)).toEqual({ redirect: '/login' });
   });
 
+  it('keeps the privacy policy public', () => {
+    expect(decideRoute('/privatnost', null, false)).toEqual({ allow: true });
+    expect(decideRoute('/privatnost', p('shooter', 'active'), true)).toEqual({ allow: true });
+  });
+
   it('sends a signed-in user without a profile row to the waiting page', () => {
     expect(decideRoute('/', null, true)).toEqual({ redirect: '/cekanje-odobrenja' });
   });

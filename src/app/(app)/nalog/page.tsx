@@ -65,6 +65,7 @@ async function Body({ searchParams }: { searchParams: Promise<Search> }) {
     { href: '/profil/veze', title: t.links, hint: t.linksHint },
     { href: '/korpa', title: t.trash, hint: t.trashHint },
     { href: '/dnevnik', title: t.audit, hint: t.auditHint },
+    { href: '/privatnost', title: t.privacy, hint: t.privacyHint },
   ];
   const more = (
     <>

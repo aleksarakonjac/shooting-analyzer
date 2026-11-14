@@ -26,6 +26,8 @@ export function decideRoute(pathname: string, profile: SessionProfile | null, si
   if (isUnder(pathname, '/api/inbox')) return { allow: true };
   // The e-mailed approval link is authorized by its own signature, so the admin needs no sign-in.
   if (isUnder(pathname, '/odobrenje')) return { allow: true };
+  // Privacy policy is public: Google's consent screen and signed-out visitors must reach it.
+  if (isUnder(pathname, '/privatnost')) return { allow: true };
   // OAuth return: arrives without a session until the code is exchanged.
   if (isUnder(pathname, '/auth/callback')) return { allow: true };
   const onAuthPage = AUTH_PAGES.some((p) => isUnder(pathname, p));
