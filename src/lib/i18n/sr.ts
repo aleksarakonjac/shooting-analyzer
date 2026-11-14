@@ -1,6 +1,6 @@
 // Serbian UI string table. Later tasks add keys; identifiers stay English.
 export const sr = {
-  appName: 'Dnevnik streljaštva',
+  appName: 'Shooting Analyzer',
   /** Working name shown on the rail. */
   brand: 'Shooting Analyzer',
   nav: {

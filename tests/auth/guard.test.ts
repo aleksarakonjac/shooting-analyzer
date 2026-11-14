@@ -9,7 +9,8 @@ describe('decideRoute', () => {
   it('lets anonymous users reach login and register only', () => {
     expect(decideRoute('/login', null, false)).toEqual({ allow: true });
     expect(decideRoute('/register', null, false)).toEqual({ allow: true });
-    expect(decideRoute('/', null, false)).toEqual({ redirect: '/login' });
+    expect(decideRoute('/', null, false)).toEqual({ allow: true }); // public homepage
+    expect(decideRoute('/trening/novi', null, false)).toEqual({ redirect: '/login' });
     expect(decideRoute('/admin/approvals', null, false)).toEqual({ redirect: '/login' });
   });
 

@@ -4,7 +4,7 @@ import { sr } from '@/lib/i18n/sr';
 
 export const metadata: Metadata = {
   title: `Politika privatnosti | ${sr.appName}`,
-  description: 'Koje podatke Dnevnik streljaštva čuva, zašto i kako ih možete obrisati.',
+  description: 'Koje podatke Shooting Analyzer čuva, zašto i kako ih možete obrisati.',
 };
 
 const UPDATED = '14. novembar 2026.';
