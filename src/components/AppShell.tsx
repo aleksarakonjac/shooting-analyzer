@@ -4,6 +4,7 @@ import { sr } from '@/lib/i18n/sr';
 import { LastSessionLink } from './LastSessionLink';
 import { NavLinks, type NavItem } from './NavLinks';
 import { HOME } from '@/lib/routes';
+import { Wordmark } from '@/components/Wordmark';
 
 type Role = 'shooter' | 'coach' | 'admin';
 
@@ -91,7 +92,7 @@ export function AppShell({
       <a className="shell__skip" href="#sadrzaj">{sr.nav.skip}</a>
       <aside className="shell__rail">
         <div className="shell__top">
-          <div className="shell__brand">{sr.brand}</div>
+          <div className="shell__brand"><Wordmark /></div>
           <button
             type="button"
             className="shell__toggle"

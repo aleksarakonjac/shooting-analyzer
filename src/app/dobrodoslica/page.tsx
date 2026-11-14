@@ -2,11 +2,12 @@ import { Suspense } from 'react';
 import { sr } from '@/lib/i18n/sr';
 import { createClient } from '@/lib/supabase/server';
 import { completeOnboarding } from '@/lib/auth/actions';
+import { Wordmark } from '@/components/Wordmark';
 
 export default function OnboardingPage() {
   return (
     <main className="auth">
-      <div className="auth__brand" aria-hidden="true">{sr.appName}</div>
+      <div className="auth__brand"><Wordmark /></div>
       <section className="auth__card" aria-labelledby="onb-title">
         <h1 id="onb-title" className="auth__title">{sr.onboarding.title}</h1>
         <p>{sr.onboarding.lead}</p>

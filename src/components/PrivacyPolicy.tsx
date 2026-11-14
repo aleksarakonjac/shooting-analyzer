@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
 import Link from 'next/link';
+import { Wordmark } from '@/components/Wordmark';
 
 export type PolicyLang = 'sr' | 'en';
 
@@ -245,7 +246,7 @@ export function PrivacyPolicy({ lang }: { lang: PolicyLang }) {
   const contact = process.env.PRIVACY_CONTACT_EMAIL;
   return (
     <main className="auth">
-      <div className="auth__brand" aria-hidden="true">{APP}</div>
+      <div className="auth__brand"><Wordmark /></div>
       <article className="auth__card" aria-labelledby="privacy-title" style={{ width: 'min(44rem, calc(100vw - 2rem))' }}>
         <nav className="lang-switch" aria-label={doc.switchLabel}>
           <Link href={POLICY_PATH.sr} hrefLang="sr" lang="sr" aria-current={lang === 'sr' ? 'true' : undefined}>Srpski</Link>

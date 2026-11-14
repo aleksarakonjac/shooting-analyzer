@@ -1822,3 +1822,12 @@ html[data-target-motion]::view-transition-old(root), html[data-target-motion]::v
 .auth__card { min-width: 0; }
 .auth__card code { overflow-wrap: anywhere; }
 .landing__links { display: flex; flex-wrap: wrap; gap: var(--space-4); }
+
+/* ZeroIn wordmark (see Wordmark.tsx) */
+.wordmark { display: inline-block; font-family: var(--font-display); font-weight: 800; text-transform: uppercase; letter-spacing: 0.02em; line-height: 1; white-space: nowrap; }
+.wordmark__art { display: inline-block; transform: skewX(-10deg); color: var(--ink); }
+.wordmark__in { color: var(--data); margin-left: 0.04em; text-transform: none; }
+/* The 0 is drawn like the logo's (a rounded slot with the cyan dot in the middle), not taken from the font. */
+.wordmark__o { position: relative; display: inline-block; box-sizing: border-box; width: 0.47em; height: 0.8em; margin: 0 0.03em; vertical-align: baseline; border: 0.135em solid currentColor; border-radius: 0.235em; }
+.wordmark__o::after { content: ''; position: absolute; left: 50%; top: 50%; width: 0.12em; height: 0.12em; border-radius: 50%; background: var(--data); transform: translate(-50%, -50%) skewX(10deg); }
+.landing__name { font-size: clamp(2.75rem, 9vw, 4.5rem); }

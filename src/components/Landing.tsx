@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { sr } from '@/lib/i18n/sr';
+import { Wordmark } from '@/components/Wordmark';
 
 /** Public homepage for signed-out visitors (and Google's OAuth verification review). */
 export function Landing() {
@@ -8,7 +9,7 @@ export function Landing() {
       <header className="landing__hero">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src="/logo.svg" alt="" width={96} height={96} className="landing__logo" />
-        <h1 className="landing__name">{sr.appName}</h1>
+        <h1 className="landing__name"><Wordmark /></h1>
         <p className="landing__lead">
           Aplikacija za streljače i trenere: trening, SIUS, SCATT i puls na jednoj vremenskoj liniji.
         </p>
