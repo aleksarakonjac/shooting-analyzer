@@ -3,19 +3,17 @@ import { parseDate, type CalendarDate } from '@internationalized/date';
 import {
   Button,
   Calendar,
-  CalendarCell,
-  CalendarGrid,
   DateInput,
   DatePicker,
   DateSegment,
   Dialog,
   Group,
-  Heading,
   Label,
   Popover,
   Text,
 } from 'react-aria-components';
-import { CalendarIcon, ChevronLeft, ChevronRight } from './icons';
+import { CalendarBody } from './CalendarBody';
+import { CalendarIcon } from './icons';
 
 /** A styled date picker (typed segments plus a calendar popover). Value is an ISO date "YYYY-MM-DD". */
 export function DateField({
@@ -60,12 +58,7 @@ export function DateField({
       <Popover className="ui-popover" offset={4}>
         <Dialog className="ui-calendar" aria-label={label}>
           <Calendar>
-            <header>
-              <Button slot="previous" aria-label="Prethodni mesec"><ChevronLeft /></Button>
-              <Heading />
-              <Button slot="next" aria-label="Sledeći mesec"><ChevronRight /></Button>
-            </header>
-            <CalendarGrid>{(date) => <CalendarCell date={date} className="ui-cell" />}</CalendarGrid>
+            <CalendarBody />
           </Calendar>
         </Dialog>
       </Popover>

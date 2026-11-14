@@ -17,6 +17,7 @@ import { SeriesBoard } from './SeriesBoard';
 import { TargetNotes, TargetPlot, type ShotHole } from './TargetPlot';
 import { correctHit } from '@/lib/report/hit';
 import { hrAt } from '@/lib/report/hrAt';
+import { readLastSession, writeLastSession } from '@/lib/report/lastSession';
 import { ShotNav } from './ShotNav';
 import { ShotsViewer, type OverviewScope, type OverviewShot } from './ShotsViewer';
 import { useReplay, useReplays, useScattAnalysis } from './useScattAnalysis';
@@ -45,6 +46,7 @@ export function ReportWorkspace({ replayPrefs, ...props }: ReportProps) {
 
 interface ReportProps {
   trainingId: string;
+  trainingName?: string;
   /** Stored SCATT files (one match can span several): their aim traces give shot positions and per-shot metrics. */
   scattPaths?: string[];
   canEdit?: boolean;
@@ -67,14 +69,49 @@ function ReportBoard({
   hr,
   scattPaths = NO_PATHS,
   trainingId,
+  trainingName = '',
   canEdit = false,
   commentsEnabled = false,
 }: Omit<ReportProps, 'replayPrefs'>) {
   const [sel, setSel] = useState<Selection>({ series: view.series[0]?.idx ?? null, shot: view.series[0]?.shots[0]?.n ?? null });
+  // Back on a session the viewer left: reopen it on the series and shot they were on (kept per browser).
+  const [restored, setRestored] = useState(false);
+  useEffect(() => {
+    const last = readLastSession();
+    if (last?.id === trainingId) {
+      const se = view.series.find((s) => s.idx === last.series);
+      if (se) setSel({ series: se.idx, shot: se.shots.some((sh) => sh.n === last.shot) ? last.shot : se.shots[0]?.n ?? null });
+      else if (last.series === null && last.shot === null) setSel({ series: null, shot: null });
+    }
+    setRestored(true);
+    // Once per opened session.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [trainingId]);
+  useEffect(() => {
+    if (restored) writeLastSession({ id: trainingId, name: trainingName, series: sel.series, shot: sel.shot });
+  }, [restored, trainingId, trainingName, sel.series, sel.shot]);
   const group = 'report-time';
-  const [allShots, setAllShots] = useState(true);
-  // Every series folded to its row (phone button), the selected one included; picking something in the list opens it again.
-  const [folded, setFolded] = useState(false);
+  // The series open into their shots (all, to start with). A series row opens or closes just that series.
+  const [openIds, setOpenIds] = useState<ReadonlySet<number>>(() => new Set(view.series.map((s) => s.idx)));
+  const allOpen = view.series.length > 0 && openIds.size === view.series.length;
+  const setAllOpen = (open: boolean) => setOpenIds(open ? new Set(view.series.map((s) => s.idx)) : new Set());
+  const toggleSeries = (idx: number) => {
+    const wasOpen = openIds.has(idx);
+    setOpenIds((prev) => {
+      const next = new Set(prev);
+      if (wasOpen) next.delete(idx);
+      else next.add(idx);
+      return next;
+    });
+    // Opening a series selects it; closing the selected one clears the selection.
+    if (!wasOpen) setSel({ series: idx, shot: null });
+    else if (sel.series === idx) setSel({ series: null, shot: null });
+  };
+  // A series picked elsewhere (a chart, the keyboard) opens so its shots are visible.
+  useEffect(() => {
+    const idx = sel.series;
+    if (idx !== null) setOpenIds((prev) => (prev.has(idx) ? prev : new Set(prev).add(idx)));
+  }, [sel.series]);
   // Comments saved on shots during this visit, by shot id (the server copy is older until the next load).
   const [comments, setComments] = useState<Record<string, string>>({});
   // Offset and zone are previewed live; the stored values change only on save.
@@ -288,11 +325,11 @@ function ReportBoard({
       row: '1 / 7',
       flush: true,
       actions: view.series.length ? (
-        <button type="button" className="button--quiet panel__tool" onClick={() => { setFolded(false); setAllShots((a) => !a); }} aria-pressed={allShots && !folded}>
-          {allShots && !folded ? t.collapseAll : t.expandAll}
+        <button type="button" className="button--quiet panel__tool" onClick={() => setAllOpen(!allOpen)} aria-pressed={allOpen}>
+          {allOpen ? t.collapseAll : t.expandAll}
         </button>
       ) : undefined,
-      children: <SeriesBoard expanded={allShots} folded={folded} view={view} selection={sel} onSelect={(s) => { setFolded(false); setSel(s); }} tz={tz} hr={samples} scatt={byShot ?? undefined} />,
+      children: <SeriesBoard openIds={openIds} onToggle={toggleSeries} view={view} selection={sel} onSelect={setSel} tz={tz} hr={samples} scatt={byShot ?? undefined} matchStartMs={scatt.status === 'ready' ? scatt.file.matchStartMs : undefined} />,
     },
     {
       id: 'target',
@@ -503,8 +540,8 @@ function ReportBoard({
             {targetOff ? <ChevronRight /> : <ChevronLeft />}
             {targetOff ? t.showTarget : t.hideTarget}
           </button>
-          <button type="button" className="button--quiet ws__toggle" onClick={() => setFolded((f) => !f)} aria-pressed={folded}>
-            {folded ? t.collapseSeries : t.expandSeries}
+          <button type="button" className="button--quiet ws__toggle" onClick={() => setAllOpen(openIds.size === 0)} aria-pressed={openIds.size === 0}>
+            {openIds.size === 0 ? t.collapseSeries : t.expandSeries}
           </button>
         </>,
         toggleSlot,

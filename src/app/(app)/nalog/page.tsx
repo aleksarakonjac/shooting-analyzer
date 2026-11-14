@@ -10,6 +10,8 @@ import { createClient } from '@/lib/supabase/server';
 import { ProfileForm } from './ProfileForm';
 import { PipRuleForm } from './PipRuleForm';
 import { PasskeyPanel } from './PasskeyPanel';
+import { InboxTokenPanel, type TokenRow } from './InboxTokenPanel';
+import { siteUrl } from '@/lib/supabase/admin';
 import { DISCIPLINES } from '@/lib/domain/disciplines';
 import type { DisciplineId } from '@/lib/domain/types';
 import { pipTopFor } from '@/lib/report/target';
@@ -34,6 +36,12 @@ async function Body({ searchParams }: { searchParams: Promise<Search> }) {
   const pipPrefs = (data?.pip_top ?? {}) as Record<string, unknown>;
   const pipCurrent = Object.fromEntries((Object.keys(DISCIPLINES) as DisciplineId[]).map((d) => [d, pipTopFor(pipPrefs, d)])) as Record<DisciplineId, number>;
   const t = sr.account;
+  // Phone uploads land in the shooter's own session entry; coaches enter sessions per shooter.
+  let tokens: TokenRow[] | null = null;
+  if (profile.role === 'shooter') {
+    const { data: rows } = await supabase.from('inbox_tokens').select('id, label, created_at, last_used_at').order('created_at');
+    tokens = (rows ?? []) as TokenRow[];
+  }
 
   const profilePanel = (
     <div className="stack">
@@ -41,6 +49,7 @@ async function Body({ searchParams }: { searchParams: Promise<Search> }) {
       {greska && <p role="alert">{t.invalid}</p>}
       <ProfileForm name={(data?.display_name as string | undefined) ?? ''} tz={profile.tz} />
       <PasskeyPanel />
+      {tokens && <InboxTokenPanel tokens={tokens} uploadUrl={`${siteUrl() ?? ''}/api/inbox`} />}
     </div>
   );
 

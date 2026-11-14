@@ -65,7 +65,7 @@ async function Body({ params }: { params: Promise<{ id: string }> }) {
     iso ? new Intl.DateTimeFormat('en-GB', { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: tr.tz }).format(new Date(iso)) : '';
   const hrRef = Array.isArray(tr.hr_samples_ref) ? tr.hr_samples_ref[0] : tr.hr_samples_ref;
   const match = tr.matches[0] ?? null;
-  const hasSiusFile = tr.source_files.some((f) => f.kind === 'sius_csv' || f.kind === 'sius_pdf');
+  const hasSiusFile = tr.source_files.some((f) => f.kind === 'sius_csv' || f.kind === 'sius_pdf' || f.kind === 'sius_prnx');
   const edit: SessionEdit = {
     trainingId: tr.id,
     initial: {

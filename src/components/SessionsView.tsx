@@ -10,8 +10,9 @@ import { DISCIPLINES } from '@/lib/domain/disciplines';
 import type { DisciplineId } from '@/lib/domain/types';
 import { sr } from '@/lib/i18n/sr';
 import { filtersHref, hasFilters, RECENT_LIMIT, type ChartKind, type SessionFilters } from '@/lib/stats/filters';
-import { ChevronLeft, ChevronRight } from '@/components/ui/icons';
+import { ChevronLeft, ChevronRight, Close } from '@/components/ui/icons';
 import { saveListUrl } from '@/lib/listReturn';
+import { NAV_RESELECT } from '@/components/NavLinks';
 import { sessionPoints, setStats, type TrainingSummary } from '@/lib/stats/periodStats';
 
 const t = sr.dashboard;
@@ -35,7 +36,10 @@ export function SessionsView({
   newHref,
   back,
   choices,
+  inboxCount = 0,
 }: {
+  /** SCATT files sent from the phone and waiting to be entered. */
+  inboxCount?: number;
   back?: { href: string; label: string };
   all: TrainingSummary[];
   filters: SessionFilters;
@@ -55,6 +59,14 @@ export function SessionsView({
   // A report's close button comes back to this view: same period, filters, list length, side panel.
   const here = filtersHref(base, f, {});
   useEffect(() => saveListUrl(here), [here]);
+  // Pressing "Sesije" in the menu while the performance panel is open brings the list back.
+  useEffect(() => {
+    const onReselect = (e: Event) => {
+      if ((e as CustomEvent<string>).detail === base) setSide(false);
+    };
+    window.addEventListener(NAV_RESELECT, onReselect);
+    return () => window.removeEventListener(NAV_RESELECT, onReselect);
+  }, [base]);
   const toggleSide = () => { setSide(!side); mirror({ side: !side }); };
   const pickChart = (c: ChartKind) => { setChartKind(c); mirror({ chart: c }); };
   // The recent view loads one row past the list size, so it can tell whether older sessions exist.
@@ -89,6 +101,9 @@ export function SessionsView({
           <span>{t.sideTitle}</span>
           {f.side ? <ChevronRight /> : <ChevronLeft />}
         </button>
+        {inboxCount > 0 && (
+          <Link className="button button--quiet dash__inbox" href={`${newHref}?inbox=all`}>{sr.inbox.waitingCount(inboxCount)}</Link>
+        )}
         <Link className="button dash__new" href={newHref} aria-label={t.addFirst}>
           {PLUS}
           <span>{t.addFirst}</span>
@@ -162,6 +177,7 @@ export function SessionsView({
     <Workspace
       label={t.panels}
       strip={strip}
+      noTabs
       rows={6}
       panels={[
         {
@@ -179,6 +195,13 @@ export function SessionsView({
           range: figuresRange,
           side: true,
           closed: !f.side,
+          // Upright on a phone the performance panel is a page of its own: this brings the list back.
+          actions: (
+            <button type="button" className="button--quiet dash__side-close" onClick={toggleSide} aria-label={t.closeSide}>
+              <Close />
+              <span>{t.close}</span>
+            </button>
+          ),
           children: (
             <div className="dash__side">
               {figures}

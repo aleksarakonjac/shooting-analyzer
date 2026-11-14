@@ -4,6 +4,7 @@ import { connection } from 'next/server';
 import { ShooterDashboard, type DashboardSearch } from '@/components/ShooterDashboard';
 import { getSessionProfile } from '@/lib/auth/session';
 import { sr } from '@/lib/i18n/sr';
+import { waitingInbox } from '@/lib/inbox/waiting';
 
 export default function Home({ searchParams }: { searchParams: Promise<DashboardSearch> }) {
   return (
@@ -27,6 +28,7 @@ async function Body({ searchParams }: { searchParams: Promise<DashboardSearch> }
       base="/"
       newHref="/trening/novi"
       search={await searchParams}
+      inboxCount={(await waitingInbox()).length}
     />
   );
 }

@@ -3,16 +3,14 @@ import { DateFormatter, parseDate, type CalendarDate } from '@internationalized/
 import {
   Button,
   Calendar,
-  CalendarCell,
-  CalendarGrid,
   Dialog,
   DialogTrigger,
-  Heading,
   Popover,
   useLocale,
 } from 'react-aria-components';
 import { useId } from 'react';
-import { CalendarIcon, ChevronLeft, ChevronRight } from './icons';
+import { CalendarBody } from './CalendarBody';
+import { CalendarIcon } from './icons';
 import { TimeRange } from './TimeRange';
 
 export interface DateTimeRangeValue {
@@ -78,12 +76,7 @@ export function DateTimeRange({
             {({ close }) => (
               <>
                 <Calendar value={date} onChange={(d) => onChange({ ...value, date: d.toString() })} aria-label="Datum">
-                  <header>
-                    <Button slot="previous" aria-label="Prethodni mesec"><ChevronLeft /></Button>
-                    <Heading />
-                    <Button slot="next" aria-label="Sledeći mesec"><ChevronRight /></Button>
-                  </header>
-                  <CalendarGrid>{(d) => <CalendarCell date={d} className="ui-cell" />}</CalendarGrid>
+                  <CalendarBody />
                 </Calendar>
                 <div className="ui-dtr__times">
                   <TimeRange from={value.from} to={value.to} onChange={({ from, to }) => onChange({ ...value, from, to })} />

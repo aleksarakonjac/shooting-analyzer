@@ -1,6 +1,7 @@
 'use client';
 import { useSyncExternalStore, type ReactNode } from 'react';
 import { sr } from '@/lib/i18n/sr';
+import { LastSessionLink } from './LastSessionLink';
 import { NavLinks, type NavItem } from './NavLinks';
 
 type Role = 'shooter' | 'coach' | 'admin';
@@ -18,6 +19,7 @@ const ICON = {
   share: icon('M4 12v7a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-7M16 6l-4-4-4 4M12 2v13'),
   shield: icon('M12 3 4 6v6c0 4.5 3.4 8 8 9 4.6-1 8-4.5 8-9V6l-8-3ZM8.5 12l2.5 2.5L15.5 10'),
   trash: icon('M4 7h16M10 11v6M14 11v6M6 7l1 12a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1l1-12M9 7V4h6v3'),
+  eye: icon('M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12ZM12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z'),
   clock: icon('M12 7v5l3 2M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z'),
   user: icon('M20 21v-1a5 5 0 0 0-5-5H9a5 5 0 0 0-5 5v1M12 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8Z'),
   rail: icon('M4 4h16v16H4zM9 4v16'),
@@ -101,6 +103,7 @@ export function AppShell({
           </button>
         </div>
         <nav className="shell__nav" aria-label={sr.nav.label}>
+          <LastSessionLink icon={ICON.eye} />
           <NavLinks items={NAV[role]} />
         </nav>
         <nav className="shell__account" aria-label={sr.nav.account}>

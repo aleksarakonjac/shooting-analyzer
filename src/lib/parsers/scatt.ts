@@ -115,6 +115,8 @@ export interface ScattTraceFile {
   sampleRate: number;
   /** Start of the file's session, Unix epoch ms; orders several files of one match. */
   sessionStartMs: number;
+  /** When SCATT's match was started (Unix epoch ms), when the file says. */
+  matchStartMs?: number;
   traces: Map<number, TraceSamples & { timer: number; timerEnter: number }>;
   shots: ScattTraceShot[];
   /** The stored blob of a trace, for diagnostics and tests. */
@@ -131,9 +133,10 @@ export async function readScattTraces(data: Uint8Array, opts: ReadScattOptions =
     throw new NotScattFileError();
   }
   try {
-    const first = db.exec('SELECT sample_rate, timer FROM sessions ORDER BY timer ASC LIMIT 1')[0]?.values[0];
+    const first = db.exec('SELECT sample_rate, timer, properties FROM sessions ORDER BY timer ASC LIMIT 1')[0]?.values[0];
     const rate = Number(first?.[0] ?? 0);
     if (!rate) throw new NotScattFileError('SCATT file contains no session');
+    const matchStartMs = await readMatchStart(first?.[2] as Uint8Array | undefined);
     const traceRows = (db.exec('SELECT trace_id, timer, timer_enter, data FROM traces ORDER BY trace_id')[0]?.values ?? []) as [
       number,
       number,
@@ -156,6 +159,7 @@ export async function readScattTraces(data: Uint8Array, opts: ReadScattOptions =
     return {
       sampleRate: rate,
       sessionStartMs: Number(first?.[1] ?? 0),
+      ...(matchStartMs !== undefined ? { matchStartMs } : {}),
       traces,
       shots: shotRows.map((r) => ({
         shotId: r[0],

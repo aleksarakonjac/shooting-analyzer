@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { scoreAxis, sessionsOption } from '@/lib/stats/trendChart';
+import { scoreAxis, pulseAxis, groupAxis, sessionsOption } from '@/lib/stats/trendChart';
 import type { SessionPoint } from '@/lib/stats/periodStats';
 
 const p = (id: string, trainedOn: string, avgSeries: number | null, hr: number | null, g: number | null): SessionPoint => ({
@@ -60,5 +60,17 @@ describe('sessionsOption tooltip', () => {
     const html = o.tooltip.formatter({ data: o.series[0].data[0] });
     expect(html).not.toContain('<img');
     expect(html).toContain('&lt;img src=x onerror=alert(1)&gt;');
+  });
+});
+
+describe('pulse and group axes', () => {
+  it('keep a minimum span on round ticks, like the score axis', () => {
+    expect(pulseAxis([84, 86])).toEqual({ min: 75, max: 95, interval: 5 });
+    expect(pulseAxis([])).toBeNull();
+    const g = groupAxis([6.1, 6.4]);
+    expect(g).not.toBeNull();
+    expect(g!.max - g!.min).toBeGreaterThanOrEqual(2);
+    expect(g!.min).toBeGreaterThanOrEqual(0);
+    expect(g!.interval).toBe(0.5);
   });
 });

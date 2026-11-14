@@ -51,7 +51,7 @@ export default function ReportPage({
   );
 }
 
-const SOURCE_LABEL: Record<string, string> = { sius_csv: 'SIUS CSV', sius_pdf: 'SIUS PDF', scatt: 'SCATT', tcx: 'Puls (TCX)' };
+const SOURCE_LABEL: Record<string, string> = { sius_csv: 'SIUS CSV', sius_pdf: 'SIUS PDF', sius_prnx: 'SIUS PRNX', scatt: 'SCATT', tcx: 'Puls (TCX)' };
 
 async function Body({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ izmena?: string; greska?: string }> }) {
   const [{ id }, { izmena, greska }] = await Promise.all([params, searchParams]);
@@ -219,6 +219,7 @@ async function Body({ params, searchParams }: { params: Promise<{ id: string }>;
       hr={{ tcxPath: tcx, offsetMs: Number(hrRef?.offset_ms ?? 0), zone: hrRef?.zone ?? null, window: win }}
       scattPaths={scattPaths}
       trainingId={tr.id}
+      trainingName={tr.name}
       canEdit={canEdit}
       replayPrefs={replayPrefs}
       commentsEnabled={commentsEnabled}

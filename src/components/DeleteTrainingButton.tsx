@@ -2,6 +2,7 @@
 import { useState } from 'react';
 import { deleteTrainingForm } from '@/lib/trainings';
 import { sr } from '@/lib/i18n/sr';
+import { clearLastSession } from '@/lib/report/lastSession';
 
 export function DeleteTrainingButton({ id }: { id: string }) {
   const [asking, setAsking] = useState(false);
@@ -14,7 +15,7 @@ export function DeleteTrainingButton({ id }: { id: string }) {
     );
   }
   return (
-    <form action={deleteTrainingForm} role="alertdialog" aria-label={t.deleteAsk} style={{ display: 'contents' }}>
+    <form action={deleteTrainingForm} onSubmit={() => clearLastSession(id)} role="alertdialog" aria-label={t.deleteAsk} style={{ display: 'contents' }}>
       <input type="hidden" name="id" value={id} />
       <button type="submit" className="button--danger">{t.deleteYes}</button>
       <button type="button" className="button--quiet" onClick={() => setAsking(false)}>

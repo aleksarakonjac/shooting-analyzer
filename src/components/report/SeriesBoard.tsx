@@ -1,5 +1,6 @@
 'use client';
 import { useEffect, useRef, type UIEvent } from 'react';
+import { ClockIcon } from '@/components/ui/icons';
 import { sr } from '@/lib/i18n/sr';
 import type { HrSample } from '@/lib/parsers/tcx';
 import type { Selection } from '@/lib/report/charts';
@@ -20,15 +21,18 @@ export function SeriesBoard({
   tz,
   hr,
   scatt,
-  expanded = true,
-  folded = false,
+  matchStartMs,
+  openIds,
+  onToggle,
 }: {
   /** SCATT analysis by SCATT shot id: adds aiming time, hold in the 10 and aim speed columns. */
   scatt?: Map<number, ShotAnalysis>;
-  /** Every series open into its shots (otherwise only the selected one). */
-  expanded?: boolean;
-  /** Every series closed to its row, the selected one too (the selection itself is untouched). */
-  folded?: boolean;
+  /** When SCATT's match was started (epoch ms): the first series is then timed from it. */
+  matchStartMs?: number;
+  /** The series (by idx) open into their shots; the rest show only their row. */
+  openIds: ReadonlySet<number>;
+  /** A series row was pressed: open or close that one series. */
+  onToggle: (idx: number) => void;
   /** Heart-rate samples, when the training has them: adds a "Puls" column to the shots. */
   hr?: HrSample[];
   view: ReportView;
@@ -50,6 +54,30 @@ export function SeriesBoard({
       }
     }
   }
+  // How long a series took. From the second on: the last shot of the series before it to its own last shot (the break
+  // included). The first has nothing before it: with SCATT's match start, from that moment to its last shot (the
+  // preparation included); otherwise its first shot to its last. A series without shot times has no figure.
+  const durations = new Map<number, { sec: number; fromStart: boolean }>();
+  {
+    let prevEnd: number | null = null;
+    for (const [i, se] of view.series.entries()) {
+      const times = se.shots.flatMap((sh) => (sh.tMs === null ? [] : [sh.tMs]));
+      const end = times.length ? Math.max(...times) : null;
+      if (end !== null && prevEnd !== null) {
+        if (end > prevEnd) durations.set(se.idx, { sec: Math.round((end - prevEnd) / 1000), fromStart: false });
+      } else if (end !== null && i === 0) {
+        // SCATT's own clock for the first series: its shots' times against the match start.
+        const sc = scatt ? se.shots.flatMap((sh) => (sh.scattId !== null && scatt.has(sh.scattId) ? [scatt.get(sh.scattId)!.shotMs] : [])) : [];
+        if (matchStartMs !== undefined && sc.length && Math.min(...sc) >= matchStartMs) {
+          durations.set(se.idx, { sec: Math.round((Math.max(...sc) - matchStartMs) / 1000), fromStart: true });
+        } else if (times.length > 1) {
+          durations.set(se.idx, { sec: Math.round((end - Math.min(...times)) / 1000), fromStart: false });
+        }
+      }
+      if (end !== null) prevEnd = end;
+    }
+  }
+  const clockMs = (sec: number) => `${Math.floor(sec / 60)}:${String(sec % 60).padStart(2, '0')}`;
   const fmt = (v: number) => v.toFixed(view.decimal ? 1 : 0);
   const hrBpm = (tMs: number | null) => {
     const b = tMs !== null && hr ? hrAt(hr, tMs) : null;
@@ -69,6 +97,32 @@ export function SeriesBoard({
       syncing.current = false;
     });
   };
+  // The column header follows the scroll under the open series' row. The table sits in a sideways
+  // scroller, which stops `position: sticky` working, so the header cells are shifted by how far the row has stuck.
+  useEffect(() => {
+    let raf = 0;
+    const update = () => {
+      raf = 0;
+      box.current?.querySelectorAll<HTMLElement>('.board__item').forEach((li) => {
+        const table = li.querySelector<HTMLTableElement>('.board__panel[data-open] table');
+        const row = li.querySelector<HTMLElement>('.board__row');
+        if (!table?.tHead || !row) return;
+        const shift = Math.max(0, Math.min(row.getBoundingClientRect().bottom - table.getBoundingClientRect().top, table.offsetHeight - table.tHead.offsetHeight));
+        table.style.setProperty('--head-shift', `${shift}px`);
+      });
+    };
+    const schedule = () => {
+      if (!raf) raf = requestAnimationFrame(update);
+    };
+    document.addEventListener('scroll', schedule, true);
+    window.addEventListener('resize', schedule);
+    schedule();
+    return () => {
+      document.removeEventListener('scroll', schedule, true);
+      window.removeEventListener('resize', schedule);
+      cancelAnimationFrame(raf);
+    };
+  }, [openIds]);
   // Keep the selected shot in view when it is changed from the keyboard.
   useEffect(() => {
     box.current?.querySelector('tr[aria-selected="true"]')?.scrollIntoView({ block: 'nearest' });
@@ -77,31 +131,40 @@ export function SeriesBoard({
   // Running match total after each series: the finals-scoreboard figure.
   const cumulative = view.series.reduce<number[]>((acc, s) => [...acc, Math.round(((acc.at(-1) ?? 0) + s.total) * 10) / 10], []);
   return (
-    <div className="board-wrap" ref={box} data-folded={folded || undefined}>
+    <div className="board-wrap" ref={box}>
       <ol className="board" aria-label={t.series} onScrollCapture={syncScroll}>
       {view.series.map((s, i) => {
         const current = selection.series === s.idx;
-        const open = !folded && (expanded || current);
+        const open = openIds.has(s.idx);
         const prev = i > 0 ? view.series[i - 1].position : null;
         const posHead = s.position && s.position !== prev ? sr.newTraining.positionGroup[s.position] : null;
         return (
-          <li key={s.id} className="board__item" data-testid="series">
+          <li key={s.id} className="board__item" data-open={open || undefined} data-testid="series">
             {posHead && <div className="board__pos">{posHead}</div>}
             <button
               type="button"
               className="board__row"
               aria-expanded={open}
                             aria-current={current ? 'true' : undefined}
-              onClick={() => onSelect({ series: current ? null : s.idx, shot: null })}
+              onClick={() => onToggle(s.idx)}
             >
-                            <span className="board__name">{t.seriesLabel(s.idx)}</span>
+                            <span className="board__name">
+                {t.seriesLabel(s.idx)}
+                {durations.has(s.idx) && (
+                  <small className="board__dur num" title={durations.get(s.idx)!.fromStart ? t.seriesDurationFromStart : t.seriesDuration}>
+                    <ClockIcon />
+                    {clockMs(durations.get(s.idx)!.sec)}
+                  </small>
+                )}
+              </span>
               <span className="board__group num">{s.groupMm !== null ? `${s.groupMm.toFixed(1)} mm` : ''}</span>
               <span className="board__totals">
                 <strong className="board__total num">{fmt(s.total)}</strong>
                 <small className="board__cum num" title={t.cumulative}>Σ {fmt(cumulative[i])}</small>
               </span>
             </button>
-            {open && (
+            {/* Always mounted so it can animate; closed, it is inert and invisible to assistive tech. */}
+            <div className="board__panel" data-open={open || undefined} aria-hidden={!open} inert={!open}>
               <div className="board__scroll">
               <table className="shots">
                 <caption className="sr-only">{t.seriesLabel(s.idx)}</caption>
@@ -140,7 +203,7 @@ export function SeriesBoard({
                 </tbody>
               </table>
               </div>
-            )}
+            </div>
           </li>
         );
       })}

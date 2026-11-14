@@ -22,6 +22,8 @@ const isUnder = (path: string, base: string) => path === base || path.startsWith
 export function decideRoute(pathname: string, profile: SessionProfile | null, signedIn: boolean): RouteDecision {
   // Scheduled jobs carry no session; the route checks its own secret.
   if (isUnder(pathname, '/api/cron')) return { allow: true };
+  // Phone uploads carry a personal token instead of a session; the route checks it.
+  if (isUnder(pathname, '/api/inbox')) return { allow: true };
   // The e-mailed approval link is authorized by its own signature, so the admin needs no sign-in.
   if (isUnder(pathname, '/odobrenje')) return { allow: true };
   // OAuth return: arrives without a session until the code is exchanged.

@@ -43,6 +43,7 @@ export function mergeScattTraces(files: ScattTraceFile[]): ScattTraceFile {
   return {
     sampleRate,
     sessionStartMs: sorted[0].sessionStartMs,
+    ...(sorted.some((f) => f.matchStartMs !== undefined) ? { matchStartMs: Math.min(...sorted.flatMap((f) => (f.matchStartMs === undefined ? [] : [f.matchStartMs]))) } : {}),
     traces,
     shots,
     rawBlob: (id) => sorted[Math.floor(id / ID_STRIDE)]?.rawBlob(id % ID_STRIDE),

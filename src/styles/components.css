@@ -98,6 +98,53 @@ button:disabled { opacity: 0.5; cursor: not-allowed; }
   transition: background var(--dur) var(--ease-out), color var(--dur) var(--ease-out);
 }
 .shell__link svg { flex: none; width: 20px; height: 20px; }
+/* "New session" reads as an add button: its plus sits in a rounded box. */
+.shell__link[href='/trening/novi'] svg { box-sizing: content-box; padding: 5px; border: 1.5px solid var(--rule-strong); border-radius: 10px; color: var(--ink); transition: background var(--dur) var(--ease-out), border-color var(--dur) var(--ease-out); }
+.shell__link[href='/trening/novi']:hover svg { background: var(--panel); border-color: var(--ink); }
+.shell__link[href='/trening/novi'][aria-current='page'] svg, .shell__link[href='/trening/novi'][aria-current='page']:hover svg { color: var(--select-fg); background: transparent; border-color: var(--select-fg); }
+/* In the side rail the box grows outward, so the plus keeps the same centre and text column as the other icons. */
+@media (min-width: 721px) {
+  .shell__link[href='/trening/novi'] svg { margin: -6.5px; }
+}
+/* Phone landscape stacks icon over label: keep the label clear of the box outline. */
+@media (orientation: landscape) and (max-height: 520px) {
+  .shell__link[href='/trening/novi'] svg { margin-bottom: -2px; }
+  /* The box overhangs its icon by 6.5px, so the top padding counts from the outline, not the icon: 18px puts the outline 11.5px under the edge, as for the neighbours. */
+  .shell__nav .shell__link[href='/trening/novi'] { min-height: 3.5rem; padding-block: 22px 14px; justify-content: flex-start; }
+}
+/* Bottom bar order on a phone: sessions, review, new session, statistics (account follows in its own group). */
+@media (max-width: 720px) and (orientation: portrait) {
+  /* A collapsed side rail (a desktop preference kept per browser) must not strip the bottom bar of its labels. */
+  .shell[data-collapsed] .shell__rail .shell__link span, .shell[data-collapsed] .shell__rail .shell__out span { display: inline; }
+  .shell[data-collapsed] .shell__rail .shell__link { padding: var(--space-1) 2px; }
+  .shell[data-collapsed] .shell__rail { padding-left: 0; padding-right: 0; }
+  /* Every icon takes the height of the boxed plus (20 + 2 x 6.5px), so all labels sit on the same line. */
+  .shell__link:not([href='/trening/novi']) svg { box-sizing: content-box; padding-block: 6.5px; }
+  /* "Moje sesije" strip and the Učinak head are one height: 12px padding, a 44px control, 12px padding, the rule */
+  .ws { --ws-head-h: 4.3125rem; }
+  .ws__strip:has(.dash__tools) { box-sizing: border-box; min-height: var(--ws-head-h); }
+  /* The Učinak page is titled like the page it came from ("Sesije") */
+  .ws__grid > .panel[data-side] .panel__title { font-family: var(--font-display); font-weight: 800; font-size: var(--fs-xl); line-height: 1; letter-spacing: 0.01em; }
+  /* Full-width bar: the links are the rail's own flex items, each an equal share of the whole width, nothing left over at the sides. */
+  .shell__rail { padding-left: 0; padding-right: 0; }
+  .shell__rail .shell__nav, .shell__rail .shell__account { display: contents; }
+  .shell__rail .shell__link { flex: 1 1 0; min-width: 0; }
+  .shell__account .shell__link { order: 5; }
+  .shell__nav > a[href='/'] { order: 1; }
+  .shell__nav > .shell__link--review { order: 2; }
+  .shell__nav > a[href='/trening/novi'] { order: 3; }
+  .shell__nav > a[href='/statistika'] { order: 4; }
+}
+.shell__link[aria-disabled='true'] { opacity: 0.45; cursor: default; }
+.toast {
+  position: fixed; left: 50%; bottom: calc(var(--space-5) + env(safe-area-inset-bottom)); z-index: 60; transform: translateX(-50%);
+  max-width: min(90vw, 26rem); padding: var(--space-3) var(--space-4); background: var(--panel); color: var(--ink);
+  border: 1px solid var(--rule-strong); box-shadow: 0 8px 24px rgb(0 0 0 / 0.4); font-size: var(--fs-md); font-weight: 600;
+  animation: toast-in 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+@keyframes toast-in { from { opacity: 0; transform: translate(-50%, 8px); } }
+@media (prefers-reduced-motion: reduce) { .toast { animation: none; } }
+@media (max-width: 720px) { .toast { bottom: calc(4.25rem + var(--space-4) + env(safe-area-inset-bottom)); } }
 .shell__link:hover:not(:disabled) { background: var(--panel); color: var(--ink); }
 .shell__link[aria-current='page'] { background: var(--select-bg); color: var(--select-fg); }
 .shell__main { min-width: 0; height: 100dvh; overflow: auto; background: var(--ground); }
@@ -117,7 +164,8 @@ button:disabled { opacity: 0.5; cursor: not-allowed; }
     flex: 1 0 4.25rem; flex-direction: column; justify-content: center; gap: 2px;
     font-size: var(--fs-xs); min-height: 4rem; padding: var(--space-1); border-radius: 0; text-align: center;
   }
-  .shell__out { flex: 0 0 4.25rem; }
+  /* Signing out is rare on a phone (an installed app especially): it lives on the account page, not the bottom bar. */
+  .shell__out { display: none; }
   .shell__account { display: flex; flex: 1 0 4.25rem; }
   .shell__account .shell__link { flex: 1 1 0; }
   .shell__out button { height: 100%; flex-direction: column; justify-content: center; gap: 2px; font-size: var(--fs-xs); padding: 0; border-radius: 0; }
@@ -172,6 +220,7 @@ button:disabled { opacity: 0.5; cursor: not-allowed; }
   transition: margin-left 240ms cubic-bezier(0.55, 0, 0.55, 0.2), opacity 160ms ease, box-shadow 160ms ease, visibility 0s 240ms;
 }
 @media (prefers-reduced-motion: reduce) { .panel[data-side], .panel[data-side][data-closed] { transition: none; } }
+.dash__side-close { display: none; }
 .dash__side { display: grid; gap: var(--space-4); align-content: start; }
 .dash__side-sub { margin: 0; font-size: var(--fs-md); font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink); }
 .dash__side .scoreline { grid-template-columns: minmax(0, 1fr); }
@@ -206,6 +255,21 @@ button:disabled { opacity: 0.5; cursor: not-allowed; }
   .ws__grid > .panel { display: none; min-height: 60dvh; }
   .ws__grid > .panel[data-active] { display: grid; }
   .ws__grid > .panel .panel__head { display: none; }
+  /* Performance ("Učinak") upright: a page of its own over the list, above the bottom bar, scrolling on its own */
+  .ws__grid > .panel[data-side] {
+    display: grid; position: fixed; z-index: 29; left: 0; right: 0; top: 0; bottom: calc(4.25rem + var(--safe-b, 0px));
+    min-height: 0; overflow-y: auto; overscroll-behavior: contain; background: var(--panel);
+    grid-template-rows: auto minmax(0, auto); align-content: start;
+    /* Slides in from the right and back out; hidden (and inert) once it has left */
+    /* (opacity and margin are pinned: the desktop closed state fades and shifts the panel, which would hide the slide) */
+    margin-left: 0; opacity: 1;
+    transform: translateX(100%); visibility: hidden; transition: transform 300ms var(--ease-out), visibility 0s 300ms;
+  }
+  .ws__grid > .panel[data-side]:not([data-closed]) { transform: none; visibility: visible; transition: transform 300ms var(--ease-out), visibility 0s; }
+  @media (prefers-reduced-motion: reduce) { .ws__grid > .panel[data-side], .ws__grid > .panel[data-side]:not([data-closed]) { transition: none; } }
+  .ws__grid > .panel[data-side] .panel__head { display: flex; position: sticky; top: 0; z-index: 1; box-sizing: border-box; min-height: calc(var(--ws-head-h) + var(--safe-t, 0px)); padding-top: var(--safe-t, 0px); background: var(--ground-deep); }
+  .dash__side-close { display: inline-flex; flex: none; gap: var(--space-2); height: 2.75rem; min-height: 0; padding: 0 var(--space-3) 0 var(--space-2); justify-content: center; align-items: center; border: 1px solid var(--rule-strong); color: var(--ink); font-weight: 700; }
+  .dash__side-close svg { width: 22px; height: 22px; }
   /* The page scrolls, not the panel: a nested scroller on a phone gives two vertical scrolls (Safari shows it most) */
   .ws__grid > .panel { grid-template-rows: auto auto; grid-template-columns: minmax(0, 1fr); }
   .ws__grid > .panel > .panel__body { overflow-x: clip; overflow-y: visible; overscroll-behavior: auto; }
@@ -326,6 +390,15 @@ button:disabled { opacity: 0.5; cursor: not-allowed; }
 
 .ui-calendar { padding: var(--space-3); width: 18.5rem; }
 .ui-calendar header { display: flex; align-items: center; gap: var(--space-2); margin-bottom: var(--space-2); }
+.ui-cal-title { flex: 1; display: flex; justify-content: center; gap: var(--space-1); }
+.ui-cal-range { font-size: var(--fs-md); font-weight: 700; font-variant-numeric: tabular-nums; }
+.ui-calendar header .ui-cal-pick { width: auto; min-height: 2rem; padding: 0 var(--space-2); border-color: transparent; font-size: var(--fs-md); font-weight: 700; }
+.ui-calendar header .ui-cal-pick:hover:not(:disabled) { border-color: var(--rule-strong); }
+.ui-cal-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--space-1); padding-top: var(--space-1); }
+.ui-cal-opt { min-height: 2.75rem; padding: 0; justify-content: center; background: transparent; color: var(--ink); border-color: var(--rule); font-variant-numeric: tabular-nums; }
+.ui-cal-opt:hover:not(:disabled), .ui-cal-opt[data-focused] { background: var(--panel); color: var(--ink); }
+.ui-cal-opt[data-current] { background: var(--select-bg); color: var(--select-fg); border-color: var(--select-bg); font-weight: 700; }
+.ui-cal-opt[data-disabled] { color: var(--ink-faint); opacity: 0.5; }
 .ui-calendar header h2 { flex: 1; margin: 0; text-align: center; font-size: var(--fs-md); font-weight: 700; text-transform: capitalize; }
 .ui-calendar header button { min-height: 2rem; width: 2rem; padding: 0; background: transparent; color: var(--ink); border-color: var(--rule-strong); }
 .ui-calendar header button:hover:not(:disabled) { background: var(--panel); color: var(--ink); }
@@ -656,10 +729,16 @@ input[type='file']::file-selector-button { font: inherit; font-weight: 700; marg
 .rows__state { margin-top: 2px; font-size: var(--fs-sm); font-weight: 600; color: var(--data); }
 .rows__state--pending { color: var(--proposed); }
 .rows__actions { display: flex; gap: var(--space-2); flex-wrap: wrap; }
-.ws__back { font-size: var(--fs-sm); font-weight: 600; color: var(--ink-muted); text-decoration: none; }
-.ws__back::before { content: ''; display: inline-block; width: 6px; height: 6px; margin-right: 6px; border-left: 1.5px solid currentColor; border-bottom: 1.5px solid currentColor; transform: translateY(-1px) rotate(45deg); }
+.ws__back { justify-self: start; padding-bottom: var(--space-2); font-size: var(--fs-md); font-weight: 600; color: var(--ink-muted); text-decoration: none; }
+.ws__back::before { content: ''; display: inline-block; width: 8px; height: 8px; margin-right: 8px; border-left: 1.5px solid currentColor; border-bottom: 1.5px solid currentColor; transform: translateY(-1px) rotate(45deg); }
 .ws__back:hover { color: var(--ink); }
 .trash__item { padding: var(--space-3) var(--space-4); }
+.audit__pager { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--space-3); padding: var(--space-3) var(--space-4); font-size: var(--fs-sm); color: var(--ink-muted); }
+.audit__pager-sizes, .audit__pager-nav { display: inline-flex; align-items: center; gap: var(--space-3); }
+.audit__pager-link { color: var(--ink-muted); text-decoration: none; font-weight: 600; }
+a.audit__pager-link:hover { color: var(--ink); }
+.audit__pager-link[aria-current='true'] { color: var(--ink); text-decoration: underline; }
+.audit__pager-link[aria-disabled='true'] { opacity: 0.4; }
 .audit__table th:first-child, .audit__table td:first-child { padding-left: var(--space-4); }
 
 .auth { min-height: 100dvh; display: grid; place-content: center; gap: var(--space-6); padding: var(--space-8) var(--space-4); background: var(--ground); }
@@ -922,7 +1001,7 @@ input[type='file']::file-selector-button { font: inherit; font-weight: 700; marg
   .dash__head .ws__title { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .ws__strip .dash__tools { margin-left: auto; flex: 0 0 auto; }
   .ws__strip .dash__tools > * { flex: 0 0 auto; }
-  .dash__new span, .ws__strip .dash__clear, .dash__side-toggle span { display: none; }
+  .dash__new span, .ws__strip .dash__clear { display: none; }
   .dash__new { padding: 0; width: var(--control-h); justify-content: center; }
 }
 
@@ -1293,6 +1372,11 @@ input[type='file']::file-selector-button { font: inherit; font-weight: 700; marg
 
 /* An open series keeps its row in view; only the shots under it scroll sideways */
 .board__row { position: sticky; top: 0; z-index: 2; }
+/* A series opens and closes by animating its row track between 0fr and 1fr; closed, it is hidden after the animation ends */
+.board__panel { display: grid; grid-template-rows: 0fr; visibility: hidden; transition: grid-template-rows 260ms var(--ease-out), visibility 0s linear 260ms; }
+.board__panel[data-open] { grid-template-rows: 1fr; visibility: visible; transition: grid-template-rows 260ms var(--ease-out), visibility 0s; }
+.board__panel > .board__scroll { min-height: 0; }
+@media (prefers-reduced-motion: reduce) { .board__panel, .board__panel[data-open] { transition: none; } }
 /* Sideways only: with overflow-x set, overflow-y turns to auto, and the table's fractional height (rows of 34.59 px) can exceed the box by a pixel, so the box scrolls up and down by a hair under the mouse */
 .board__scroll { overflow-x: auto; overflow-y: hidden; overscroll-behavior-x: contain; scroll-snap-type: x proximity; }
 .board__scroll .shots { width: 100%; }
@@ -1302,6 +1386,8 @@ input[type='file']::file-selector-button { font: inherit; font-weight: 700; marg
 @media (max-width: 720px) {
   .board__scroll .shots td, .board__scroll .shots th { padding-inline: 0.3rem; }
 }
+/* Column header stays under the series row while the list scrolls (shifted from SeriesBoard) */
+.board__scroll .shots th { position: relative; z-index: 1; background: var(--panel-sunk); transform: translateY(var(--head-shift, 0px)); }
 /* The board column must not grow to the table's width, or nothing overflows and nothing scrolls */
 .board-wrap { grid-template-columns: minmax(0, 1fr); }
 .board, .board__item { min-width: 0; }
@@ -1432,7 +1518,7 @@ button.hr-align__toggle:hover:not(:disabled) { color: var(--ink); background: va
    list and the analysis are tabs beside it. These rules come last so they win over both the phone (≤720) and
    tablet (721–1023) rules, whichever width the phone has. ---------- */
 @media (orientation: landscape) and (max-height: 520px) {
-  :root { --control-h: 2.75rem; --pl-rail: calc(4.5rem + var(--safe-l)); }
+  :root { --control-h: 2.75rem; --pl-rail: calc(4rem + var(--safe-l)); }
 
   /* Shell: a fixed icon rail on the left, the page scrolls beside it */
   .shell, .shell[data-collapsed] { display: block; height: auto; padding: 0 0 0 var(--pl-rail); }
@@ -1480,11 +1566,33 @@ button.hr-align__toggle:hover:not(:disabled) { color: var(--ink); background: va
   .panel:has(> .sr-only) { grid-template-rows: auto; }
   .ws__grid .board__row { top: 0; }
 
-  /* Side column (sessions overview): beside the list, no slide */
-  .ws__grid--side { display: flex; align-items: stretch; background: var(--rule); gap: 1px; overflow: visible; }
-  .ws__grid--side > .panel:not([data-side]) { flex: 1 1 0; }
-  .panel[data-side] { flex: 0 0 42%; width: auto; margin-left: 0; opacity: 1; visibility: visible; box-shadow: none; border-left: 0; transition: none; }
-  .panel[data-side][data-closed] { display: none; }
+  /* Sessions: the performance column opens at full height, squeezing the strip as well as the list, and slides in.
+     The grid is flattened into the page grid so the column can span the strip's row too; the list and the column
+     each scroll on their own and the page stays put. */
+  .ws:has(.ws__grid--side) {
+    --side-w: 42vw;
+    height: calc(100dvh - var(--safe-t) - var(--safe-b)); min-height: 0;
+    grid-template-columns: minmax(0, 1fr) 0; grid-template-rows: auto minmax(0, 1fr);
+    transition: grid-template-columns 300ms var(--ease-out);
+  }
+  .ws:has(.ws__grid--side .panel[data-side]:not([data-closed])) { grid-template-columns: minmax(0, 1fr) var(--side-w); }
+  .ws:has(.ws__grid--side) > .ws__strip { grid-column: 1; grid-row: 1; }
+  .ws .ws__grid--side { display: contents; }
+  .ws .ws__grid--side > .panel { min-height: 0; overflow-y: auto; overscroll-behavior: contain; align-content: start; background: var(--panel); }
+  .ws .ws__grid--side > .panel:not([data-side]) { grid-column: 1 !important; grid-row: 2 !important; }
+  .ws .ws__grid--side > .panel[data-side] {
+    display: grid; grid-column: 2 !important; grid-row: 1 / -1 !important; position: relative; inset: auto; z-index: 2;
+    min-width: 0; overflow-x: hidden; margin: 0; width: auto; flex: none; transform: none;
+    border-left: 1px solid var(--rule-strong); box-shadow: none; opacity: 1; visibility: visible;
+    transition: opacity 220ms var(--ease-out), visibility 0s;
+  }
+  .ws .ws__grid--side > .panel[data-side][data-closed] { opacity: 0; visibility: hidden; transition: opacity 160ms var(--ease-out), visibility 0s 300ms; }
+  /* The content keeps its own width while the column opens, so it is revealed rather than squeezed */
+  .ws .ws__grid--side > .panel[data-side] > * { min-width: calc(var(--side-w) - 1px); }
+  .ws__grid--side > .panel[data-side] .panel__head { position: static; padding-top: 0; min-height: 2.5rem; background: none; }
+  .dash__side-close { display: none; }
+  .dash__side-toggle span { display: inline; }
+  @media (prefers-reduced-motion: reduce) { .ws:has(.ws__grid--side), .ws .ws__grid--side > .panel[data-side] { transition: none; } }
 
   /* Strip: one line, title gives way first */
   .ws__strip { flex-wrap: nowrap; gap: var(--space-3); padding: var(--space-2) var(--space-4); min-height: 3.25rem; }
@@ -1498,7 +1606,7 @@ button.hr-align__toggle:hover:not(:disabled) { color: var(--ink); background: va
   .ws__strip .lane-plate__value { font-size: var(--fs-xl); }
   .ws__figures { display: none; }
   .hide-phone { display: none !important; }
-  .dash__new span, .ws__strip .dash__clear, .dash__side-toggle span { display: none; }
+  .dash__new span, .ws__strip .dash__clear { display: none; }
   .dash__new { padding: 0; width: var(--control-h); justify-content: center; }
   .stats__opt { display: none; }
 
@@ -1570,12 +1678,15 @@ button.hr-align__toggle:hover:not(:disabled) { color: var(--ink); background: va
   .ws:has(.panel[data-panel='series'][data-active]) .ws__toggle { display: inline-flex; }
 }
 
-/* With every series folded the rows are all there is: taller, with larger name, group and totals */
-.board-wrap[data-folded] .board__row { min-height: 3.5rem; }
-.board-wrap[data-folded] .board__name { font-size: var(--fs-lg); }
-.board-wrap[data-folded] .board__group { font-size: var(--fs-md); }
-.board-wrap[data-folded] .board__total { font-size: var(--fs-2xl); }
-.board-wrap[data-folded] .board__cum { font-size: var(--fs-md); }
+.board__name { display: flex; align-items: center; gap: var(--space-2); min-width: 0; }
+.board__dur { display: inline-flex; align-items: center; gap: 4px; line-height: 1; font-weight: 600; font-size: var(--fs-md); letter-spacing: 0; text-transform: none; color: var(--ink-muted); }
+.board__row[aria-current='true'] .board__dur { color: var(--select-muted); }
+/* A closed series is just its row, so that row is larger (name, group, totals); an open one is compact above its shots */
+.board__item:not([data-open]) .board__row { min-height: 3.5rem; }
+.board__item:not([data-open]) .board__name { font-size: var(--fs-lg); }
+.board__item:not([data-open]) .board__group { font-size: var(--fs-md); }
+.board__item:not([data-open]) .board__total { font-size: var(--fs-2xl); }
+.board__item:not([data-open]) .board__cum { font-size: var(--fs-md); }
 
 /* Show / hide the target: a phone held sideways only, in the page header beside the series button, left of the total */
 .ws__pin-toggle { display: none; }
@@ -1659,3 +1770,8 @@ html[data-target-motion]::view-transition-old(root), html[data-target-motion]::v
   html[data-target-motion='show']::view-transition-new(report-target):only-child { animation: vt-fade-out 160ms ease-out both; }
   html[data-target-motion='show']::view-transition-new(report-target):only-child { animation-name: vt-fade-in; }
 }
+
+/* Phone inbox (iOS share-sheet uploads) */
+.inbox__token { display: block; padding: var(--space-2) var(--space-3); border: 1px solid var(--rule); border-radius: 6px; font-size: var(--fs-sm); overflow-wrap: anywhere; user-select: all; }
+.inbox__steps { margin: var(--space-3) 0 0; padding-left: 1.25em; display: grid; gap: var(--space-2); font-size: var(--fs-md); }
+.inbox__tray { display: grid; gap: var(--space-2); }

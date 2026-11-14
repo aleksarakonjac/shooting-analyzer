@@ -61,7 +61,10 @@ export function Workspace({
   resizable,
   pin,
   pinOff,
+  noTabs,
 }: {
+  /** No tab bar on a phone held upright: the page decides how a panel is reached (a button, say). */
+  noTabs?: boolean;
   /** Panel kept in view on the left of a phone held sideways (the rest become tabs beside it). */
   pin?: string;
   /** The pin is switched off: a phone held sideways shows every panel as a full-width tab, like upright. */
@@ -124,7 +127,7 @@ export function Workspace({
   return (
     <div className={pinned ? 'ws ws--pinned' : pin ? 'ws ws--tabbed' : 'ws'}>
       <header className="ws__strip">{strip}</header>
-      <div ref={tablist} className="ws__tabs" role="tablist" aria-label={label} onKeyDown={onKey} hidden={panels.length < 2}>
+      <div ref={tablist} className="ws__tabs" role="tablist" aria-label={label} onKeyDown={onKey} hidden={noTabs || panels.length < 2}>
         {panels.map((p, i) => (
           <button
             key={p.id}

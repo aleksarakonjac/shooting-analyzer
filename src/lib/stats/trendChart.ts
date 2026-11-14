@@ -24,19 +24,36 @@ export const seriesWord = (n: number) => {
   return d === 1 && h !== 11 ? 'serija' : d >= 2 && d <= 4 && (h < 12 || h > 14) ? 'serije' : 'serija';
 };
 
-/** Score axis: never narrower than 6 points, so a few points between sessions read as a few points, not a cliff.
- *  Labels every point, a faint 0.5 grid between them for reading values finely. */
-export function scoreAxis(values: number[]): { min: number; max: number; interval: number } | null {
+type NiceAxis = { min: number; max: number; interval: number };
+
+/** A value axis that never gets narrower than `minSpan`, centred on the data with a little room, on round ticks. */
+function niceAxis(values: number[], minSpan: number, intervalFor: (span: number) => number, floor?: number): NiceAxis | null {
   if (values.length === 0) return null;
-  const MIN_SPAN = 6;
   const lo = Math.min(...values);
   const hi = Math.max(...values);
-  const span = Math.max(MIN_SPAN, (hi - lo) * 1.3);
-  const interval = span <= 14 ? 1 : span <= 30 ? 5 : 10;
+  const span = Math.max(minSpan, (hi - lo) * 1.3);
+  const interval = intervalFor(span);
   const mid = (lo + hi) / 2;
-  const min = Math.floor((mid - span / 2) / interval) * interval;
+  let min = Math.floor((mid - span / 2) / interval) * interval;
   const max = Math.ceil((mid + span / 2) / interval) * interval;
+  if (floor !== undefined) min = Math.max(floor, min);
   return { min, max, interval };
+}
+
+/** Score axis: never narrower than 6 points, so a few points between sessions read as a few points, not a cliff.
+ *  Labels every point, a faint 0.5 grid between them for reading values finely. */
+export function scoreAxis(values: number[]): NiceAxis | null {
+  return niceAxis(values, 6, (span) => (span <= 14 ? 1 : span <= 30 ? 5 : 10));
+}
+
+/** Heart-rate axis (bpm): at least 20 wide, so a few beats between sessions do not look like a swing. */
+export function pulseAxis(values: number[]): NiceAxis | null {
+  return niceAxis(values, 20, (span) => (span <= 40 ? 5 : span <= 100 ? 10 : 20));
+}
+
+/** Group axis (mm): at least 2 wide, never below zero (a group cannot be smaller than none). */
+export function groupAxis(values: number[]): NiceAxis | null {
+  return niceAxis(values, 2, (span) => (span <= 4 ? 0.5 : span <= 10 ? 1 : 2), 0);
 }
 
 /** Tooltip lines under the score: what the plotted figure is made of. */
@@ -80,7 +97,10 @@ export function sessionsOption(points: SessionPoint[], kind: ChartKind, decimal:
       // An estimate (fewer series than a match) is a hollow ring, not a filled dot: a form, not only a word in the tooltip.
       ...(kind === 'rez' && p.projected ? { itemStyle: { color: '#0b1530', borderColor: CHART.data, borderWidth: 2 } } : {}),
     }));
-  const rezAxis = kind === 'rez' ? scoreAxis(data.map((d) => d.value[1])) : null;
+  const ys = data.map((d) => d.value[1]);
+  const fixedAxis = kind === 'rez' ? scoreAxis(ys) : kind === 'puls' ? pulseAxis(ys) : groupAxis(ys);
+  // Round ticks, each with a faint grid line halfway (the score keeps its 0.5-point lines).
+  const minorParts = kind === 'rez' ? (fixedAxis?.interval ?? 1) * 2 : 2;
   // Ticks never fall within a day, so a date is never labelled twice; a short span is padded to at least a day each side.
   const xs = data.map((d) => d.value[0]);
   const lo = xs.length ? Math.min(...xs) : 0;
@@ -92,7 +112,7 @@ export function sessionsOption(points: SessionPoint[], kind: ChartKind, decimal:
   };
   return {
     animationDuration: 300,
-    grid: { left: m.unit ? 52 : 40, right: 16, top: 20, bottom: 30 },
+    grid: { left: 40, right: 16, top: 20, bottom: 30 },
     tooltip: {
       trigger: 'item',
       backgroundColor: CHART.select,
@@ -118,18 +138,15 @@ export function sessionsOption(points: SessionPoint[], kind: ChartKind, decimal:
     yAxis: {
       ...axis,
       type: 'value',
-      name: m.unit,
-      nameLocation: 'middle',
-      nameGap: 38,
-      nameRotate: 90,
       scale: true,
-      ...(kind === 'rez' && rezAxis
+      ...(fixedAxis
         ? {
-            ...rezAxis,
+            ...fixedAxis,
             minorTick: { show: false },
-            // 0.5-point grid between the labelled lines
             minorSplitLine: { show: true, lineStyle: { color: CHART.rule, opacity: 0.45 } },
-            minorSplitNumber: rezAxis.interval * 2,
+            minorSplitNumber: minorParts,
+            // A half-unit tick (0.5 mm) needs its decimal
+            axisLabel: { ...axis.axisLabel, formatter: (v: number) => (fixedAxis.interval < 1 ? v.toFixed(1) : String(v)) },
           }
         : {}),
     },

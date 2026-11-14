@@ -51,3 +51,9 @@ describe('onboarding', () => {
     expect(decideRoute('/dobrodoslica', null, false)).toEqual({ redirect: '/login' });
   });
 });
+
+describe('phone inbox route', () => {
+  it('passes /api/inbox without a session (the route checks its token)', () => {
+    expect(decideRoute('/api/inbox', null, false)).toEqual({ allow: true });
+  });
+});

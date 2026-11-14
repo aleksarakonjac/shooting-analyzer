@@ -119,6 +119,29 @@ describe('DateField', () => {
     await user.click(screen.getByRole('button', { name: /^Otvori kalendar/ }));
     expect(await screen.findByRole('grid')).toBeInTheDocument();
   });
+
+  it('picks through the month, or the year then the month, before the days', async () => {
+    const user = userEvent.setup();
+    const onChange = vi.fn();
+    sr(<DateField label="Datum" value="2026-11-09" onChange={onChange} />);
+    await user.click(screen.getByRole('button', { name: /^Otvori kalendar/ }));
+    await screen.findByRole('grid');
+    // The month opens that year's months; a month leads back to the days of it.
+    await user.click(screen.getByRole('button', { name: /^Mesec: Novembar/ }));
+    expect(screen.queryByRole('grid')).toBeNull();
+    await user.click(screen.getByRole('button', { name: 'Mar' }));
+    expect(await screen.findByRole('grid')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /^Mesec: Mart/ })).toBeInTheDocument();
+    // The year opens years, then months, then days.
+    await user.click(screen.getByRole('button', { name: /^Godina: 2026/ }));
+    await user.click(screen.getByRole('button', { name: '2024' }));
+    expect(screen.getByRole('button', { name: 'Jun' })).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Jun' }));
+    await screen.findByRole('grid');
+    expect(screen.getByRole('button', { name: /^Godina: 2024/ })).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: /15\./ }));
+    expect(onChange).toHaveBeenLastCalledWith('2024-06-15');
+  });
 });
 
 describe('TimeRange', () => {

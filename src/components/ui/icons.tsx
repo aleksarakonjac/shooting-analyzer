@@ -29,3 +29,6 @@ export const Close = () => (
 export const Plus = () => (
   <svg {...base} width="16" height="16"><path d="M12 5v14M5 12h14" /></svg>
 );
+export const ClockIcon = () => (
+  <svg {...base} width="16" height="16"><path d="M12 7v5l3 2M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" /></svg>
+);
