@@ -141,7 +141,7 @@ export const sr = {
     previewTitle: 'Pregled i poravnanje',
     siusSummary: (series: number, shots: number, total: string) => `${series} serija, ${shots} pogodaka, ukupno ${total}`,
     scattSummary: (shots: number) => `${shots} SCATT pogodaka`,
-    positionGroup: { kneeling: 'Kolena', prone: 'Ležeći', standing: 'Stojeći' },
+    positionGroup: { kneeling: 'Klečeći', prone: 'Ležeći', standing: 'Stojeći' },
     seriesLabel: (n: number) => `Serija ${n}`,
     matchSelector: 'Koji SCATT pogoci čine meč?',
     modeLast: 'Poslednjih',
@@ -223,6 +223,7 @@ export const sr = {
     finaleNoDiscipline: 'Finale postoji za vazdušnu pušku, vazdušni pištolj i MK trostav.',
   },
   report: {
+    close: 'Zatvori',
     analysis: 'Analiza',
     total: 'Ukupno',
     series: 'Serije',

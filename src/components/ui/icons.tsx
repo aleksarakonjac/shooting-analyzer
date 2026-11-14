@@ -23,6 +23,9 @@ export const CalendarIcon = () => (
 export const Minus = () => (
   <svg {...base} width="16" height="16"><path d="M5 12h14" /></svg>
 );
+export const Close = () => (
+  <svg {...base} width="16" height="16" strokeWidth={2}><path d="M6 6l12 12M18 6 6 18" /></svg>
+);
 export const Plus = () => (
   <svg {...base} width="16" height="16"><path d="M12 5v14M5 12h14" /></svg>
 );

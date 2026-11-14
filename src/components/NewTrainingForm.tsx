@@ -498,6 +498,7 @@ export function NewTrainingForm({
       <div className="span-2">
         <Segmented
           label={t.kind}
+          isDisabled={!disciplineId}
           value={kind}
           onChange={setKind}
           options={(['trening', 'kontrolni', 'takmicenje'] as const).map((id) => ({ id, label: t.kinds[id] }))}
@@ -506,10 +507,12 @@ export function NewTrainingForm({
       <div className="span-2">
         <Segmented
           label={t.stage}
+          isDisabled={!disciplineId}
           value={stage}
           onChange={setStage}
           options={stageOptions.map((id) => ({ id, label: t.stages[id] }))}
         />
+        {!disciplineId && <small className="ui-hint">{t.pickDisciplineFirst}</small>}
       </div>
       {kind === 'takmicenje' && (
         <div className="span-2">

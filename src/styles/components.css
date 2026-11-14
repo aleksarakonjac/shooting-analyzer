@@ -766,6 +766,9 @@ input[type='file']::file-selector-button { font: inherit; font-weight: 700; marg
 .share-box__list li { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); }
 .ui-seg--full { display: flex; width: 100%; }
 .ui-seg--full .ui-seg__item { flex: 1 1 0; justify-content: center; text-align: center; padding: 0 var(--space-2); }
+.ui-hint { display: block; margin-top: var(--space-1); font-size: var(--fs-sm); color: var(--ink-muted); }
+.ui-seg__item[data-disabled] { opacity: 0.45; cursor: not-allowed; }
+.ui-seg__item[data-disabled][data-selected] { background: var(--panel-raised); color: var(--ink-muted); }
 .ui-seg__item[data-focus-visible] { outline: 2px solid var(--focus); outline-offset: -2px; }
 .ui-fold { display: flex; flex-wrap: wrap; gap: var(--space-3); align-items: end; }
 .ui-dtr__next { color: var(--proposed); font-weight: 700; margin-left: var(--space-1); }
@@ -818,7 +821,7 @@ input[type='file']::file-selector-button { font: inherit; font-weight: 700; marg
 
 /* One group per month: a heading that folds the group away, then its own column headings, then its rows.
    Both stay pinned while the group scrolls past, the column headings just under the month. */
-.smonth { --smonth-h: 2.25rem; }
+.smonth { --smonth-h: 2.25rem; --fold-dur: 320ms; --fold-ease: cubic-bezier(0.33, 1, 0.68, 1); }
 .smonth__title { margin: 0; position: sticky; top: 0; z-index: 2; font-size: inherit; }
 .smonth__toggle, button.smonth__toggle {
   width: 100%; min-height: var(--smonth-h); justify-content: flex-start; gap: var(--space-2);
@@ -828,9 +831,8 @@ input[type='file']::file-selector-button { font: inherit; font-weight: 700; marg
 }
 .smonth__toggle:hover:not(:disabled) { background: var(--rule); border-color: var(--rule-strong); color: var(--ink); }
 .smonth__toggle:active:not(:disabled) { background: var(--rule); }
-.smonth__toggle .ui-chev { flex: none; color: var(--ink-muted); transition: transform var(--dur) var(--ease-out); }
+.smonth__toggle .ui-chev { flex: none; color: var(--ink-muted); transition: transform var(--fold-dur) var(--fold-ease); }
 .smonth:not([data-open]) .smonth__toggle .ui-chev { transform: rotate(-90deg); }
-.smonth:not([data-open]) .smonth__title { position: static; }
 .smonth__count { margin-left: auto; font-size: var(--fs-sm); font-weight: 600; letter-spacing: 0; text-transform: none; color: var(--ink-muted); }
 .stable__head {
   position: sticky; top: var(--smonth-h); z-index: 1; min-height: 2rem;
@@ -846,7 +848,16 @@ input[type='file']::file-selector-button { font: inherit; font-weight: 700; marg
 .stable__sort:active:not(:disabled) { background: transparent; }
 .stable__arrow { flex: none; color: var(--data); transition: transform var(--dur) var(--ease-out); }
 .stable__arrow[data-dir='desc'] { transform: rotate(180deg); }
-@media (prefers-reduced-motion: reduce) { .smonth__toggle .ui-chev, .stable__arrow { transition: none; } }
+/* Folding: the body's one grid row runs between its content height and zero, so no height is measured in script. The curve is a plain cubic ease-out: the expo one used elsewhere spends
+   most of a short height change in its first frames and reads as a jump followed by a crawl.
+   Closed, it turns invisible once the row has shut, which also takes it out of the tab order. */
+.smonth__body { display: grid; grid-template-rows: 1fr; transition: grid-template-rows var(--fold-dur) var(--fold-ease), visibility 0s; }
+.smonth__body[data-open='false'] { grid-template-rows: 0fr; visibility: hidden; transition: grid-template-rows var(--fold-dur) var(--fold-ease), visibility 0s linear var(--fold-dur); }
+.smonth__clip { min-height: 0; }
+/* `clip`, not `hidden`: hidden makes the body a scroll container, which switches off the pinned column headings inside it and
+   makes them drop to their resting place for the length of the fold, then jump up when it ends. */
+.smonth__body[data-open='false'] > .smonth__clip, .smonth__body[data-moving] > .smonth__clip { overflow: clip; }
+@media (prefers-reduced-motion: reduce) { .smonth__toggle .ui-chev, .stable__arrow, .smonth__body, .smonth__body[data-open='false'] { transition: none; } }
 .stable__head .num, .srow__total { text-align: right; }
 .srow { min-height: 3rem; padding-top: var(--space-2); padding-bottom: var(--space-2); color: var(--ink); text-decoration: none; }
 .srow:hover { background: var(--panel-raised); }
@@ -1023,6 +1034,7 @@ input[type='file']::file-selector-button { font: inherit; font-weight: 700; marg
 .ws__strip-end--row { flex-wrap: nowrap; }
 .ws__strip-end--row > * { flex: 0 0 auto; }
 .ws__strip-end--row .more__trigger { width: var(--control-h); padding: 0; }
+.ws__close { text-decoration: none; justify-content: center; border-radius: var(--radius); }
 @media (max-width: 720px) { .ws__strip-end--row { justify-content: flex-end; } }
 
 /* ---------- report: three columns. Shot list left (dense, like SCATT), target middle, analyses right ---------- */

@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 // The canvas chart is not under test here.
 vi.mock('../../src/components/report/EChart', () => ({ EChart: () => null }));
@@ -20,6 +20,7 @@ const view = (all: TrainingSummary[], search = {}) =>
   );
 
 afterEach(cleanup);
+beforeEach(() => window.sessionStorage.clear());
 
 describe('SessionsView', () => {
   it('leads each row with the weekday and date, then the name, the type and part, and the total', () => {
@@ -67,13 +68,20 @@ describe('SessionsView', () => {
   it('folds a month away and brings it back', () => {
     view([tr('a', '2026-11-09'), tr('b', '2026-10-30')]);
     const oct = screen.getByRole('button', { name: /Oktobar 2026/ });
+    const body = () => document.getElementById(oct.getAttribute('aria-controls')!)!;
     expect(oct.getAttribute('aria-expanded')).toBe('true');
+    expect(body().getAttribute('data-open')).toBe('true');
     fireEvent.click(oct);
+    // The rows stay in the page while the fold plays; the body is inert and flagged closed.
     expect(oct.getAttribute('aria-expanded')).toBe('false');
-    expect(screen.queryByRole('link', { name: /Sesija b/ })).toBeNull();
-    expect(screen.getByRole('link', { name: /Sesija a/ })).toBeTruthy();
+    expect(body().getAttribute('data-open')).toBe('false');
+    expect(body().hasAttribute('inert')).toBe(true);
+    expect(body().hasAttribute('data-moving')).toBe(true);
+    const nov = screen.getByRole('button', { name: /Novembar 2026/ });
+    expect(document.getElementById(nov.getAttribute('aria-controls')!)!.hasAttribute('inert')).toBe(false);
     fireEvent.click(oct);
-    expect(screen.getByRole('link', { name: /Sesija b/ })).toBeTruthy();
+    expect(body().getAttribute('data-open')).toBe('true');
+    expect(body().hasAttribute('inert')).toBe(false);
   });
 
   it('sorts the rows inside every month by the clicked column, and flips on a second click', () => {
@@ -101,6 +109,18 @@ describe('SessionsView', () => {
     expect(within(b).getByText('Potvrdi spoj')).toBeTruthy();
     expect(within(b).queryByText('Bez SCATT-a')).toBeNull();
     expect(within(b).queryByText('Bez pulsa')).toBeNull();
+  });
+
+  it('remembers its address, sort and folded months for a report to close back to', () => {
+    view([tr('a', '2026-11-09'), tr('b', '2026-10-30')], { y: '2026', sc: '0' });
+    expect(window.sessionStorage.getItem('sessions:list-url')).toBe('/?y=2026&sc=0');
+    fireEvent.click(screen.getByRole('button', { name: /Oktobar 2026/ }));
+    fireEvent.click(screen.getAllByRole('button', { name: 'Rezultat' })[0]);
+    expect(JSON.parse(window.sessionStorage.getItem('sessions:list-view')!)).toEqual({ sort: { key: 'total', dir: 'desc' }, folded: ['2026-10'] });
+    cleanup();
+    view([tr('a', '2026-11-09'), tr('b', '2026-10-30')], { y: '2026', sc: '0' });
+    expect(screen.getByRole('button', { name: /Oktobar 2026/ }).getAttribute('aria-expanded')).toBe('false');
+    expect(screen.getByRole('button', { name: /Novembar 2026/ }).getAttribute('aria-expanded')).toBe('true');
   });
 
   it('lists one page of a long period and offers the next', () => {

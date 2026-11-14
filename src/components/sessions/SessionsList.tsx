@@ -1,9 +1,10 @@
 'use client';
 import Link, { useLinkStatus } from 'next/link';
-import { useId, useMemo, useState, type ReactNode } from 'react';
+import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { ChevronDown } from '@/components/ui/icons';
 import { DISCIPLINES } from '@/lib/domain/disciplines';
 import { sr } from '@/lib/i18n/sr';
+import { readListView, saveListView } from '@/lib/listReturn';
 import { hasPulse, hasScatt, type TrainingSummary } from '@/lib/stats/periodStats';
 
 const t = sr.dashboard;
@@ -23,6 +24,9 @@ const COLUMNS: { key: SortKey; label: string; optional?: boolean; num?: boolean 
   { key: 'place', label: t.colPlace, optional: true },
   { key: 'total', label: t.colTotal, num: true },
 ];
+
+/** Matches `--fold-dur` on `.smonth`. */
+const FOLD_MS = 320;
 
 const collator = new Intl.Collator('sr-Latn-RS', { numeric: true, sensitivity: 'base' });
 
@@ -125,6 +129,22 @@ export function SessionsList({
   const uid = useId();
   const [sort, setSort] = useState<Sort>({ key: 'date', dir: 'desc' });
   const [folded, setFolded] = useState<ReadonlySet<string>>(new Set());
+  // Months whose fold or unfold is still running: only then is the body clipped, so the pinned headings
+  // inside a settled, open month keep sticking.
+  const [moving, setMoving] = useState<ReadonlySet<string>>(new Set());
+
+  // The view a report was opened from comes back with it. Restored before the first paint, so the fold
+  // transition has nothing to play; kept per browser tab, so it never reaches the server.
+  const restored = useRef(false);
+  useLayoutEffect(() => {
+    const v = readListView();
+    if (v.sort && v.sort.key in FIRST_DIR && (v.sort.dir === 'asc' || v.sort.dir === 'desc')) setSort({ key: v.sort.key as SortKey, dir: v.sort.dir });
+    if (Array.isArray(v.folded)) setFolded(new Set(v.folded.filter((k) => typeof k === 'string')));
+    restored.current = true;
+  }, []);
+  useEffect(() => {
+    if (restored.current) saveListView({ sort, folded: [...folded] });
+  }, [sort, folded]);
 
   const months = useMemo(() => {
     const groups = new Map<string, Row[]>();
@@ -140,13 +160,16 @@ export function SessionsList({
 
   const pickSort = (key: SortKey) =>
     setSort((s) => (s.key === key ? { key, dir: s.dir === 'asc' ? 'desc' : 'asc' } : { key, dir: FIRST_DIR[key] }));
-  const toggle = (key: string) =>
+  const toggle = (key: string) => {
     setFolded((s) => {
       const next = new Set(s);
       if (next.has(key)) next.delete(key);
       else next.add(key);
       return next;
     });
+    setMoving((s) => new Set(s).add(key));
+    window.setTimeout(() => setMoving((s) => { const next = new Set(s); next.delete(key); return next; }), FOLD_MS + 40);
+  };
 
   return (
     <div className="stable">
@@ -163,7 +186,8 @@ export function SessionsList({
                 <span className="smonth__count num">{sessionsCount(rows.length)}</span>
               </button>
             </h3>
-            <div id={bodyId} className="smonth__body" hidden={!open}>
+            <div id={bodyId} className="smonth__body" data-open={open} data-moving={moving.has(key) || undefined} inert={!open}>
+              <div className="smonth__clip">
                 <div className="stable__head" role="group" aria-label={t.sortBy}>
                   {COLUMNS.map((c) => {
                     const active = sort.key === c.key;
@@ -218,6 +242,7 @@ export function SessionsList({
                     );
                   })}
                 </ol>
+              </div>
             </div>
           </section>
         );

@@ -1,6 +1,6 @@
 'use client';
 import Link from 'next/link';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { LanePlate } from '@/components/LanePlate';
 import { Workspace } from '@/components/Workspace';
 import { FilterBar } from '@/components/sessions/FilterBar';
@@ -11,6 +11,7 @@ import type { DisciplineId } from '@/lib/domain/types';
 import { sr } from '@/lib/i18n/sr';
 import { filtersHref, hasFilters, RECENT_LIMIT, type ChartKind, type SessionFilters } from '@/lib/stats/filters';
 import { ChevronLeft, ChevronRight } from '@/components/ui/icons';
+import { saveListUrl } from '@/lib/listReturn';
 import { sessionPoints, setStats, type TrainingSummary } from '@/lib/stats/periodStats';
 
 const t = sr.dashboard;
@@ -51,6 +52,9 @@ export function SessionsView({
   const mirror = (patch: { side?: boolean; chart?: ChartKind }) => {
     try { window.history.replaceState(window.history.state, '', filtersHref(base, f, patch)); } catch { /* the address bar is a convenience */ }
   };
+  // A report's close button comes back to this view: same period, filters, list length, side panel.
+  const here = filtersHref(base, f, {});
+  useEffect(() => saveListUrl(here), [here]);
   const toggleSide = () => { setSide(!side); mirror({ side: !side }); };
   const pickChart = (c: ChartKind) => { setChartKind(c); mirror({ chart: c }); };
   // The recent view loads one row past the list size, so it can tell whether older sessions exist.

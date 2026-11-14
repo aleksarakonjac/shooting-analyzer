@@ -3,6 +3,7 @@ import { notFound, redirect } from 'next/navigation';
 import Link from 'next/link';
 import { DeleteTrainingButton } from '@/components/DeleteTrainingButton';
 import { FinalEntry } from '@/components/FinalEntry';
+import { CloseReport } from '@/components/report/CloseReport';
 import { FinalsList, type FinalRow } from '@/components/FinalsList';
 import { ReplaySettingsSection } from '@/components/report/replaySettings';
 import { FlagBadge } from '@/components/FlagBadge';
@@ -173,6 +174,7 @@ async function Body({ params, searchParams }: { params: Promise<{ id: string }>;
           </div>
         )}
         {menu}
+        <CloseReport />
       </div>
     </>
   );

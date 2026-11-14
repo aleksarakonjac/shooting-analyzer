@@ -14,8 +14,10 @@ import {
 } from '@/lib/finals/format';
 import { sr } from '@/lib/i18n/sr';
 import { createClient } from '@/lib/supabase/client';
+import { SegTabs } from '@/components/ui/SegTabs';
 
 const t = sr.finals;
+const nt = sr.newTraining;
 
 /** "10,4" and "10.4" both work; an empty cell is "not fired". NaN marks text that is not a number. */
 const toValue = (raw: string): number | null => {
@@ -51,6 +53,8 @@ export function FinalEntry({
   const [stamps, setStamps] = useState('');
   const [tMs, setTMs] = useState<(number | null)[]>([]);
   const [pasted, setPasted] = useState('');
+  // Shots are typed into the grid or pasted as text; a paste lands in the grid, where it is checked.
+  const [mode, setMode] = useState<'manual' | 'paste'>('manual');
   const [message, setMessage] = useState<{ kind: 'error' | 'status'; text: string } | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -73,6 +77,7 @@ export function FinalEntry({
     setCells(Array.from({ length: max }, (_, i) => r.cells[i] ?? ''));
     setTMs(r.tMs);
     setMessage({ kind: 'status', text: t.pasteApplied(r.cells.length, r.tMs.filter((x) => x !== null).length) });
+    setMode('manual');
   }
 
   function applyStamps() {
@@ -112,13 +117,8 @@ export function FinalEntry({
     router.refresh();
   }
 
-  // Inside a larger form (a new finale session) this must not be a <form> of its own.
-  const Root = onDraft ? 'div' : 'form';
-  return (
-    <Root
-      className="final-entry"
-      {...(onDraft ? {} : { onSubmit: (e: React.FormEvent) => { e.preventDefault(); void save(); } })}
-    >
+  const manual = (
+    <>
       {stages.map((stage, si) => {
         const from = stages.slice(0, si).reduce((n, s) => n + s.shots, 0);
         const seriesNo = stages.slice(0, si + 1).filter((s) => s.kind === 'series').length;
@@ -148,26 +148,53 @@ export function FinalEntry({
           </fieldset>
         );
       })}
-
-      <label>
-        {t.pasteLabel}
-        <textarea rows={5} value={pasted} onChange={(e) => setPasted(e.target.value)} placeholder={'1. 10.6 19:03:09\n2. 10,4 19:03:41'} />
-      </label>
-      <div>
-        <button type="button" className="button--quiet" onClick={applyPaste} disabled={!pasted.trim()}>{t.pasteApply}</button>
-      </div>
-      <label>
-        {t.placement}
-        <input inputMode="numeric" value={placement} onChange={(e) => setPlacement(e.target.value)} />
-      </label>
       <label>
         {t.timestamps}
         <textarea rows={4} value={stamps} onChange={(e) => setStamps(e.target.value)} />
       </label>
       <div>
-        <button type="button" className="button--quiet" onClick={applyStamps}>{t.applyTimestamps}</button>{' '}
-        {!onDraft && <button type="submit" disabled={busy}>{t.save}</button>}
+        <button type="button" className="button--quiet" onClick={applyStamps}>{t.applyTimestamps}</button>
       </div>
+    </>
+  );
+
+  const paste = (
+    <>
+      <label>
+        {t.pasteLabel}
+        <textarea rows={8} value={pasted} onChange={(e) => setPasted(e.target.value)} placeholder={'1. 10.6 19:03:09\n2. 10,4 19:03:41'} />
+      </label>
+      <div>
+        <button type="button" className="button--quiet" onClick={applyPaste} disabled={!pasted.trim()}>{t.pasteApply}</button>
+      </div>
+    </>
+  );
+
+  // Inside a larger form (a new finale session) this must not be a <form> of its own.
+  const Root = onDraft ? 'div' : 'form';
+  return (
+    <Root
+      className="final-entry"
+      {...(onDraft ? {} : { onSubmit: (e: React.FormEvent) => { e.preventDefault(); void save(); } })}
+    >
+      <SegTabs
+        label={nt.resultSource}
+        value={mode}
+        onChange={(id) => setMode(id as 'manual' | 'paste')}
+        tabs={[
+          { id: 'manual', label: nt.tabManual, content: manual },
+          { id: 'paste', label: nt.tabPaste, content: paste },
+        ]}
+      />
+      <label>
+        {t.placement}
+        <input inputMode="numeric" value={placement} onChange={(e) => setPlacement(e.target.value)} />
+      </label>
+      {!onDraft && (
+        <div>
+          <button type="submit" disabled={busy}>{t.save}</button>
+        </div>
+      )}
       {message && <p role={message.kind === 'error' ? 'alert' : 'status'}>{message.text}</p>}
     </Root>
   );
