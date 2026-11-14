@@ -3,6 +3,7 @@ import { useSyncExternalStore, type ReactNode } from 'react';
 import { sr } from '@/lib/i18n/sr';
 import { LastSessionLink } from './LastSessionLink';
 import { NavLinks, type NavItem } from './NavLinks';
+import { HOME } from '@/lib/routes';
 
 type Role = 'shooter' | 'coach' | 'admin';
 
@@ -30,7 +31,7 @@ const ACCOUNT: NavItem = { href: '/nalog', label: sr.nav.account, icon: ICON.use
 
 const NAV: Record<Role, NavItem[]> = {
   shooter: [
-    { href: '/', label: sr.nav.trainings, icon: ICON.list },
+    { href: HOME, label: sr.nav.trainings, icon: ICON.list },
     { href: '/statistika', label: sr.nav.stats, icon: ICON.stats },
     { href: '/trening/novi', label: sr.newTraining.nav, icon: ICON.plus },
   ],

@@ -4,9 +4,10 @@ import { useEffect, useState } from 'react';
 import { Close } from '@/components/ui/icons';
 import { readListUrl } from '@/lib/listReturn';
 import { sr } from '@/lib/i18n/sr';
+import { HOME } from '@/lib/routes';
 
 /** The strip's "X": back to the sessions list as it was left (filters, period), or the plain list. */
-export function CloseReport({ fallback = '/' }: { fallback?: string }) {
+export function CloseReport({ fallback = HOME }: { fallback?: string }) {
   const [href, setHref] = useState(fallback);
   useEffect(() => { setHref(readListUrl() ?? fallback); }, [fallback]);
   return (

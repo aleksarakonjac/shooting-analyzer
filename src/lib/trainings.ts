@@ -6,6 +6,7 @@ import { revalidatePath } from 'next/cache';
 import { createClient } from '@/lib/supabase/server';
 import { purgeTraining } from '@/lib/trash/purge';
 import { parseSessionEdit } from '@/lib/sessions/edit';
+import { HOME } from '@/lib/routes';
 
 /**
  * The session editor: name, place, notes, type, part, event, day, time and venue zone. RLS decides who may.
@@ -18,7 +19,7 @@ export async function updateTrainingForm(form: FormData): Promise<void> {
   const { patch, eventName } = parsed;
   const supabase = await createClient();
   const { data: row } = await supabase.from('trainings').select('shooter_id').eq('id', id).maybeSingle();
-  if (!row) redirect('/');
+  if (!row) redirect(HOME);
   let eventId: string | null = null;
   if (eventName) {
     const { data: found } = await supabase
@@ -48,7 +49,7 @@ export async function deleteTrainingForm(form: FormData): Promise<void> {
   const id = requireUuid(form.get('id'));
   const supabase = await createClient();
   requireOne(await supabase.from('trainings').update({ deleted_at: new Date().toISOString() }).eq('id', id).select('id'));
-  redirect('/');
+  redirect(HOME);
 }
 
 /** Takes a training out of the trash. RLS decides who may. */

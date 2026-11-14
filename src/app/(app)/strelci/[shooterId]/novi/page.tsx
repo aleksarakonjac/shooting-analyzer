@@ -7,6 +7,7 @@ import { getSessionProfile } from '@/lib/auth/session';
 import { recentPlaces } from '@/lib/import/places';
 import { shooterEvents } from '@/lib/events';
 import { sr } from '@/lib/i18n/sr';
+import { HOME } from '@/lib/routes';
 
 export default function NewForShooterPage({ params }: { params: Promise<{ shooterId: string }> }) {
   return (
@@ -19,7 +20,7 @@ export default function NewForShooterPage({ params }: { params: Promise<{ shoote
 async function Body({ params }: { params: Promise<{ shooterId: string }> }) {
   await connection();
   const profile = await getSessionProfile();
-  if (!profile || profile.role !== 'coach') redirect('/');
+  if (!profile || profile.role !== 'coach') redirect(HOME);
   const { shooterId } = await params;
   const shooter = (await linkedShooters()).find((s) => s.id === shooterId);
   if (!shooter) notFound();

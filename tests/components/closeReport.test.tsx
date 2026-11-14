@@ -10,7 +10,7 @@ afterEach(cleanup);
 describe('CloseReport', () => {
   it('goes to the plain list when no list was visited', () => {
     render(<CloseReport />);
-    expect(screen.getByRole('link', { name: 'Zatvori' }).getAttribute('href')).toBe('/');
+    expect(screen.getByRole('link', { name: 'Zatvori' }).getAttribute('href')).toBe('/sesije');
   });
 
   it('goes back to the list as it was left, filters included', async () => {

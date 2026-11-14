@@ -6,6 +6,7 @@ import { getSessionProfile } from '@/lib/auth/session';
 import { recentPlaces } from '@/lib/import/places';
 import { shooterEvents } from '@/lib/events';
 import { waitingInbox } from '@/lib/inbox/waiting';
+import { HOME } from '@/lib/routes';
 
 type Search = { inbox?: string | string[] };
 
@@ -21,7 +22,7 @@ async function Body({ searchParams }: { searchParams: Promise<Search> }) {
   await connection();
   const profile = await getSessionProfile();
   // Coaches enter trainings for a linked shooter from /strelci/<id>/novi.
-  if (!profile || profile.role !== 'shooter') redirect('/');
+  if (!profile || profile.role !== 'shooter') redirect(HOME);
   const today = new Intl.DateTimeFormat('en-CA', { timeZone: profile.tz }).format(new Date());
   const inbox = await waitingInbox();
   // ?inbox=<id> (from the Shortcut) loads that file; ?inbox=all loads every waiting one.

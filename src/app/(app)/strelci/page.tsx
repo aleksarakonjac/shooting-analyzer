@@ -10,6 +10,7 @@ import { periodRange } from '@/lib/stats/periodStats';
 import { shooterCard } from '@/lib/stats/coachCards';
 import { SUMMARY_SELECT, toSummary, type SummaryRow } from '@/lib/stats/summaryQuery';
 import { createClient } from '@/lib/supabase/server';
+import { HOME } from '@/lib/routes';
 
 export default function ShootersPage() {
   return (
@@ -24,7 +25,7 @@ const signed = (v: number) => `${v > 0 ? '+' : v < 0 ? '−' : ''}${Math.abs(v).
 async function Body() {
   await connection();
   const profile = await getSessionProfile();
-  if (!profile || profile.role !== 'coach') redirect('/');
+  if (!profile || profile.role !== 'coach') redirect(HOME);
   const t = sr.coach;
   const shooters = await linkedShooters();
   const strip = (

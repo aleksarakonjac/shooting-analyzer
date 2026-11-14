@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { announceNewAccount } from '@/lib/email/announce';
+import { HOME } from '@/lib/routes';
 
 // OAuth (Google) lands here with a one-time code. Someone who already picked a role on the register
 // page is finished at once; everyone else continues, and the proxy sends a first-timer to onboarding.
@@ -22,5 +23,5 @@ export async function GET(request: NextRequest) {
       if (auth.user) await announceNewAccount(auth.user, p?.display_name ?? auth.user.email ?? '', picked);
     }
   }
-  return NextResponse.redirect(`${origin}/`);
+  return NextResponse.redirect(`${origin}${HOME}`);
 }

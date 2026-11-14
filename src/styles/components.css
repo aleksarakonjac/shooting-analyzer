@@ -1813,3 +1813,11 @@ html[data-target-motion]::view-transition-old(root), html[data-target-motion]::v
 .landing__grid h2 { margin: 0; font-family: var(--font-display); text-transform: uppercase; font-size: var(--fs-lg, 1.125rem); }
 .landing__grid p { margin: 0; color: var(--ink-muted); }
 .landing__foot { display: flex; flex-wrap: wrap; gap: var(--space-4); justify-content: space-between; color: var(--ink-muted); font-size: var(--fs-sm); border-top: 1px solid var(--rule); padding-top: var(--space-4); }
+
+/* Language switch (privacy policy) */
+.lang-switch { display: flex; gap: var(--space-3); justify-content: flex-end; font-size: var(--fs-sm); }
+.lang-switch a { color: var(--ink-muted); text-decoration: none; padding: 0.15rem 0.5rem; border: 1px solid transparent; border-radius: var(--radius); }
+.lang-switch a:hover { color: var(--ink); }
+.lang-switch a[aria-current='true'] { color: var(--ink); border-color: var(--rule-strong); background: var(--panel-raised); }
+.auth__card { min-width: 0; }
+.auth__card code { overflow-wrap: anywhere; }

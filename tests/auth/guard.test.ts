@@ -10,6 +10,8 @@ describe('decideRoute', () => {
     expect(decideRoute('/login', null, false)).toEqual({ allow: true });
     expect(decideRoute('/register', null, false)).toEqual({ allow: true });
     expect(decideRoute('/', null, false)).toEqual({ allow: true }); // public homepage
+    expect(decideRoute('/', p('shooter', 'active'), true)).toEqual({ redirect: '/sesije' }); // default page when signed in
+    expect(decideRoute('/sesije', null, false)).toEqual({ redirect: '/login' });
     expect(decideRoute('/trening/novi', null, false)).toEqual({ redirect: '/login' });
     expect(decideRoute('/admin/approvals', null, false)).toEqual({ redirect: '/login' });
   });
@@ -17,29 +19,30 @@ describe('decideRoute', () => {
   it('keeps the privacy policy public', () => {
     expect(decideRoute('/privatnost', null, false)).toEqual({ allow: true });
     expect(decideRoute('/privatnost', p('shooter', 'active'), true)).toEqual({ allow: true });
+    expect(decideRoute('/privacy', null, false)).toEqual({ allow: true });
   });
 
   it('sends a signed-in user without a profile row to the waiting page', () => {
-    expect(decideRoute('/', null, true)).toEqual({ redirect: '/cekanje-odobrenja' });
+    expect(decideRoute('/sesije', null, true)).toEqual({ redirect: '/cekanje-odobrenja' });
   });
 
   it.each(['pending', 'disabled'] as const)('keeps %s users on the waiting page', (status) => {
-    expect(decideRoute('/', p('shooter', status), true)).toEqual({ redirect: '/cekanje-odobrenja' });
+    expect(decideRoute('/sesije', p('shooter', status), true)).toEqual({ redirect: '/cekanje-odobrenja' });
     expect(decideRoute('/trainings/1', p('coach', status), true)).toEqual({ redirect: '/cekanje-odobrenja' });
     expect(decideRoute('/admin/approvals', p('admin', status), true)).toEqual({ redirect: '/cekanje-odobrenja' });
     expect(decideRoute('/cekanje-odobrenja', p('shooter', status), true)).toEqual({ allow: true });
   });
 
   it('lets active users in and bounces them off auth pages', () => {
-    expect(decideRoute('/', p('shooter', 'active'), true)).toEqual({ allow: true });
-    expect(decideRoute('/login', p('shooter', 'active'), true)).toEqual({ redirect: '/' });
-    expect(decideRoute('/cekanje-odobrenja', p('coach', 'active'), true)).toEqual({ redirect: '/' });
+    expect(decideRoute('/sesije', p('shooter', 'active'), true)).toEqual({ allow: true });
+    expect(decideRoute('/login', p('shooter', 'active'), true)).toEqual({ redirect: '/sesije' });
+    expect(decideRoute('/cekanje-odobrenja', p('coach', 'active'), true)).toEqual({ redirect: '/sesije' });
   });
 
   it('allows /admin only for active admins', () => {
     expect(decideRoute('/admin/approvals', p('admin', 'active'), true)).toEqual({ allow: true });
-    expect(decideRoute('/admin/approvals', p('shooter', 'active'), true)).toEqual({ redirect: '/' });
-    expect(decideRoute('/admin', p('coach', 'active'), true)).toEqual({ redirect: '/' });
+    expect(decideRoute('/admin/approvals', p('shooter', 'active'), true)).toEqual({ redirect: '/sesije' });
+    expect(decideRoute('/admin', p('coach', 'active'), true)).toEqual({ redirect: '/sesije' });
     expect(decideRoute('/administrator', p('shooter', 'active'), true)).toEqual({ allow: true });
   });
 });
@@ -47,13 +50,13 @@ describe('decideRoute', () => {
 describe('onboarding', () => {
   const fresh = { ...p('shooter', 'pending'), onboarded: false };
   it('sends a not-yet-onboarded pending user to onboarding and keeps them there', () => {
-    expect(decideRoute('/', fresh, true)).toEqual({ redirect: '/dobrodoslica' });
+    expect(decideRoute('/sesije', fresh, true)).toEqual({ redirect: '/dobrodoslica' });
     expect(decideRoute('/cekanje-odobrenja', fresh, true)).toEqual({ redirect: '/dobrodoslica' });
     expect(decideRoute('/dobrodoslica', fresh, true)).toEqual({ allow: true });
   });
   it('moves anyone else off the onboarding page', () => {
     expect(decideRoute('/dobrodoslica', { ...p('shooter', 'pending'), onboarded: true }, true)).toEqual({ redirect: '/cekanje-odobrenja' });
-    expect(decideRoute('/dobrodoslica', p('coach', 'active'), true)).toEqual({ redirect: '/' });
+    expect(decideRoute('/dobrodoslica', p('coach', 'active'), true)).toEqual({ redirect: '/sesije' });
     expect(decideRoute('/dobrodoslica', null, false)).toEqual({ redirect: '/login' });
   });
 });

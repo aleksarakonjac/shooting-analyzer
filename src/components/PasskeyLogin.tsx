@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { sr } from '@/lib/i18n/sr';
+import { HOME } from '@/lib/routes';
 
 /** Signs in with a saved passkey (the browser shows its own picker). The browser client stores the session cookie, so a refresh lets the server see it. */
 export function PasskeyLogin() {
@@ -18,7 +19,7 @@ export function PasskeyLogin() {
       setBusy(false);
       return;
     }
-    router.push('/');
+    router.push(HOME);
     router.refresh();
   }
   return (

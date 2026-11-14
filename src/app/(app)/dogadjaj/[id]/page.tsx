@@ -9,6 +9,7 @@ import { updateEventForm } from '@/lib/eventActions';
 import { sr } from '@/lib/i18n/sr';
 import { eventRows, type EventSessionRow } from '@/lib/sessions/eventRows';
 import { createClient } from '@/lib/supabase/server';
+import { HOME } from '@/lib/routes';
 
 type Search = { sacuvano?: string; greska?: string };
 
@@ -56,7 +57,7 @@ async function Body({ params, searchParams }: { params: Promise<{ id: string }>;
   const t = sr.event;
   const nt = sr.newTraining;
   const mixed = new Set(rows.map((r) => r.discipline)).size > 1;
-  const back = profile?.id === event.shooter_id ? '/' : `/strelci/${event.shooter_id}`;
+  const back = profile?.id === event.shooter_id ? HOME : `/strelci/${event.shooter_id}`;
   const dates = [event.starts_on, event.ends_on].filter(Boolean).map((d) => day(d!));
   const fmt = (v: number | null, decimal: boolean) => (v === null ? '—' : v.toFixed(decimal ? 1 : 0));
 

@@ -1,3 +1,5 @@
+import { HOME } from '@/lib/routes';
+
 export interface SessionProfile {
   id: string;
   role: 'shooter' | 'coach' | 'admin';
@@ -27,8 +29,8 @@ export function decideRoute(pathname: string, profile: SessionProfile | null, si
   // The e-mailed approval link is authorized by its own signature, so the admin needs no sign-in.
   if (isUnder(pathname, '/odobrenje')) return { allow: true };
   // Privacy policy is public: Google's consent screen and signed-out visitors must reach it.
-  if (isUnder(pathname, '/privatnost')) return { allow: true };
-  // Public homepage: Google's verification and signed-out visitors land here. Signed-in users fall through below.
+  if (isUnder(pathname, '/privatnost') || isUnder(pathname, '/privacy')) return { allow: true };
+  // Public homepage for signed-out visitors (Google's verification review included). Signed-in users go on to HOME below.
   if (pathname === '/' && !signedIn) return { allow: true };
   // OAuth return: arrives without a session until the code is exchanged.
   if (isUnder(pathname, '/auth/callback')) return { allow: true };
@@ -39,9 +41,9 @@ export function decideRoute(pathname: string, profile: SessionProfile | null, si
   if (profile && profile.status === 'pending' && profile.onboarded === false) {
     return isUnder(pathname, ONBOARDING) ? { allow: true } : { redirect: ONBOARDING };
   }
-  if (isUnder(pathname, ONBOARDING)) return { redirect: profile?.status === 'active' ? '/' : WAITING };
+  if (isUnder(pathname, ONBOARDING)) return { redirect: profile?.status === 'active' ? HOME : WAITING };
   if (!profile || profile.status !== 'active') return onWaiting ? { allow: true } : { redirect: WAITING };
-  if (onAuthPage || onWaiting) return { redirect: '/' };
-  if (isUnder(pathname, '/admin') && profile.role !== 'admin') return { redirect: '/' };
+  if (onAuthPage || onWaiting || pathname === '/') return { redirect: HOME };
+  if (isUnder(pathname, '/admin') && profile.role !== 'admin') return { redirect: HOME };
   return { allow: true };
 }

@@ -8,6 +8,7 @@ import { pipTopFor } from '@/lib/report/target';
 import { createAdminClient, siteUrl } from '@/lib/supabase/admin';
 import { verifyApproval } from '@/lib/auth/approvalToken';
 import { announceNewAccount } from '@/lib/email/announce';
+import { HOME } from '@/lib/routes';
 
 export type FormState = { error?: string } | undefined;
 
@@ -18,7 +19,7 @@ export async function login(_: FormState, form: FormData): Promise<FormState> {
     password: String(form.get('password') ?? ''),
   });
   if (error) return { error: 'badCredentials' };
-  redirect('/');
+  redirect(HOME);
 }
 
 export async function register(_: FormState, form: FormData): Promise<FormState> {

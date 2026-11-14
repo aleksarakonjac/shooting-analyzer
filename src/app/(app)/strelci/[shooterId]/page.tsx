@@ -5,6 +5,7 @@ import { ShooterDashboard, type DashboardSearch } from '@/components/ShooterDash
 import { linkedShooters } from '@/lib/auth/linkedShooters';
 import { getSessionProfile } from '@/lib/auth/session';
 import { sr } from '@/lib/i18n/sr';
+import { HOME } from '@/lib/routes';
 
 export default function ShooterPage({
   params,
@@ -23,7 +24,7 @@ export default function ShooterPage({
 async function Body({ params, searchParams }: { params: Promise<{ shooterId: string }>; searchParams: Promise<DashboardSearch> }) {
   await connection();
   const profile = await getSessionProfile();
-  if (!profile || profile.role !== 'coach') redirect('/');
+  if (!profile || profile.role !== 'coach') redirect(HOME);
   const { shooterId } = await params;
   const shooter = (await linkedShooters()).find((s) => s.id === shooterId);
   if (!shooter) notFound();
