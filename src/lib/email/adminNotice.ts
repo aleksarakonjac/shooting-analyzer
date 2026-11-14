@@ -16,7 +16,7 @@ export async function notifyAdminOfRequest(r: NewAccountRequest): Promise<boolea
       method: 'POST',
       headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        from: process.env.EMAIL_FROM || 'Shooting Analyzer <onboarding@resend.dev>',
+        from: process.env.EMAIL_FROM || 'ZeroIn <onboarding@resend.dev>',
         to,
         subject: `Novi zahtev za nalog ${role}: ${r.name}`,
         text: `${r.name} (${r.email}) traži nalog ${role}.\n\nPregled i odobrenje: ${r.link}\n`,

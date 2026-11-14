@@ -1,16 +1,15 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
-  <title>Shooting Analyzer</title>
-  <defs>
-    <mask id="cut" maskUnits="userSpaceOnUse" x="0" y="0" width="512" height="512">
-      <rect width="512" height="512" fill="#fff"/>
-      <polygon points="310.8,20 372.8,20 231.2,492 169.2,492" fill="#000"/>
-      <polygon points="-193.2,290 106.8,290 64.8,430 -235.2,430" fill="#000"/>
-    </mask>
-  </defs>
+  <title>ZeroIn</title>
   <rect width="512" height="512" fill="#0b1530"/>
-  <g mask="url(#cut)">
-    <path transform="matrix(1 0 -0.2 1 47.2 0)" d="M 262 151.0 L 180 151.0 C 132 151.0 116 175 116 200 C 116 230 142 242 170 251 C 202 262 222 278 222 307 C 222 342 200 361.0 158 361.0 L 20 361.0" fill="none" stroke="#f3f6fc" stroke-width="50" stroke-linecap="butt" stroke-linejoin="round"/>
-    <path transform="matrix(1 0 -0.2 1 77.2 0)" d="M 261.0 386 L 339.0 126 L 365.0 126 L 443.0 386 L 395.0 386 L 380.0 336 L 324.0 336 L 309.0 386 Z M 337.2 292 L 366.8 292 L 352.0 242.7 Z" fill="#f3f6fc" fill-rule="evenodd"/>
+  <g transform="translate(4 11) matrix(1 0 -0.18 1 46 0)">
+    <!-- the 0 -->
+    <rect x="78" y="141" width="136" height="208" rx="68" fill="none" stroke="#f3f6fc" stroke-width="34"/>
+    <!-- dotless "in" -->
+    <g fill="none" stroke="#f3f6fc" stroke-width="34">
+      <line x1="290" y1="250" x2="290" y2="366"/>
+      <path d="M345 366 V286 Q345 250 385 250 Q425 250 425 286 V366"/>
+    </g>
   </g>
-  <polygon points="300.2,92 340.2,92 241.8,420 201.8,420" fill="#39c6f0"/>
+  <!-- the i's dot, zeroed in: dead centre of the 0 -->
+  <circle cx="151.9" cy="256" r="25" fill="#39c6f0"/>
 </svg>

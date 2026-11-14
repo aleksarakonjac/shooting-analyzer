@@ -1,8 +1,8 @@
 // Serbian UI string table. Later tasks add keys; identifiers stay English.
 export const sr = {
-  appName: 'Shooting Analyzer',
+  appName: 'ZeroIn',
   /** Working name shown on the rail. */
-  brand: 'Shooting Analyzer',
+  brand: 'ZeroIn',
   nav: {
     label: 'Glavna navigacija',
     skip: 'Preskoči na sadržaj',
@@ -664,7 +664,7 @@ export const sr = {
       'Dodajte radnju „Get Contents of URL”. URL: ',
       'Method: POST. Headers: Authorization = Bearer <vaš ključ>. Request Body: Form, polje „file” tipa File = Shortcut Input.',
       'Dodajte „Get Dictionary Value” (ključ „url”) iz rezultata, pa „Open URLs”.',
-      'Nazovite prečicu, npr. „Shooting Analyzer”. U SCATT-u: Export → u meniju za deljenje izaberite tu prečicu.',
+      'Nazovite prečicu, npr. „ZeroIn”. U SCATT-u: Export → u meniju za deljenje izaberite tu prečicu.',
     ],
     waitingTitle: 'Sa telefona',
     waitingHint: 'Fajlovi poslati prečicom čekaju ovde dok ih ne dodate u sesiju.',

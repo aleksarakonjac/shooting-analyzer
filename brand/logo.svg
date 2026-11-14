@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <title>ZeroIn</title>
+  <rect width="512" height="512" fill="#0b1530"/>
+  <g transform="translate(4 11) matrix(1 0 -0.18 1 46 0)">
+    <!-- the 0 -->
+    <rect x="78" y="141" width="136" height="208" rx="68" fill="none" stroke="#f3f6fc" stroke-width="34"/>
+    <!-- dotless "in" -->
+    <g fill="none" stroke="#f3f6fc" stroke-width="34">
+      <line x1="290" y1="250" x2="290" y2="366"/>
+      <path d="M345 366 V286 Q345 250 385 250 Q425 250 425 286 V366"/>
+    </g>
+  </g>
+  <!-- the i's dot, zeroed in: dead centre of the 0 -->
+  <circle cx="151.9" cy="256" r="25" fill="#39c6f0"/>
+</svg>

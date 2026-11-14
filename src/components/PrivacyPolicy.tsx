@@ -3,7 +3,7 @@ import Link from 'next/link';
 
 export type PolicyLang = 'sr' | 'en';
 
-const APP = 'Shooting Analyzer';
+const APP = 'ZeroIn';
 const PERMISSIONS_URL = 'https://myaccount.google.com/permissions';
 const GOOGLE_POLICY_URL = 'https://developers.google.com/terms/api-services-user-data-policy';
 
