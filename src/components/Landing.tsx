@@ -41,8 +41,11 @@ export function Landing() {
       </section>
 
       <footer className="landing__foot">
-        <Link href="/privatnost">Politika privatnosti</Link>
-        <span>© {new Date().getFullYear()} {sr.appName}</span>
+        <span className="landing__links">
+          <Link href="/privatnost">Politika privatnosti</Link>
+          <Link href="/privacy" hrefLang="en" lang="en">Privacy Policy</Link>
+        </span>
+        <span>© {sr.appName}</span>
       </footer>
     </main>
   );

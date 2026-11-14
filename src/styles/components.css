@@ -1821,3 +1821,4 @@ html[data-target-motion]::view-transition-old(root), html[data-target-motion]::v
 .lang-switch a[aria-current='true'] { color: var(--ink); border-color: var(--rule-strong); background: var(--panel-raised); }
 .auth__card { min-width: 0; }
 .auth__card code { overflow-wrap: anywhere; }
+.landing__links { display: flex; flex-wrap: wrap; gap: var(--space-4); }
