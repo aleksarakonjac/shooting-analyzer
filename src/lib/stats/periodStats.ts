@@ -123,10 +123,23 @@ export interface SessionPoint {
   id: string;
   trainedOn: string;
   name: string;
+  /** Sum of every series of the session. */
   total: number | null;
+  /** Average over every series of the session. */
   avgSeries: number | null;
   avgGroupMm: number | null;
   hr: number | null;
+  /** Series with a score in the session. */
+  seriesCount: number;
+  /** The discipline's match length in series (6), or null when it has none. */
+  matchSeries: number | null;
+  /**
+   * The session as one match of `matchSeries` series, so sessions of different length compare:
+   * the first `matchSeries` series when there are as many or more, the average times `matchSeries` when there are
+   * fewer (`projected`), the plain total when the discipline has no match length.
+   */
+  matchScore: number | null;
+  projected: boolean;
 }
 
 /** One chart point per session of a discipline, oldest first. */
@@ -137,14 +150,26 @@ export function sessionPoints(trainings: TrainingSummary[], discipline: Discipli
     .map((t) => {
       const scores = t.matches.flatMap((m) => m.series).map((s) => seriesScore(t.discipline, s)).filter((v): v is number => v !== null);
       const avg = averages([t]);
+      const sum = (xs: number[]) => xs.reduce((a, b) => a + b, 0);
+      const n = DISCIPLINES[t.discipline].referenceMatchSeries;
+      const projected = n !== null && scores.length > 0 && scores.length < n;
+      const matchScore =
+        scores.length === 0 ? null
+        : n === null ? round1(sum(scores))
+        : projected ? round1((sum(scores) / scores.length) * n)
+        : round1(sum(scores.slice(0, n)));
       return {
         id: t.id,
         trainedOn: t.trainedOn,
         name: t.name,
-        total: scores.length ? round1(scores.reduce((a, b) => a + b, 0)) : null,
+        total: scores.length ? round1(sum(scores)) : null,
         avgSeries: avg.avgSeries,
         avgGroupMm: avg.avgGroupMm,
         hr: hrCounts(t) ? t.hrAvg : null,
+        seriesCount: scores.length,
+        matchSeries: n,
+        matchScore,
+        projected,
       };
     });
 }

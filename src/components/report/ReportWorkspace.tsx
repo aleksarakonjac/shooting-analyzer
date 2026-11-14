@@ -1,6 +1,6 @@
 'use client';
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
-import { createPortal } from 'react-dom';
+import { createPortal, flushSync } from 'react-dom';
 import type { DisciplineId } from '@/lib/domain/types';
 import { sr } from '@/lib/i18n/sr';
 import { coordinationOption, rhythmOption, type TracePick, scattMetricOption, shotSpeedOption, timelineOption, rolling, pulseValueAt, type Selection } from '@/lib/report/charts';
@@ -91,9 +91,23 @@ function ReportBoard({
       /* storage blocked: the target shows */
     }
   }, []);
+  const lastMotion = useRef<ViewTransition | null>(null);
   const toggleTarget = () => {
     const next = !targetOff;
-    setTargetOff(next);
+    // The layout change is one view transition: the target wipes away into the rail and the list or charts widen
+    // over its place (back the other way when shown). Without view transitions it simply switches.
+    const root = document.documentElement;
+    if (typeof document.startViewTransition === 'function') {
+      root.dataset.targetMotion = next ? 'hide' : 'show';
+      const vt = document.startViewTransition(() => flushSync(() => setTargetOff(next)));
+      // A quick second tap starts a new transition: only the latest one clears the direction it needs.
+      lastMotion.current = vt;
+      vt.finished.finally(() => {
+        if (lastMotion.current === vt) delete root.dataset.targetMotion;
+      });
+    } else {
+      setTargetOff(next);
+    }
     try {
       localStorage.setItem(TARGET_OFF_KEY, next ? '1' : '0');
     } catch {

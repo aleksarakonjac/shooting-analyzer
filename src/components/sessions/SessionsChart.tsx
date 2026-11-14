@@ -7,15 +7,15 @@ import { sessionsOption } from '@/lib/stats/trendChart';
 import { EChart } from '../report/EChart';
 
 const t = sr.dashboard;
-const LABEL: Record<ChartKind, string> = { rez: t.avgSeries, puls: t.avgHr, grupa: t.avgGroup };
-const pick: Record<ChartKind, (p: SessionPoint) => number | null> = { rez: (p) => p.avgSeries, puls: (p) => p.hr, grupa: (p) => p.avgGroupMm };
+const LABEL: Record<ChartKind, string> = { rez: t.matchScore, puls: t.avgHr, grupa: t.avgGroup };
+const pick: Record<ChartKind, (p: SessionPoint) => number | null> = { rez: (p) => p.matchScore, puls: (p) => p.hr, grupa: (p) => p.avgGroupMm };
 
 /** One figure per session over time, with the same figures as a table for screen readers. */
 export function SessionsChart({ points, kind, decimal }: { points: SessionPoint[]; kind: ChartKind; decimal: boolean }) {
   const option = useMemo(() => sessionsOption(points, kind, decimal), [points, kind, decimal]);
   const filled = points.filter((p) => pick[kind](p) !== null);
   if (filled.length === 0) return <p className="panel__empty">{t.noData}</p>;
-  const digits = kind === 'puls' ? 0 : 1;
+  const digits = kind === 'puls' || (kind === 'rez' && !decimal) ? 0 : 1;
   return (
     <div className="chart-panel chart-panel--bare">
       <EChart option={option} label={`${LABEL[kind]}: ${filled.length}`} />

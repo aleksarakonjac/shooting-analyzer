@@ -1234,6 +1234,8 @@ input[type='file']::file-selector-button { font: inherit; font-weight: 700; marg
 @media (min-width: 721px) {
   .shell { --rail-w: 9.5rem; }
   .shell__rail { padding: var(--space-2) var(--space-2) var(--space-3); gap: var(--space-4); }
+  /* The wordmark spans the rail's whole content width (9.5rem less its 0.5rem padding each side); the size is that width over the wordmark's width in em */
+  .shell__brand { font-size: 1.01rem; padding-inline: 0; }
   .shell__link { min-height: 2.125rem; padding: 0 var(--space-2); gap: var(--space-2); font-size: var(--fs-sm); }
   .shell__link svg { width: 18px; height: 18px; }
   .shell__toggle { min-height: 1.75rem; width: 1.75rem; }
@@ -1564,4 +1566,49 @@ button.hr-align__toggle:hover:not(:disabled) { color: var(--ink); background: va
   .ws--tabbed .trace__canvas { min-height: 0; }
   .ws--tabbed .trace__foot { padding: var(--space-2) var(--space-3); gap: var(--space-1); }
   .ws--tabbed .target svg { min-height: 0; }
+}
+
+/* Hide / show the target (phone on its side): one view transition. The target wipes away into the rail on the left
+   and the strip, tabs and the open panel widen over its place; showing it runs the same path back. */
+@media (orientation: landscape) and (max-height: 520px) {
+  .ws--pinned .ws__grid > .panel[data-pinned],
+  .ws--tabbed .ws__grid > .panel[data-panel='target'][data-active] { view-transition-name: report-target; }
+  .ws--pinned .ws__grid > .panel[data-active]:not([data-pinned]),
+  .ws--tabbed .ws__grid > .panel[data-active]:not([data-panel='target']) { view-transition-name: report-panel; }
+  .ws--pinned > .ws__strip, .ws--tabbed > .ws__strip { view-transition-name: report-strip; }
+  .ws--pinned > .ws__tabs, .ws--tabbed > .ws__tabs { view-transition-name: report-tabs; }
+}
+html[data-target-motion]::view-transition-group(report-strip),
+html[data-target-motion]::view-transition-group(report-tabs),
+html[data-target-motion]::view-transition-group(report-panel),
+html[data-target-motion]::view-transition-group(report-target) {
+  animation-duration: 380ms; animation-timing-function: var(--ease-out); overflow: clip;
+}
+/* The text inside a widening bar must not stretch: both captures sit at the top left at their own size, the old one
+   gives way quickly to the new one */
+html[data-target-motion]::view-transition-old(report-strip), html[data-target-motion]::view-transition-new(report-strip),
+html[data-target-motion]::view-transition-old(report-tabs), html[data-target-motion]::view-transition-new(report-tabs),
+html[data-target-motion]::view-transition-old(report-panel), html[data-target-motion]::view-transition-new(report-panel) {
+  height: 100%; width: auto; object-fit: none; object-position: left top;
+}
+html[data-target-motion]::view-transition-old(report-strip),
+html[data-target-motion]::view-transition-old(report-tabs),
+html[data-target-motion]::view-transition-old(report-panel) { animation: vt-fade-out 120ms ease-out both; }
+html[data-target-motion]::view-transition-new(report-strip),
+html[data-target-motion]::view-transition-new(report-tabs),
+html[data-target-motion]::view-transition-new(report-panel) { animation: vt-fade-in 220ms var(--ease-out) both; }
+/* The target alone (hiding it, or showing it while another tab is open): a wipe toward the rail and back */
+html[data-target-motion='hide']::view-transition-old(report-target):only-child { animation: target-tuck 240ms cubic-bezier(0.55, 0, 0.55, 0.2) both; }
+html[data-target-motion='show']::view-transition-new(report-target):only-child { animation: target-untuck 380ms var(--ease-out) both; }
+html[data-target-motion]::view-transition-old(root), html[data-target-motion]::view-transition-new(root) { animation-duration: 160ms; }
+@keyframes target-tuck { to { clip-path: inset(0 100% 0 0); transform: translateX(-1.5rem); opacity: 0.35; } }
+@keyframes target-untuck { from { clip-path: inset(0 100% 0 0); transform: translateX(-1.5rem); opacity: 0.35; } }
+@keyframes vt-fade-out { to { opacity: 0; } }
+@keyframes vt-fade-in { from { opacity: 0; } }
+@media (prefers-reduced-motion: reduce) {
+  /* No travel: the pieces fade in place, the layout change itself still reads */
+  html[data-target-motion]::view-transition-group(*) { animation-duration: 0s; }
+  html[data-target-motion='hide']::view-transition-old(report-target):only-child,
+  html[data-target-motion='show']::view-transition-new(report-target):only-child { animation: vt-fade-out 160ms ease-out both; }
+  html[data-target-motion='show']::view-transition-new(report-target):only-child { animation-name: vt-fade-in; }
 }

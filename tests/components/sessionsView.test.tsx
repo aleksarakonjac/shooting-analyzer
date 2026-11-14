@@ -75,10 +75,10 @@ describe('SessionsView', () => {
     view([tr('a', '2026-11-09')]);
     const side = () => document.querySelector('[data-panel="side"]');
     expect(side()?.hasAttribute('data-closed')).toBe(true);
-    fireEvent.click(screen.getByRole('button', { name: 'Prikaži brojke i grafik' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Prikaži učinak' }));
     expect(side()?.hasAttribute('data-closed')).toBe(false);
     expect(window.location.search).toBe('?s=1');
-    fireEvent.click(screen.getByRole('button', { name: 'Sakrij brojke i grafik' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Sakrij učinak' }));
     expect(side()?.hasAttribute('data-closed')).toBe(true);
     expect(window.location.search).toBe('');
   });
