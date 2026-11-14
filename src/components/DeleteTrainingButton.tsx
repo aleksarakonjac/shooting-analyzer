@@ -14,12 +14,11 @@ export function DeleteTrainingButton({ id }: { id: string }) {
     );
   }
   return (
-    <form action={deleteTrainingForm} role="alertdialog" aria-label={t.deleteAsk}>
+    <form action={deleteTrainingForm} role="alertdialog" aria-label={t.deleteAsk} style={{ display: 'contents' }}>
       <input type="hidden" name="id" value={id} />
-      <p>{t.deleteAsk}</p>
-      <button type="submit" className="button--danger">{t.deleteYes}</button>{' '}
+      <button type="submit" className="button--danger">{t.deleteYes}</button>
       <button type="button" className="button--quiet" onClick={() => setAsking(false)}>
-        {t.cancel}
+        {t.deleteNo}
       </button>
     </form>
   );
