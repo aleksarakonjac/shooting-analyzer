@@ -12,11 +12,12 @@ describe('disciplineFromSiusName', () => {
     ['50m Rifle 3x20', 'smallbore_3p'],
     ['50m Rifle 3x40', 'smallbore_3p'],
     ['10m Air Pistol 60', 'air_pistol'],
-    ['25m Pistol', 'smallbore_pistol'],
-    ['50m Pistol', 'smallbore_pistol'],
-    ['25m Sport Pistol', 'smallbore_pistol'],
-    ['25m Rapid Fire Pistol', 'smallbore_pistol'],
-    ['50m Free Pistol', 'smallbore_pistol'],
+    // Other pistol events are not supported yet.
+    ['25m Pistol', undefined],
+    ['50m Pistol', undefined],
+    ['25m Sport Pistol', undefined],
+    ['25m Rapid Fire Pistol', undefined],
+    ['50m Free Pistol', undefined],
     ['10m Air Pistol 60', 'air_pistol'],
   ])('%s -> %s', (name, id) => {
     expect(disciplineFromSiusName(name)).toBe(id);
@@ -32,19 +33,17 @@ describe('DISCIPLINES', () => {
     expect(DISCIPLINES.smallbore_3p.hasPositions).toBe(true);
     expect(DISCIPLINES.air_rifle.hasPositions).toBe(false);
     expect(DISCIPLINES.air_pistol.hasPositions).toBe(false);
-    expect(DISCIPLINES.smallbore_pistol.hasPositions).toBe(false);
   });
 
   it('carries Serbian names', () => {
     expect(DISCIPLINES.air_rifle.nameSr).toBe('Vazdušna puška');
     expect(DISCIPLINES.smallbore_3p.nameSr).toBe('MK puška trostav');
     expect(DISCIPLINES.air_pistol.nameSr).toBe('Vazdušni pištolj');
-    expect(DISCIPLINES.smallbore_pistol.nameSr).toBe('MK pištolj');
   });
 
   it('follows spec 6a scoring rules', () => {
     expect(DISCIPLINES.air_rifle).toMatchObject({ decimal: true, maxShot: 10.9, maxSeries: 109.0 });
-    for (const d of ['smallbore_3p', 'air_pistol', 'smallbore_pistol'] as const) {
+    for (const d of ['smallbore_3p', 'air_pistol'] as const) {
       expect(DISCIPLINES[d]).toMatchObject({ decimal: false, maxShot: 10, maxSeries: 100 });
     }
   });
@@ -52,7 +51,6 @@ describe('DISCIPLINES', () => {
   it('keeps referenceMatchSeries as display reference only', () => {
     expect(DISCIPLINES.air_rifle.referenceMatchSeries).toBe(6);
     expect(DISCIPLINES.air_pistol.referenceMatchSeries).toBe(6);
-    expect(DISCIPLINES.smallbore_pistol.referenceMatchSeries).toBe(6);
     expect(DISCIPLINES.smallbore_3p.referenceMatchSeries).toBeNull();
   });
 });

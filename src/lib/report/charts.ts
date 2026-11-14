@@ -17,6 +17,8 @@ export const CHART = {
   panelSunk: '#0a1430',
   data: '#39c6f0',
   select: '#ffffff',
+  /** The picked or hovered shot on a chart: a warm yellow no score band uses, so it cannot be mistaken for one. */
+  pick: '#f2c94c',
   /** SCATT's own colours for its analysis charts: green for aiming, orange for speed. */
   green: '#3ddc8a',
   orange: '#ffa21f',
@@ -69,6 +71,20 @@ const zoom = [
   },
 ];
 
+/**
+ * The time charts also zoom by pinching (a trackpad pinch on a desktop) and, once zoomed, pan by swiping sideways.
+ * A plain wheel stays with the page, and so does a vertical swipe (preventDefaultMouseMove off, touch-action pan-y on the chart).
+ */
+const zoomPinch: unknown[] = [
+  ...zoom,
+  {
+    type: 'inside', xAxisIndex: 0, filterMode: 'none',
+    // `true` (not 'ctrl') so a touch pinch counts; EChart keeps a plain wheel away from the chart so the page still scrolls.
+    zoomOnMouseWheel: true, moveOnMouseWheel: false, moveOnMouseMove: true, preventDefaultMouseMove: false,
+    minValueSpan: 20_000,
+  },
+];
+
 /** Score over clock time: one point per timed shot, a shaded band per series, the selection drawn large and white. */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function timelineOption(v: ReportView, sel: Selection, tz: string, hr?: HrSample[]): any {
@@ -88,15 +104,43 @@ export function timelineOption(v: ReportView, sel: Selection, tz: string, hr?: H
       n: s.n,
       series: s.series,
       value: [s.tMs, s.value],
-      symbolSize: selected ? 14 : inSeries ? 8 : 6,
+      // The picked point is the one a little larger; the others keep their size.
+      symbolSize: selected ? 11 : inSeries ? 8 : 6,
       itemStyle: {
-        color: selected ? CHART.select : CHART.band[s.band],
-        borderColor: selected ? '#0b1530' : 'transparent',
-        borderWidth: selected ? 2 : 0,
+        color: selected ? CHART.pick : CHART.band[s.band],
         opacity: sel.series === null || inSeries || selected ? 1 : 0.45,
       },
     };
   });
+  // With a pulse line the tooltip follows the pointer along the time axis: a vertical line, the pulse value under it, and
+  // the shot too when the pointer is on one. Without a pulse the tooltip belongs to the hovered shot only.
+  const pulse = hr?.length ? rolling(hr, 15_000) : [];
+  const times = shots.map((s) => s.tMs!);
+  const spanMs = times.length ? Math.max(...times) - Math.min(...times) : 0;
+  const hitTol = Math.max(1500, spanMs / 300);
+  const pulseAt = (t: number): number | null => {
+    const b = pulseValueAt(pulse, t);
+    return b === null ? null : Math.round(b);
+  };
+  const shotLine = (n: number, value: number) => `Pogodak ${n}. <b style="font-size:1.35em">${value.toFixed(v.decimal ? 1 : 0)}</b>`;
+  const axisTooltip = {
+    ...tooltipCommon,
+    trigger: 'axis',
+    axisPointer: { type: 'line', snap: false, lineStyle: { color: CHART.faint, width: 1 } },
+    formatter: (ps: { axisValue?: number }[]) => {
+      const t = ps[0]?.axisValue;
+      if (typeof t !== 'number') return '';
+      const bpm = pulseAt(t);
+      const near = shots.reduce<(typeof shots)[number] | null>((best, s) => (Math.abs(s.tMs! - t) <= hitTol && (!best || Math.abs(s.tMs! - t) < Math.abs(best.tMs! - t)) ? s : best), null);
+      if (bpm === null && !near) return '';
+      // The shot first (its number plain, its score bold and larger), then the pulse, then the clock time.
+      const lines: string[] = [];
+      if (near) lines.push(shotLine(near.n, near.value));
+      if (bpm !== null) lines.push(`Puls ${bpm}`);
+      lines.push(fmt(t));
+      return lines.join('<br/>');
+    },
+  };
   const bands = v.series
     .map((s) => {
       const t = s.shots.map((x) => x.tMs).filter((x): x is number => x !== null);
@@ -115,21 +159,23 @@ export function timelineOption(v: ReportView, sel: Selection, tz: string, hr?: H
     .filter(Boolean);
   return {
     animation: false,
-    grid: { left: 34, right: hr?.length ? 46 : 12, top: 26, bottom: 48 },
-    tooltip: {
-      ...tooltipCommon,
-      trigger: 'item',
-      formatter: (p: { data: { n: number; series: number; value: [number, number] } }) =>
-        `<b>Pogodak ${p.data.n}</b> · Serija ${p.data.series}<br/>${p.data.value[1].toFixed(v.decimal ? 1 : 0)} · ${fmt(p.data.value[0])}`,
-    },
+    grid: { left: 34, right: hr?.length ? 30 : 12, top: 26, bottom: 48 },
+    tooltip: hr?.length
+      ? axisTooltip
+      : {
+          ...tooltipCommon,
+          trigger: 'item',
+          formatter: (p: { data: { n: number; series: number; value: [number, number] } }) =>
+            `${shotLine(p.data.n, p.data.value[1])}<br/>${fmt(p.data.value[0])}`,
+        },
     axisPointer: { link: [{ xAxisIndex: 'all' }], lineStyle: { color: CHART.faint } },
-    dataZoom: zoom,
+    dataZoom: zoomPinch,
     xAxis: timeAxis(fmt),
     yAxis: [
       { ...axisCommon, type: 'value', min: minY, max: v.decimal ? 10.9 : 10, interval: v.decimal ? 0.1 : 1, axisLabel: { ...axisCommon.axisLabel, formatter: (n: number) => (v.decimal ? n.toFixed(1) : String(n)) } },
       ...(hr?.length
         ? [{
-            ...axisCommon, type: 'value', name: 'otk/min', nameLocation: 'middle', nameGap: 30, nameRotate: -90, position: 'right',
+            ...axisCommon, type: 'value', position: 'right',
             min: Math.floor(hrLo - 2), max: Math.ceil(hrHi + 2 * hrSpan), splitLine: { show: false },
             // Only the heart-rate band carries labels; the stretched upper part sits beside the shots.
             axisLabel: { ...axisCommon.axisLabel, formatter: (v: number) => (v <= hrHi + 1 ? String(v) : '') },
@@ -142,17 +188,41 @@ export function timelineOption(v: ReportView, sel: Selection, tz: string, hr?: H
         name: 'Pogoci',
         data,
         z: 3,
-        emphasis: { scale: 1.4 },
+        // Hover shows the pick colour on the point under the pointer: colour only, no scaling.
+        emphasis: { scale: false, itemStyle: { color: CHART.pick, opacity: 1 } },
         markArea: { silent: true, data: bands },
       },
+      // The dot where the pointer line crosses the pulse line; EChart moves it (see its `cursorDot`).
+      ...(hr?.length ? [{ type: 'scatter', id: 'pulse-cursor', yAxisIndex: 1, data: [], symbolSize: 7, z: 6, silent: true, tooltip: { show: false }, itemStyle: { color: CHART.ink, borderColor: '#0b1530', borderWidth: 1.5 } }] : []),
       ...(hr?.length
         ? [{
-            type: 'line', name: 'Puls', yAxisIndex: 1, data: rolling(hr, 15_000), showSymbol: false, smooth: 0.3, z: 2,
+            type: 'line', name: 'Puls', yAxisIndex: 1, data: pulse, showSymbol: false, smooth: 0.3, z: 2,
             lineStyle: { color: CHART.muted, width: 1.25, opacity: 0.45 }, tooltip: { show: false },
           }]
         : []),
     ],
   };
+}
+
+/**
+ * The smoothed pulse at time t: linear between the two neighbouring points, null when they are more than 10 s apart.
+ * Up to a second beyond either end the end value holds, further out there is none.
+ */
+export function pulseValueAt(pulse: [number, number][], t: number): number | null {
+  let lo = 0;
+  let hi = pulse.length - 1;
+  if (hi < 0) return null;
+  if (t < pulse[0][0]) return pulse[0][0] - t <= 1000 ? pulse[0][1] : null;
+  if (t > pulse[hi][0]) return t - pulse[hi][0] <= 1000 ? pulse[hi][1] : null;
+  while (hi - lo > 1) {
+    const mid = (lo + hi) >> 1;
+    if (pulse[mid][0] <= t) lo = mid;
+    else hi = mid;
+  }
+  const [t0, b0] = pulse[lo];
+  const [t1, b1] = pulse[hi];
+  if (t1 - t0 > 10_000) return null;
+  return t1 === t0 ? b0 : b0 + ((b1 - b0) * (t - t0)) / (t1 - t0);
 }
 
 /** Mean of the samples in the trailing window, one point per sample (rough smoothing of per-second data). */
@@ -208,7 +278,7 @@ export function hrOption(samples: HrSample[], v: ReportView, sel: Selection, tz:
           : '',
     },
     axisPointer: { link: [{ xAxisIndex: 'all' }], lineStyle: { color: CHART.faint } },
-    dataZoom: zoom,
+    dataZoom: zoomPinch,
     xAxis: timeAxis(fmt),
     yAxis: { ...axisCommon, type: 'value', name: 'otk/min', nameLocation: 'middle', nameGap: 30, nameRotate: 90, scale: true },
     series: [
@@ -273,7 +343,7 @@ export function rhythmOption(r: Rhythm, sel: Selection): any {
       formatter: (p: { data: { n: number; series: number; value: [string, number] } }) =>
         `<b>Pogodak ${p.data.n}</b> · Serija ${p.data.series}<br/>${p.data.value[1].toFixed(1)} s od prethodnog`,
     },
-    dataZoom: zoom,
+    dataZoom: zoomPinch,
     xAxis: { ...axisCommon, type: 'category', name: 'Pogodak', nameLocation: 'middle', nameGap: 26, data: bars.map((p) => String(p.n)), splitLine: { show: false } },
     yAxis: { ...axisCommon, type: 'value', min: 0 },
     series: [

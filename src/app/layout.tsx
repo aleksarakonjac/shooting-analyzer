@@ -28,6 +28,8 @@ export const metadata: Metadata = {
 export const viewport: Viewport = {
   width: 'device-width',
   initialScale: 1,
+  // Content runs under the notch and home bar; the shell pads by env(safe-area-inset-*).
+  viewportFit: 'cover',
   colorScheme: 'dark',
   themeColor: '#0b1530',
 };

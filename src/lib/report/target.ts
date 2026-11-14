@@ -17,7 +17,6 @@ const SPECS: Record<DisciplineId, TargetSpec> = {
   air_rifle: { tenMm: 0.5, stepMm: 5, blackMm: 30.5, minViewRing: 9 },
   air_pistol: { tenMm: 11.5, stepMm: 16, blackMm: 59.5, minViewRing: 9 },
   smallbore_3p: { tenMm: 10.4, stepMm: 16, blackMm: 112.4, minViewRing: 9 },
-  smallbore_pistol: { tenMm: 50, stepMm: 50, blackMm: 200, minViewRing: 9 },
 };
 
 export const targetSpec = (d: DisciplineId): TargetSpec => SPECS[d];

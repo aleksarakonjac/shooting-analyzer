@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { buildReportView, type RawSeries } from '@/lib/report/viewModel';
-import { hrOption, rolling, timelineOption } from '@/lib/report/charts';
+import { hrOption, pulseValueAt, rolling, timelineOption } from '@/lib/report/charts';
 
 const raw: RawSeries[] = [
   { id: 'b', idx: 2, position: null, total: 103, total_decimal: 103.7, mpi_x: 1.2, mpi_y: -0.5, group_mm: 9.1,
@@ -45,7 +45,7 @@ describe('timelineOption', () => {
   it('overlays the heart rate on a second axis when there is one', () => {
     const o = timelineOption(v, { series: 1, shot: null }, 'Europe/Belgrade', [{ tMs: 900, bpm: 80 }, { tMs: 4100, bpm: 84 }]);
     expect(o.yAxis).toHaveLength(2);
-    expect(o.yAxis[1].name).toBe('otk/min');
+    expect(o.yAxis[1].name).toBeUndefined(); // the axis carries no title: the legend already says it is the pulse
     const hr = o.series.find((s: { name: string }) => s.name === 'Puls');
     expect(hr.yAxisIndex).toBe(1);
     // The heart rate sits in the lower third: its axis reaches far above the highest value.
@@ -54,6 +54,29 @@ describe('timelineOption', () => {
     // Labels only inside the heart-rate band.
     expect(o.yAxis[1].axisLabel.formatter(82)).toBe('82');
     expect(o.yAxis[1].axisLabel.formatter(100)).toBe('');
+  });
+
+  it('follows the pointer along the time axis with a pulse: the pulse value, and the shot too when the pointer is on one', () => {
+    const o = timelineOption(v, { series: 1, shot: null }, 'Europe/Belgrade', [{ tMs: 0, bpm: 80 }, { tMs: 2000, bpm: 84 }, { tMs: 5000, bpm: 90 }]);
+    expect(o.tooltip.trigger).toBe('axis');
+    expect(o.tooltip.axisPointer.type).toBe('line');
+    // On a shot (the one at 3000 ms): both.
+    const on = o.tooltip.formatter([{ axisValue: 3000 }]);
+    expect(on).toContain('Puls');
+    expect(on).toContain('Pogodak 3');
+    // Away from the shots (the nearest is 1.9 s off): the pulse only.
+    const off = o.tooltip.formatter([{ axisValue: 5900 }]);
+    expect(off).toContain('Puls');
+    expect(off).not.toContain('Pogodak');
+    // Far from any pulse sample and any shot: nothing to show.
+    expect(o.tooltip.formatter([{ axisValue: 60_000 }])).toBe('');
+    // The dot on the pulse line follows the same value.
+    expect(pulseValueAt([[0, 80], [2000, 84]], 1000)).toBe(82);
+    expect(pulseValueAt([[0, 80], [20_000, 84]], 10_000)).toBeNull();
+  });
+
+  it('keeps the shot tooltip when there is no pulse', () => {
+    expect(timelineOption(v, { series: 1, shot: null }, 'Europe/Belgrade').tooltip.trigger).toBe('item');
   });
 
   it('starts the score axis just below the lowest shot', () => {

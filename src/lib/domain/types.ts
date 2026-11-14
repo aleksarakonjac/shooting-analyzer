@@ -1,4 +1,4 @@
-export type DisciplineId = 'air_rifle' | 'smallbore_3p' | 'air_pistol' | 'smallbore_pistol';
+export type DisciplineId = 'air_rifle' | 'smallbore_3p' | 'air_pistol';
 
 export type Position = 'kneeling' | 'prone' | 'standing';
 

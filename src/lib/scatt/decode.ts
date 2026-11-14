@@ -13,7 +13,7 @@ const KEY = Uint8Array.from([0xe3, 0x00, 0xe9, 0x00, 0x34, 0x85, 0x1d, 0x04, 0xf
 export const MAX_TRACE_BYTES = 15 + 0xffff * 14;
 
 export interface TraceSamples {
-  /** Aim point, mm from the target centre (x right, y up). */
+  /** Aim point, mm from the target centre (x right, y up: the stored y is turned in decodeTraceBlob). */
   x: Float64Array;
   y: Float64Array;
   /** Weapon tilt, radians, when recorded. */
@@ -68,6 +68,16 @@ async function inflateZlib(data: Uint8Array, limit: number): Promise<Uint8Array>
   return out;
 }
 
+/** Qt qUncompress: a big-endian length, then zlib. Used by the plain (not scrambled) property maps of sessions. */
+export async function qUncompress(data: Uint8Array, limit = 1 << 20): Promise<Uint8Array> {
+  if (data.length < 5) throw new Error('SCATT property block too short');
+  const length = new DataView(data.buffer, data.byteOffset, 4).getUint32(0);
+  if (length > limit) throw new Error('SCATT property block too large');
+  const out = await inflateZlib(data.subarray(4), length);
+  if (out.length !== length) throw new Error('SCATT property block length mismatch');
+  return out;
+}
+
 export async function decodeTraceBlob(blob: Uint8Array): Promise<TraceSamples> {
   const plain = decrypt(blob);
   const comp = plain.subarray(3);
@@ -90,7 +100,8 @@ export async function decodeTraceBlob(blob: Uint8Array): Promise<TraceSamples> {
   let p = 15;
   for (let i = 0; i < n; i++) {
     x[i] = v.getFloat32(p);
-    y[i] = v.getFloat32(p + 4);
+    // SCATT stores y pointing down the target; the rest of the app has y up, so the sign is turned here, once.
+    y[i] = -v.getFloat32(p + 4);
     p += 8;
     if (angle) {
       angle[i] = v.getFloat32(p);

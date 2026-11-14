@@ -11,7 +11,7 @@ export interface RawSeries {
   mpi_x: number | string | null;
   mpi_y: number | string | null;
   group_mm: number | string | null;
-  shots: { id?: string; idx: number; value: number | string; inner: boolean | null; t_ms: number | string | null; scatt_shot_id?: number | null; comment?: string | null }[];
+  shots: { id?: string; idx: number; value: number | string; inner: boolean | null; direction?: string | null; t_ms: number | string | null; scatt_shot_id?: number | null; comment?: string | null }[];
 }
 
 export interface ShotView {
@@ -24,6 +24,8 @@ export interface ShotView {
   idx: number;
   value: number;
   inner: boolean;
+  /** SIUS direction arrow of the hit (45° steps), when the report carried one. */
+  direction: string | null;
   tMs: number | null;
   band: ScoreBand;
   series: number;
@@ -70,7 +72,7 @@ export function buildReportView(raw: RawSeries[], discipline: DisciplineId, pipT
         .map((sh): ShotView => {
           n += 1;
           const value = Number(sh.value);
-          return { id: sh.id ?? null, comment: sh.comment ?? '', n, idx: sh.idx, value, inner: Boolean(sh.inner), tMs: num(sh.t_ms), band: scoreBand(value, decimal, top), series: s.idx, scattId: sh.scatt_shot_id ?? null };
+          return { id: sh.id ?? null, comment: sh.comment ?? '', n, idx: sh.idx, value, inner: Boolean(sh.inner), direction: sh.direction ?? null, tMs: num(sh.t_ms), band: scoreBand(value, decimal, top), series: s.idx, scattId: sh.scatt_shot_id ?? null };
         });
       const mx = num(s.mpi_x);
       const my = num(s.mpi_y);

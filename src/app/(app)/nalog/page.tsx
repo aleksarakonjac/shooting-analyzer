@@ -85,7 +85,7 @@ async function Body({ searchParams }: { searchParams: Promise<Search> }) {
       panels={[
         { id: 'profile', title: t.profile, col: '1 / 5', row: '1 / 2', children: profilePanel },
         { id: 'display', title: t.display, col: '5 / 9', row: '1 / 2', children: displayPanel },
-        { id: 'more', title: t.sections, col: '9 / 13', row: '1 / 2', flush: true, children: more },
+        { id: 'more', title: t.sections, col: '9 / 13', row: '1 / 2', wide: true, flush: true, children: more },
       ]}
     />
   );

@@ -13,6 +13,7 @@ import { MAX_UPLOAD_BYTES, sha256Hex, uploadSource, type SourceKind } from '@/li
 import { decodeText } from '@/lib/parsers/decode';
 import type { ScattData } from '@/lib/parsers/scatt';
 import { parseSiusCsv } from '@/lib/parsers/siusCsv';
+import { mergeScattData } from '@/lib/scatt/merge';
 import { parseTcx, reinterpretAsZone, type HrSample } from '@/lib/parsers/tcx';
 import { hrCoverage } from '@/lib/report/derive';
 import { isRepeatedHour, toInstantRange, type Fold } from '@/lib/import/times';
@@ -126,7 +127,8 @@ export function NewTrainingForm({
 
   const [siusFile, setSiusFile] = useState<Loaded<ParsedSiusResult> | null>(null);
   const [manual, setManual] = useState<ParsedSiusResult | null>(null);
-  const [scattLoaded, setScattLoaded] = useState<Loaded<ScattData> | null>(null);
+  // One match can span several SCATT files (a session that stopped by itself after a long pause).
+  const [scattFiles, setScattFiles] = useState<Loaded<ScattData>[]>([]);
   const [hrLoaded, setHrLoaded] = useState<Loaded<HrData> | null>(null);
   const [hrOffsetS, setHrOffsetS] = useState(edit?.hrOffsetS ?? 0);
   const [hrZone, setHrZone] = useState(edit?.hrZone ?? tz);
@@ -142,7 +144,7 @@ export function NewTrainingForm({
   const [saved, setSaved] = useState<{ id: string; failedUploads: number } | null>(null);
 
   const sius = siusFile?.data ?? manual ?? undefined;
-  const scatt = scattLoaded?.data;
+  const scatt = useMemo(() => (scattFiles.length ? mergeScattData(scattFiles.map((f) => f.data)) : undefined), [scattFiles]);
   const hr = hrLoaded?.data.samples;
   const effectiveName = name.trim() || (disciplineId ? defaultTrainingName(trainedOn, disciplineId) : '');
 
@@ -168,7 +170,7 @@ export function NewTrainingForm({
   const repropose = (s: ParsedSiusResult | undefined, sc: ScattData | undefined) => {
     setIgnored([]);
     setConfirmed(false);
-    setSelection(s && sc ? proposeSelection(s, sc.shots) : undefined);
+    setSelection(s && sc ? proposeSelection(s, sc) : undefined);
   };
 
   const applySius = (s: ParsedSiusResult, file: File | null, sha = '') => {
@@ -204,9 +206,14 @@ export function NewTrainingForm({
     if (!file || tooLarge(file, 'scatt')) return;
     try {
       const { data, sha } = await parseScattFile(file);
-      setScattLoaded({ file, data, sha });
+      if (scattFiles.some((f) => f.sha === sha)) {
+        setErrors((e) => ({ ...e, scatt: t.scattDuplicate }));
+        return;
+      }
+      const next = [...scattFiles, { file, data, sha }];
+      setScattFiles(next);
       setErrors((e) => ({ ...e, scatt: undefined }));
-      repropose(sius, data);
+      repropose(sius, mergeScattData(next.map((f) => f.data)));
     } catch {
       setErrors((e) => ({ ...e, scatt: t.unreadable }));
     }
@@ -232,20 +239,28 @@ export function NewTrainingForm({
     restored.current = true;
     (async () => {
       const supabase = createClient();
-      const load = async (kind: SourceKind[]) => {
-        const f = edit.files.find((x) => kind.includes(x.kind));
-        if (!f) return null;
-        const { data } = await supabase.storage.from('source-files').download(f.path);
-        return data ? new File([data], f.path.split('/').pop() ?? f.kind, { type: data.type }) : null;
+      const loadAll = async (kind: SourceKind[]) => {
+        const found = await Promise.all(
+          edit.files
+            .filter((x) => kind.includes(x.kind))
+            .map(async (f) => {
+              const { data } = await supabase.storage.from('source-files').download(f.path);
+              return data ? new File([data], f.path.split('/').pop() ?? f.kind, { type: data.type }) : null;
+            }),
+        );
+        return found.filter((x): x is File => x !== null);
       };
+      const load = async (kind: SourceKind[]) => (await loadAll(kind))[0] ?? null;
       try {
-        const [siusF, scattF, hrF] = await Promise.all([load(['sius_csv', 'sius_pdf']), load(['scatt']), load(['tcx'])]);
+        const [siusF, scattFs, hrF] = await Promise.all([load(['sius_csv', 'sius_pdf']), loadAll(['scatt']), load(['tcx'])]);
         const siusP = siusF ? await parseSiusFile(siusF, tz) : null;
-        const scattP = scattF ? await parseScattFile(scattF) : null;
+        const scattPs = await Promise.all(scattFs.map(parseScattFile));
+        const scattLoadedAll = scattFs.map((file, i) => ({ file, data: scattPs[i].data, sha: scattPs[i].sha }));
+        const scattMerged = scattPs.length ? mergeScattData(scattPs.map((p) => p.data)) : null;
         const hrP = hrF ? await parseHrFile(hrF) : null;
         if (siusF && siusP) setSiusFile({ file: siusF, data: siusP.parsed, sha: siusP.sha });
         else if (edit.storedSius) setManual(edit.storedSius);
-        if (scattF && scattP) setScattLoaded({ file: scattF, data: scattP.data, sha: scattP.sha });
+        setScattFiles(scattLoadedAll);
         if (hrF && hrP) {
           const zone = edit.hrZone;
           setHrLoaded({ file: hrF, data: zone ? { ...hrP.data, samples: reinterpretAsZone(hrP.data.xml, zone) } : hrP.data, sha: hrP.sha });
@@ -259,7 +274,7 @@ export function NewTrainingForm({
           setConfirmed(edit.confirmed);
         } else {
           const s = siusP?.parsed ?? edit.storedSius ?? undefined;
-          setSelection(s && scattP ? proposeSelection(s, scattP.data.shots) : undefined);
+          setSelection(s && scattMerged ? proposeSelection(s, scattMerged) : undefined);
         }
       } catch {
         setErrors((e) => ({ ...e, save: t.restoreFailed }));
@@ -277,9 +292,10 @@ export function NewTrainingForm({
     setHrLoaded({ ...hrLoaded, data: { ...hrLoaded.data, samples: moved } });
   };
 
-  const removeScatt = () => {
-    setScattLoaded(null);
-    repropose(sius, undefined);
+  const removeScatt = (sha: string) => {
+    const next = scattFiles.filter((f) => f.sha !== sha);
+    setScattFiles(next);
+    repropose(sius, next.length ? mergeScattData(next.map((f) => f.data)) : undefined);
   };
   const removeSius = () => {
     setSiusFile(null);
@@ -332,7 +348,7 @@ export function NewTrainingForm({
       }
       const files: [File | undefined, SourceKind][] = [
         [siusFile?.file, siusFile && /pdf/i.test(siusFile.file.type + siusFile.file.name) ? 'sius_pdf' : 'sius_csv'],
-        [scattLoaded?.file, 'scatt'],
+        ...scattFiles.map((f): [File, SourceKind] => [f.file, 'scatt']),
         [hrLoaded?.file, 'tcx'],
       ];
       let failedUploads = 0;
@@ -345,7 +361,7 @@ export function NewTrainingForm({
         }
       }
       if (edit) {
-        await dropReplacedFiles(trainingId, [siusFile?.sha, scattLoaded?.sha, hrLoaded?.sha]);
+        await dropReplacedFiles(trainingId, [siusFile?.sha, ...scattFiles.map((f) => f.sha), hrLoaded?.sha]);
         router.push(`/trening/${trainingId}`);
         router.refresh();
         return;
@@ -375,7 +391,7 @@ export function NewTrainingForm({
 
   /** Before saving files: has the same content been imported already? Then ask first. */
   const checkThenSave = async () => {
-    const picked = [siusFile, scattLoaded, hrLoaded]
+    const picked = [siusFile, ...scattFiles, hrLoaded]
       .filter((x): x is NonNullable<typeof x> => x !== null)
       .map((x) => ({ fileName: x.file.name, sha: x.sha }));
     let found: ImportedMatch[] = [];
@@ -625,13 +641,19 @@ export function NewTrainingForm({
   const sources = (
     <div className="sources">
       <SourceCard title={t.scattTitle} error={errors.scatt}>
-        <FileField label={t.scattFile} accept=".scatt-expert,application/octet-stream" onChange={onScatt} fileName={scattLoaded?.file.name} />
-        {scatt && (
-          <p className="source-card__loaded">
-            {t.loaded}: {scattLoaded?.file.name} — {t.scattSummary(scatt.shots.length)}{' '}
-            <button type="button" className="button--quiet" onClick={removeScatt}>{t.remove}</button>
+        <FileField
+          key={scattFiles.length}
+          label={scattFiles.length ? t.scattAddFile : t.scattFile}
+          accept=".scatt-expert,application/octet-stream"
+          onChange={onScatt}
+        />
+        {scattFiles.map((f) => (
+          <p key={f.sha} className="source-card__loaded">
+            {t.loaded}: {f.file.name} — {t.scattSummary(f.data.shots.length)}{' '}
+            <button type="button" className="button--quiet" onClick={() => removeScatt(f.sha)}>{t.remove}</button>
           </p>
-        )}
+        ))}
+        {scattFiles.length > 1 && scatt && <small>{t.scattMerged(scattFiles.length, scatt.shots.length)}</small>}
       </SourceCard>
       <SourceCard title={t.hrTitle} error={errors.hr}>
         <FileField label={t.hrFile} accept=".tcx,application/xml,text/xml" onChange={onHr} fileName={hrLoaded?.file.name} />

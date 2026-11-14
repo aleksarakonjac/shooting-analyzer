@@ -1,20 +1,24 @@
 'use client';
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { createPortal } from 'react-dom';
 import type { DisciplineId } from '@/lib/domain/types';
 import { sr } from '@/lib/i18n/sr';
-import { coordinationOption, rhythmOption, type TracePick, scattMetricOption, shotSpeedOption, timelineOption, type Selection } from '@/lib/report/charts';
+import { coordinationOption, rhythmOption, type TracePick, scattMetricOption, shotSpeedOption, timelineOption, rolling, pulseValueAt, type Selection } from '@/lib/report/charts';
 import { shotRhythm } from '@/lib/report/rhythm';
-import { bandLegend } from '@/lib/report/target';
 import { Segmented } from '@/components/ui/Segmented';
 import type { ReportView } from '@/lib/report/viewModel';
 import { Workspace, type WorkspacePanel } from '@/components/Workspace';
 import { EChart } from './EChart';
 import { HrPanel } from './HrPanel';
-import { HrAlign } from './HrAlign';
+import { HrAlign, HrAlignToggle } from './HrAlign';
 import { hrAvgOverShots } from '@/lib/report/derive';
 import { useHrSamples } from './useHrSamples';
 import { SeriesBoard } from './SeriesBoard';
 import { TargetNotes, TargetPlot, type ShotHole } from './TargetPlot';
+import { correctHit } from '@/lib/report/hit';
+import { hrAt } from '@/lib/report/hrAt';
+import { ShotNav } from './ShotNav';
+import { ShotsViewer, type OverviewScope, type OverviewShot } from './ShotsViewer';
 import { useReplay, useReplays, useScattAnalysis } from './useScattAnalysis';
 import { ScopeBar } from './ScopeBar';
 import { ShotComment } from './ShotComment';
@@ -24,7 +28,11 @@ import { ReplaySettingsProvider, useReplaySettings } from './replaySettings';
 import { scattTargetFor } from '@/lib/scatt/targets';
 import { targetSpec } from '@/lib/report/target';
 
+import { ChevronLeft, ChevronRight } from '@/components/ui/icons';
+
 const t = sr.report;
+const TARGET_OFF_KEY = 'report-target-off';
+const NO_PATHS: string[] = [];
 
 /** The training report: every panel follows one selection (series, shot). */
 export function ReportWorkspace({ replayPrefs, ...props }: ReportProps) {
@@ -37,8 +45,8 @@ export function ReportWorkspace({ replayPrefs, ...props }: ReportProps) {
 
 interface ReportProps {
   trainingId: string;
-  /** Stored SCATT file: its aim traces give shot positions and per-shot metrics. */
-  scattPath?: string | null;
+  /** Stored SCATT files (one match can span several): their aim traces give shot positions and per-shot metrics. */
+  scattPaths?: string[];
   canEdit?: boolean;
   /** The viewer's saved replay settings (account metadata). */
   replayPrefs?: unknown;
@@ -57,17 +65,45 @@ function ReportBoard({
   discipline,
   tz,
   hr,
-  scattPath = null,
+  scattPaths = NO_PATHS,
   trainingId,
   canEdit = false,
   commentsEnabled = false,
 }: Omit<ReportProps, 'replayPrefs'>) {
-  const [sel, setSel] = useState<Selection>({ series: view.series[0]?.idx ?? null, shot: null });
+  const [sel, setSel] = useState<Selection>({ series: view.series[0]?.idx ?? null, shot: view.series[0]?.shots[0]?.n ?? null });
   const group = 'report-time';
   const [allShots, setAllShots] = useState(true);
+  // Every series folded to its row (phone button), the selected one included; picking something in the list opens it again.
+  const [folded, setFolded] = useState(false);
   // Comments saved on shots during this visit, by shot id (the server copy is older until the next load).
   const [comments, setComments] = useState<Record<string, string>>({});
   // Offset and zone are previewed live; the stored values change only on save.
+  const [alignOpen, setAlignOpen] = useState(false);
+  // The slot in the page header (rendered by the server page) that takes the expand / collapse all button on a phone.
+  const [toggleSlot, setToggleSlot] = useState<HTMLElement | null>(null);
+  // Phone on its side: the target pinned on the left, or hidden so the list and charts get the full width.
+  // A per-browser preference, read after mount.
+  const [targetOff, setTargetOff] = useState(false);
+  useEffect(() => {
+    try {
+      setTargetOff(localStorage.getItem(TARGET_OFF_KEY) === '1');
+    } catch {
+      /* storage blocked: the target shows */
+    }
+  }, []);
+  const toggleTarget = () => {
+    const next = !targetOff;
+    setTargetOff(next);
+    try {
+      localStorage.setItem(TARGET_OFF_KEY, next ? '1' : '0');
+    } catch {
+      /* storage blocked: the choice lasts until the page is left */
+    }
+  };
+  useEffect(() => {
+    // The slot exists only after the page has been rendered, so it is looked up once on the client.
+    setToggleSlot(document.getElementById('series-toggle-slot'));
+  }, []);
   const [hrOffsetS, setHrOffsetS] = useState(Math.round(hr.offsetMs / 1000));
   const [hrZone, setHrZone] = useState(hr.zone ?? '');
   const zoneValid = useMemo(() => {
@@ -81,11 +117,16 @@ function ReportBoard({
   }, [hrZone]);
   const hrState = useHrSamples(hr.tcxPath, hrOffsetS * 1000, hr.window, zoneValid ? hrZone || null : hr.zone);
   const samples = hrState.status === 'ready' ? hrState.samples : undefined;
-  const pipLegend = bandLegend(view.decimal, view.pipTop);
-  const scatt = useScattAnalysis(scattPath, discipline);
+  const scatt = useScattAnalysis(scattPaths, discipline);
   const byShot = scatt.status === 'ready' ? scatt.byShot : null;
   const [chart, setChart] = useState<'score' | 'rhythm'>('score');
   const timeline = useMemo(() => (view.timedShots ? timelineOption(view, sel, tz, samples) : null), [view, sel, tz, samples]);
+  // The pulse line as the chart draws it, and where the pointer line crosses it: a dot on that point.
+  const pulseLine = useMemo(() => (samples?.length ? rolling(samples, 15_000) : []), [samples]);
+  const pulseDot = useMemo(
+    () => (pulseLine.length ? (x: number): [number, number] | null => { const b = pulseValueAt(pulseLine, x); return b === null ? null : [x, b]; } : undefined),
+    [pulseLine],
+  );
   const rhythm = useMemo(() => shotRhythm(view), [view]);
   const rhythmChart = useMemo(() => (rhythm.points.length ? rhythmOption(rhythm, sel) : null), [rhythm, sel]);
   const series = view.series.find((s) => s.idx === sel.series);
@@ -102,6 +143,8 @@ function ReportBoard({
   const selScattId = selShot?.scattId ?? null;
   const selScattA = selScattId !== null ? byShot?.get(selScattId) : undefined;
   const replay = useReplay(scatt, selScattId);
+  // Pulse at the moment of the selected shot, from the watch.
+  const selHr = selShot?.tMs != null && samples ? hrAt(samples, selShot.tMs) : null;
   // The shot after the selected one (autoplay), through the series in order; none after the last.
   const nextShot = useMemo(() => {
     if (!selShot) return null;
@@ -185,41 +228,72 @@ function ReportBoard({
   const times = view.series.flatMap((s) => s.shots).map((s) => s.tMs).filter((x): x is number => x !== null);
   const span = times.length ? `${fmtClock(Math.min(...times))}–${fmtClock(Math.max(...times))}` : undefined;
 
+  // Every hit with a SCATT position, for the overview on the same target as the replay.
+  const [overview, setOverview] = useState<OverviewScope>('series');
+  const overviewShots = useMemo<OverviewShot[]>(
+    () =>
+      byShot
+        ? view.series.flatMap((se) =>
+            se.shots.flatMap((sh) => {
+              const a = sh.scattId !== null ? byShot.get(sh.scattId) : undefined;
+              if (!a || a.missed) return [];
+              // SCATT's point set against what SIUS measured; the SCATT point itself is kept for comparison.
+              const c = correctHit({ x: a.x, y: a.y }, sh.value, view.decimal, scattTarget, sh.direction);
+              return [{ n: sh.n, idx: sh.idx, series: se.idx, x: c.x, y: c.y, sx: a.x, sy: a.y, movedMm: c.movedMm, confidence: c.confidence }];
+            }),
+          )
+        : [],
+    [byShot, view, scattTarget],
+  );
+  // Hits of the series and of the match that have no SCATT position, so cannot be drawn.
+  const unplaced = {
+    series: (series?.shots.length ?? 0) - overviewShots.filter((o) => o.series === sel.series).length,
+    match: view.shotCount - overviewShots.length,
+  };
+  const overviewGroup = series?.mpi && series.groupMm ? { x: series.mpi.x, y: series.mpi.y, r: series.groupMm / 2 } : null;
+  const targetBody = (
+    replay && selShot ? (
+          <TraceViewer
+            replay={replay}
+            spec={targetSpec(discipline)}
+            target={scattTargetFor(discipline)}
+            shotN={selShot.n}
+            score={selShot.value.toFixed(view.decimal ? 1 : 0)}
+            stats={selScattA ? { speed250: selScattA.metrics?.speed250 ?? null, aimingS: selScattA.aimingMs / 1000, hold10: selScattA.metrics?.hold10Abs ?? null, speed1: selScattA.metrics?.speed ?? null } : undefined}
+            onNext={nextShot ? () => setSel(nextShot) : undefined}
+            onBack={() => setSel({ series: sel.series, shot: null })}
+          />
+        ) : view.series.length ? (overviewShots.length ? <ShotsViewer spec={targetSpec(discipline)} target={scattTarget} shots={overviewShots} series={sel.series} shot={sel.shot} group={overviewGroup} scope={sel.series === null ? 'match' : overview} unplaced={unplaced} onScope={setOverview} onPick={(se, n) => setSel({ series: se, shot: n })} /> : <TargetPlot discipline={discipline} series={view.series} selected={sel.series} holes={holes} caliberMm={scatt.status === 'ready' ? scatt.caliberMm : undefined} onPickShot={(n) => setSel({ series: sel.series, shot: n })} />) : <p className="panel__empty">{t.noMatch}</p>
+  );
   const panels: WorkspacePanel[] = [
     {
       id: 'series',
-      title: t.series,
+      title: t.list,
       range: series ? `${t.seriesLabel(series.idx)} · pogoci ${series.firstShot}–${series.lastShot}` : `${view.series.length} serija · ${view.shotCount} pogodaka`,
       col: '1 / 5',
       row: '1 / 7',
       flush: true,
       actions: view.series.length ? (
-        <button type="button" className="button--quiet panel__tool" onClick={() => setAllShots((a) => !a)} aria-pressed={allShots}>
-          {allShots ? t.collapseAll : t.expandAll}
+        <button type="button" className="button--quiet panel__tool" onClick={() => { setFolded(false); setAllShots((a) => !a); }} aria-pressed={allShots && !folded}>
+          {allShots && !folded ? t.collapseAll : t.expandAll}
         </button>
       ) : undefined,
-      children: <SeriesBoard expanded={allShots} view={view} selection={sel} onSelect={setSel} tz={tz} hr={samples} scatt={byShot ?? undefined} />,
+      children: <SeriesBoard expanded={allShots} folded={folded} view={view} selection={sel} onSelect={(s) => { setFolded(false); setSel(s); }} tz={tz} hr={samples} scatt={byShot ?? undefined} />,
     },
     {
       id: 'target',
       headless: true,
       flush: true,
-      title: replay && selShot ? t.traceTitle(selShot.n) : t.target,
+      title: selShot ? `${t.target} · ${selShot.n}` : t.target,
       range: series ? t.seriesLabel(series.idx) : undefined,
       col: '5 / 9',
       row: '1 / 7',
-      children: replay && selShot ? (
-        <TraceViewer
-          replay={replay}
-          spec={targetSpec(discipline)}
-          target={scattTargetFor(discipline)}
-          shotN={selShot.n}
-          score={selShot.value.toFixed(view.decimal ? 1 : 0)}
-          stats={selScattA ? { speed250: selScattA.metrics?.speed250 ?? null, aimingS: selScattA.aimingMs / 1000, hold10: selScattA.metrics?.hold10Abs ?? null, speed1: selScattA.metrics?.speed ?? null } : undefined}
-          onNext={nextShot ? () => setSel(nextShot) : undefined}
-          onBack={() => setSel({ series: sel.series, shot: null })}
-        />
-      ) : view.series.length ? <TargetPlot discipline={discipline} series={view.series} selected={sel.series} holes={holes} caliberMm={scatt.status === 'ready' ? scatt.caliberMm : undefined} onPickShot={(n) => setSel({ series: sel.series, shot: n })} /> : <p className="panel__empty">{t.noMatch}</p>,
+      children: (
+        <div className="target-pane">
+          <div className="target-pane__main">{targetBody}</div>
+          {view.series.length > 0 && <ShotNav view={view} selection={sel} onSelect={setSel} />}
+        </div>
+      ),
     },
     {
       id: 'notes',
@@ -251,11 +325,11 @@ function ReportBoard({
             />
             {chart === 'score' ? (
               <>
-                {pipLegend.map((b) => (
-                  <span key={b.band}><i className="pip" data-band={b.band} aria-hidden="true" /> {b.label}</span>
-                ))}
-                {samples?.length ? <span><i className="key key--hr" aria-hidden="true" /> {t.hr} ({t.hrRolling})</span> : null}
-                <span className="chart-panel__stat">{view.timedShots} / {view.shotCount} sa vremenom</span>
+                {/* The pulse key over the count of timed shots, beside the chart switch in the same row. */}
+                <div className="chart-panel__meta">
+                  {samples?.length ? <span><i className="key key--hr" aria-hidden="true" /> {t.hr} ({t.hrRolling})</span> : null}
+                  <span className="chart-panel__stat">{view.timedShots} / {view.shotCount} sa vremenom</span>
+                </div>
               </>
             ) : (
               <span className="chart-panel__stat">
@@ -272,6 +346,8 @@ function ReportBoard({
           {chart === 'score' ? (
             <EChart
               key="score"
+              pinTooltip
+              cursorDot={pulseDot}
               option={timeline}
               group={group}
               label={`${t.timeline}: ${view.timedShots} pogodaka`}
@@ -295,11 +371,13 @@ function ReportBoard({
     {
       id: 'hr',
       title: t.hr,
+      // Three dots beside the title open the alignment form.
+      actions: canEdit && hr.tcxPath !== null ? <HrAlignToggle open={alignOpen} onToggle={() => setAlignOpen((o) => !o)} /> : undefined,
       col: '9 / 13',
       row: '5 / 7',
       children: (
         <div className="hr-wrap">
-          {canEdit && hr.tcxPath !== null && (
+          {canEdit && hr.tcxPath !== null && alignOpen && (
             <HrAlign
               trainingId={trainingId}
               offsetS={hrOffsetS}
@@ -352,7 +430,7 @@ function ReportBoard({
   );
   const section = (p: WorkspacePanel) => (
     <section key={p.id} className="analysis__sec">
-      <h3 className="analysis__title">{p.title}{p.range && <span className="panel__range">{p.range}</span>}</h3>
+      <h3 className="analysis__title">{p.title}{p.range && <span className="panel__range">{p.range}</span>}{p.id === 'hr' && p.actions}</h3>
       {p.children}
     </section>
   );
@@ -366,7 +444,7 @@ function ReportBoard({
       <div className="analysis">
         {selShot && (
           <section className="analysis__sec" aria-labelledby="analysis-shot">
-            <h3 id="analysis-shot" className="analysis__title">
+            <h3 id="analysis-shot" className="analysis__title analysis__title--shot">
               {t.traceShot} {selShot.n}<span className="panel__range num">{selShot.value.toFixed(view.decimal ? 1 : 0)}</span>
               {selShot.id && commentsEnabled && (
                 <span className="analysis__tools">
@@ -374,19 +452,18 @@ function ReportBoard({
                 </span>
               )}
             </h3>
-            {replay && (
-            <dl className="shotfacts">
-              <div><dt>{t.traceHold}</dt><dd className="num">{(2 * replay.hold.r).toFixed(1)} mm</dd></div>
-              {selScattA?.metrics && (
-                <>
-                  <div><dt title={t.scattHoldTitle}>{t.scattHoldLabel}</dt><dd className="num">{selScattA.metrics.hold10Abs}%</dd></div>
-                  <div className="shotfacts__pair">
-                    <div><dt title={t.scattSpeed1Title}>{t.traceSpeed1}</dt><dd className="num">{selScattA.metrics.speed.toFixed(1)}</dd></div>
-                    <div><dt title={t.scattSpeed250Title}>{t.traceSpeed250}</dt><dd className="num">{selScattA.metrics.speed250.toFixed(1)}</dd></div>
-                  </div>
-                </>
-              )}
-            </dl>
+            {(replay || selHr !== null) && (
+              <dl className="facts">
+                {selHr !== null && <Fact label={t.hr} value={String(Math.round(selHr))} />}
+                {replay && <Fact label={t.traceHold} value={(2 * replay.hold.r).toFixed(1)} unit="mm" />}
+                {replay && selScattA?.metrics && (
+                  <>
+                    <Fact label={t.scattHoldLabel} title={t.scattHoldTitle} value={String(selScattA.metrics.hold10Abs)} unit="%" />
+                    <Fact label={t.traceSpeed1} title={t.scattSpeed1Title} value={selScattA.metrics.speed.toFixed(1)} unit="mm/s" />
+                    <Fact label={t.traceSpeed250} title={t.scattSpeed250Title} value={selScattA.metrics.speed250.toFixed(1)} unit="mm/s" />
+                  </>
+                )}
+              </dl>
             )}
           </section>
         )}
@@ -401,5 +478,37 @@ function ReportBoard({
     ),
   };
 
-  return <Workspace label={t.panels} strip={strip} panels={[seriesP, targetP, analysisP]} rows={6} resizable={{ id: 'report', widths: [4, 5, 3], minPx: [300, 220, 240] }} />;
+  return (
+    <>
+      {/* The panel header (and its button) is hidden on a phone: there the button sits in the page header, left of the total. */}
+      {toggleSlot && view.series.length > 0 && createPortal(
+        <>
+          {/* Only on a phone held sideways (CSS): the target beside the list, or the full width for the list and charts.
+              The arrow points where the target goes: left to tuck it away, right to bring it back. */}
+          <button type="button" className="button--quiet ws__pin-toggle" onClick={toggleTarget} aria-pressed={!targetOff}>
+            {targetOff ? <ChevronRight /> : <ChevronLeft />}
+            {targetOff ? t.showTarget : t.hideTarget}
+          </button>
+          <button type="button" className="button--quiet ws__toggle" onClick={() => setFolded((f) => !f)} aria-pressed={folded}>
+            {folded ? t.collapseSeries : t.expandSeries}
+          </button>
+        </>,
+        toggleSlot,
+      )}
+      <Workspace label={t.panels} strip={strip} panels={[seriesP, targetP, analysisP]} rows={6} pin="target" pinOff={targetOff} resizable={{ id: 'report', widths: [4, 5, 3], minPx: [300, 220, 240] }} />
+    </>
+  );
+}
+
+/** One figure of the selected shot as a mini card: a small label over the value, the unit quiet beside it. */
+function Fact({ label, value, unit, title }: { label: string; value: string; unit?: string; title?: string }) {
+  return (
+    <div className="fact" title={title}>
+      <dt>{label}</dt>
+      <dd className="num">
+        {value}
+        {unit && <small>{unit}</small>}
+      </dd>
+    </div>
+  );
 }

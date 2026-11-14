@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, expect, it } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { cleanup, render, screen } from '@testing-library/react';
 import { SeriesBoard } from '../../src/components/report/SeriesBoard';
 import { buildReportView } from '../../src/lib/report/viewModel';
 
@@ -21,5 +21,17 @@ describe('SeriesBoard', () => {
     expect(screen.queryAllByRole('table')).toHaveLength(0);
     rerender(<SeriesBoard expanded={false} view={view} selection={{ series: 2, shot: null }} onSelect={() => {}} tz="Europe/Belgrade" />);
     expect(screen.getAllByRole('table')).toHaveLength(1);
+  });
+
+  it('folds every series, the selected one too, without touching the selection', () => {
+    cleanup(); // the earlier test's render is still mounted (no automatic cleanup here)
+    // jsdom has no scrollIntoView, which the board calls for the selected shot.
+    Element.prototype.scrollIntoView = () => {};
+    const { rerender } = render(<SeriesBoard expanded={false} view={view} selection={{ series: 2, shot: 5 }} onSelect={() => {}} tz="Europe/Belgrade" />);
+    expect(screen.getAllByRole('table')).toHaveLength(1);
+    rerender(<SeriesBoard folded view={view} selection={{ series: 2, shot: 5 }} onSelect={() => {}} tz="Europe/Belgrade" />);
+    expect(screen.queryAllByRole('table')).toHaveLength(0);
+    // The selected series' row still marks the selection.
+    expect(document.querySelector('.board__row[aria-current="true"]')).not.toBeNull();
   });
 });

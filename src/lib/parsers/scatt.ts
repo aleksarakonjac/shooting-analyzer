@@ -1,5 +1,5 @@
 import initSqlJs from 'sql.js';
-import { decodeTraceBlob, type TraceSamples } from '@/lib/scatt/decode';
+import { decodeTraceBlob, qUncompress, type TraceSamples } from '@/lib/scatt/decode';
 
 export class NotScattFileError extends Error {
   constructor(message = 'Not a SCATT Expert file') {
@@ -18,6 +18,8 @@ export interface ScattShot {
 
 export interface ScattData {
   sessionStartMs: number;
+  /** When SCATT's match started (Unix epoch ms), if the session recorded it: shots before it are probes. */
+  matchStartMs?: number;
   distanceM: number;
   caliberMm: number;
   shots: ScattShot[];
@@ -26,6 +28,28 @@ export interface ScattData {
 export interface ReadScattOptions {
   /** Browser builds must point at the served sql-wasm.wasm. Node resolves it itself. */
   locateFile?: (file: string) => string;
+}
+
+/**
+ * The `timerStartMatch` of a session's property map (a Qt QVariantMap: UTF-16 key, then a qlonglong variant
+ * as type 4, a null flag and 8 bytes). Undefined when the map lacks it or is not what we expect.
+ */
+export async function readMatchStart(properties: Uint8Array | undefined): Promise<number | undefined> {
+  if (!properties) return undefined;
+  try {
+    const map = await qUncompress(properties);
+    const key = new Uint8Array([...'timerStartMatch'].flatMap((c) => [0, c.charCodeAt(0)]));
+    outer: for (let i = 0; i + key.length + 13 <= map.length; i++) {
+      for (let k = 0; k < key.length; k++) if (map[i + k] !== key[k]) continue outer;
+      const v = new DataView(map.buffer, map.byteOffset + i + key.length, 13);
+      if (v.getUint32(0) !== 4) return undefined;
+      const ms = Number(v.getBigInt64(5));
+      return ms > 1e12 && ms < 1e14 ? ms : undefined;
+    }
+  } catch {
+    /* an unreadable map just means no hint */
+  }
+  return undefined;
 }
 
 export async function readScatt(data: Uint8Array, opts: ReadScattOptions = {}): Promise<ScattData> {
@@ -58,8 +82,11 @@ export async function readScatt(data: Uint8Array, opts: ReadScattOptions = {}): 
         | number[]
         | undefined);
     if (!meta) throw new NotScattFileError('SCATT file contains no session');
+    const props = db.exec('SELECT properties FROM sessions WHERE timer = ? LIMIT 1', [meta[0]])[0]?.values[0]?.[0] as Uint8Array | undefined;
+    const matchStartMs = await readMatchStart(props);
     return {
       sessionStartMs: meta[0],
+      ...(matchStartMs !== undefined ? { matchStartMs } : {}),
       distanceM: meta[1],
       caliberMm: meta[2],
       shots: rows.map((r) => ({ id: r[0], tMs: r[1], flaggedMatch: r[2] !== 0 })),
@@ -86,6 +113,8 @@ export interface ScattTraceShot {
 
 export interface ScattTraceFile {
   sampleRate: number;
+  /** Start of the file's session, Unix epoch ms; orders several files of one match. */
+  sessionStartMs: number;
   traces: Map<number, TraceSamples & { timer: number; timerEnter: number }>;
   shots: ScattTraceShot[];
   /** The stored blob of a trace, for diagnostics and tests. */
@@ -102,7 +131,8 @@ export async function readScattTraces(data: Uint8Array, opts: ReadScattOptions =
     throw new NotScattFileError();
   }
   try {
-    const rate = Number(db.exec('SELECT sample_rate FROM sessions ORDER BY timer ASC LIMIT 1')[0]?.values[0]?.[0] ?? 0);
+    const first = db.exec('SELECT sample_rate, timer FROM sessions ORDER BY timer ASC LIMIT 1')[0]?.values[0];
+    const rate = Number(first?.[0] ?? 0);
     if (!rate) throw new NotScattFileError('SCATT file contains no session');
     const traceRows = (db.exec('SELECT trace_id, timer, timer_enter, data FROM traces ORDER BY trace_id')[0]?.values ?? []) as [
       number,
@@ -125,6 +155,7 @@ export async function readScattTraces(data: Uint8Array, opts: ReadScattOptions =
     }
     return {
       sampleRate: rate,
+      sessionStartMs: Number(first?.[1] ?? 0),
       traces,
       shots: shotRows.map((r) => ({
         shotId: r[0],

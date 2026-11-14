@@ -8,6 +8,19 @@ import { NumberStepper } from '@/components/ui/NumberStepper';
 
 const t = sr.report;
 
+/** Three small dots next to the pulse title that open the alignment form: it is rarely needed, so it stays out of the way. */
+export function HrAlignToggle({ open, onToggle }: { open: boolean; onToggle: () => void }) {
+  return (
+    <button type="button" className="hr-align__toggle button--quiet" onClick={onToggle} aria-expanded={open} aria-label={t.hrAlign} title={t.hrAlign}>
+      <svg viewBox="0 0 16 4" width="14" height="4" aria-hidden="true" fill="currentColor">
+        <circle cx="2" cy="2" r="1.5" />
+        <circle cx="8" cy="2" r="1.5" />
+        <circle cx="14" cy="2" r="1.5" />
+      </svg>
+    </button>
+  );
+}
+
 /** Offset and clock zone of the heart-rate file; changes preview at once, saving stores them with the new average. */
 export function HrAlign({
   trainingId,
@@ -31,8 +44,7 @@ export function HrAlign({
 }) {
   const zones = useMemo(() => zoneNames(fallbackTz), [fallbackTz]);
   return (
-    <details className="hr-align">
-      <summary>{t.hrAlign}</summary>
+    <div className="hr-align">
       <form action={updateHrAlignmentForm} className="hr-align__form">
         <input type="hidden" name="training_id" value={trainingId} />
         <input type="hidden" name="offset_ms" value={offsetS * 1000} />
@@ -42,6 +54,6 @@ export function HrAlign({
         <p className="panel__empty">{t.hrPreview}</p>
         <button type="submit" disabled={!ready}>{t.hrSave}</button>
       </form>
-    </details>
+    </div>
   );
 }

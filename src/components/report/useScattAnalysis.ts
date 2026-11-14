@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from 'react';
 import type { DisciplineId } from '@/lib/domain/types';
 import { scattBrowserOptions } from '@/lib/parsers/browser';
 import { readScattTraces, type ScattTraceFile } from '@/lib/parsers/scatt';
+import { mergeScattTraces } from '@/lib/scatt/merge';
 import { analyseShots, intervalStability, type ShotAnalysis } from '@/lib/scatt/analysis';
 import { buildReplay, type Replay } from '@/lib/scatt/replay';
 import { scattTargetFor } from '@/lib/scatt/targets';
@@ -14,8 +15,9 @@ export type ScattState =
   | { status: 'error' }
   | { status: 'ready'; byShot: Map<number, ShotAnalysis>; file: ScattTraceFile; caliberMm: number; stability: number };
 
-/** Downloads the stored SCATT file once and decodes its aim traces into per-shot positions and metrics. */
-export function useScattAnalysis(path: string | null, discipline: DisciplineId): ScattState {
+/** Downloads the stored SCATT files (one match can span several) and decodes their aim traces into per-shot positions and metrics. */
+export function useScattAnalysis(paths: string[], discipline: DisciplineId): ScattState {
+  const path = paths.length ? paths.join('|') : null;
   const [state, setState] = useState<{ path: string; value: ScattState } | null>(null);
   const target = scattTargetFor(discipline);
 
@@ -24,9 +26,14 @@ export function useScattAnalysis(path: string | null, discipline: DisciplineId):
     let alive = true;
     (async () => {
       try {
-        const { data } = await createClient().storage.from('source-files').download(path);
-        if (!data) throw new Error('no file');
-        const file = await readScattTraces(new Uint8Array(await data.arrayBuffer()), scattBrowserOptions);
+        const files = await Promise.all(
+          path.split('|').map(async (p) => {
+            const { data } = await createClient().storage.from('source-files').download(p);
+            if (!data) throw new Error('no file');
+            return readScattTraces(new Uint8Array(await data.arrayBuffer()), scattBrowserOptions);
+          }),
+        );
+        const file = mergeScattTraces(files);
         const rows = await analyseShots(file, target);
         const match = rows.filter((r) => r.match && !r.missed).map((r) => r.shotMs);
         if (alive)

@@ -27,12 +27,6 @@ describe('targetSpec (ISSF dimensions)', () => {
     expect(ringRadiusMm(s, 4)).toBeLessThan(s.blackMm / 2);
     expect(ringRadiusMm(s, 3)).toBeGreaterThan(s.blackMm / 2);
   });
-
-  it('25/50 m pistol precision target: ring 1 is 500 mm, ring 10 50 mm', () => {
-    const s = targetSpec('smallbore_pistol');
-    expect(ringRadiusMm(s, 1)).toBeCloseTo(250);
-    expect(ringRadiusMm(s, 10)).toBeCloseTo(25);
-  });
 });
 
 describe('viewRadiusMm', () => {
@@ -84,9 +78,9 @@ describe('the filled-pip threshold', () => {
     expect(pipTopFor({ air_rifle: 10.3 }, 'air_rifle')).toBe(10.3);
     expect(pipTopFor({}, 'air_rifle')).toBe(10.5);
     expect(pipTopFor({ air_rifle: 12 }, 'air_rifle')).toBe(10.5);
-    expect(pipTopFor({ smallbore_pistol: 9 }, 'smallbore_pistol')).toBe(9);
-    expect(pipTopFor({ smallbore_pistol: 9.5 }, 'smallbore_pistol')).toBe(10);
-    expect(pipTopFor(null, 'smallbore_pistol')).toBe(10);
+    expect(pipTopFor({ air_pistol: 9 }, 'air_pistol')).toBe(9);
+    expect(pipTopFor({ air_pistol: 9.5 }, 'air_pistol')).toBe(10);
+    expect(pipTopFor(null, 'air_pistol')).toBe(10);
   });
 
   it('is applied by the report view and carried for the legend', () => {

@@ -52,10 +52,19 @@ export function alignMatch(
   return { shots, countMismatch: shots.length - usable.length };
 }
 
-/** A proposal only: the user must confirm. */
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-export function proposeSelection(sius: ParsedSiusResult, _scattShots: ScattShot[]): MatchSelection {
-  return { kind: 'last', n: siusShots(sius).length };
+/**
+ * A proposal only: the user must confirm. The last N shots (N = the SIUS shot count) unless SCATT says when the match
+ * started and the shots from that moment are not more than SIUS has: then the match is exactly those, from the
+ * first of them. More shots after the start means the SIUS match was restarted inside the SCATT session, which the
+ * start time cannot tell, so the last N stay.
+ */
+export function proposeSelection(sius: ParsedSiusResult, scatt: { shots: ScattShot[]; matchStartMs?: number }): MatchSelection {
+  const n = siusShots(sius).length;
+  if (scatt.matchStartMs !== undefined) {
+    const after = [...scatt.shots].sort(byTime).filter((s) => s.tMs >= scatt.matchStartMs!);
+    if (after.length > 0 && after.length <= n) return { kind: 'from', fromShotId: after[0].id, n };
+  }
+  return { kind: 'last', n };
 }
 
 /**

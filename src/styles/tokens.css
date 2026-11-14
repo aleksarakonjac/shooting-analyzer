@@ -85,6 +85,13 @@
   --target-dim: #7f8aa8; /* ring lines and numbers on the black bull: softer than the card white */
   --control-h: 2.5rem; /* desktop; phones get 2.75rem */
 
+  /* Notch, rounded corners and home bar (viewport-fit=cover). Everything that must stay clear of them reads these,
+     never env() directly, so one place can be overridden to check the layout with a simulated notch. */
+  --safe-t: env(safe-area-inset-top, 0px);
+  --safe-r: env(safe-area-inset-right, 0px);
+  --safe-b: env(safe-area-inset-bottom, 0px);
+  --safe-l: env(safe-area-inset-left, 0px);
+
   /* Shape and depth: square board corners, one soft offset shadow for popovers */
   --radius: 2px;
   --shadow-pop: 0 2px 4px rgb(0 0 0 / 0.35), 0 14px 32px -10px rgb(0 0 0 / 0.6);

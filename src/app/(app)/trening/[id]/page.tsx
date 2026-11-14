@@ -63,7 +63,7 @@ async function Body({ params, searchParams }: { params: Promise<{ id: string }>;
     .from('trainings')
     .select(
       'id,shooter_id,name,discipline,trained_on,place,notes,started_at,ended_at,kind,stage,tz,events(id,name),' +
-        'matches(id,label,align_state,selection,series(id,idx,position,total,total_decimal,mpi_x,mpi_y,group_mm,shots(id,idx,value,inner,t_ms,scatt_shot_id))),' +
+        'matches(id,label,align_state,selection,series(id,idx,position,total,total_decimal,mpi_x,mpi_y,group_mm,shots(id,idx,value,inner,direction,t_ms,scatt_shot_id))),' +
         'hr_samples_ref(offset_ms,zone),source_files(kind,storage_path),' +
         'finals(id,placement,eliminated_after_shot,created_at,final_shots(idx,stage_idx,value))',
     )
@@ -95,7 +95,7 @@ async function Body({ params, searchParams }: { params: Promise<{ id: string }>;
   const view = buildReportView(series, tr.discipline, pipTopFor(me?.pip_top as Record<string, unknown> | null, tr.discipline));
   const hrRef = Array.isArray(tr.hr_samples_ref) ? tr.hr_samples_ref[0] : tr.hr_samples_ref;
   const tcx = tr.source_files.find((f) => f.kind === 'tcx')?.storage_path ?? null;
-  const scattPath = tr.source_files.find((f) => f.kind === 'scatt')?.storage_path ?? null;
+  const scattPaths = tr.source_files.filter((f) => f.kind === 'scatt').map((f) => f.storage_path);
   const allShots = view.series.flatMap((s) => s.shots);
   const win = shotWindow(allShots.map((s) => s.tMs), 60_000);
   const canEdit = profile !== null;
@@ -124,7 +124,7 @@ async function Body({ params, searchParams }: { params: Promise<{ id: string }>;
         <h3 id="notes-title" className="more__title">{t.notes}</h3>
         {tr.notes ? <p>{tr.notes}</p> : <p className="panel__empty">{t.noNotes}</p>}
       </section>
-      {scattPath && <ReplaySettingsSection />}
+      {scattPaths.length > 0 && <ReplaySettingsSection />}
       {canEdit && (
         <div className="more__actions">
           <Link className="button button--quiet" href={`/trening/${tr.id}/podaci`}>{t.edit}</Link>
@@ -165,6 +165,8 @@ async function Body({ params, searchParams }: { params: Promise<{ id: string }>;
         </div>
       )}
       <div className="ws__strip-end ws__strip-end--row">
+        {/* The report workspace puts its expand / collapse all button here on a phone (see ReportWorkspace). */}
+        <div id="series-toggle-slot" className="ws__slot" />
         {view.series.length > 0 && (
           <div className="ws__score">
             <LanePlate label={t.total} value={view.total.toFixed(cfg.decimal ? 1 : 0)} variant="score" />
@@ -213,7 +215,7 @@ async function Body({ params, searchParams }: { params: Promise<{ id: string }>;
       discipline={tr.discipline}
       tz={tz}
       hr={{ tcxPath: tcx, offsetMs: Number(hrRef?.offset_ms ?? 0), zone: hrRef?.zone ?? null, window: win }}
-      scattPath={scattPath}
+      scattPaths={scattPaths}
       trainingId={tr.id}
       canEdit={canEdit}
       replayPrefs={replayPrefs}

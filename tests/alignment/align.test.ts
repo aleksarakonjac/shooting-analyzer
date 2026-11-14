@@ -95,7 +95,18 @@ describe('alignMatch', () => {
 
 describe('proposeSelection', () => {
   it('proposes last N where N is the SIUS shot count', () => {
-    expect(proposeSelection(sius, all)).toEqual({ kind: 'last', n: 80 });
+    expect(proposeSelection(sius, { shots: all })).toEqual({ kind: 'last', n: 80 });
+  });
+
+  it('starts at the SCATT match start when that leaves no more shots than SIUS has', () => {
+    const start = all[20].tMs;
+    expect(proposeSelection(sius, { shots: all.slice(0, 100), matchStartMs: start })).toEqual({ kind: 'from', fromShotId: all[20].id, n: 80 });
+    // Fewer shots than SIUS after the start: still from the start, the mismatch notice shows the gap.
+    expect(proposeSelection(sius, { shots: all.slice(0, 90), matchStartMs: start })).toEqual({ kind: 'from', fromShotId: all[20].id, n: 80 });
+  });
+
+  it('keeps the last N when more shots follow the match start than SIUS has (restarted match)', () => {
+    expect(proposeSelection(sius, { shots: all, matchStartMs: all[0].tMs })).toEqual({ kind: 'last', n: 80 });
   });
 });
 

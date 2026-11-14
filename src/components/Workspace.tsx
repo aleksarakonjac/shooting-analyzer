@@ -1,5 +1,5 @@
 'use client';
-import { useEffect, useId, useRef, useState, type CSSProperties, type KeyboardEvent, type PointerEvent as ReactPointerEvent, type ReactNode } from 'react';
+import { useEffect, useId, useRef, useState, useSyncExternalStore, type CSSProperties, type KeyboardEvent, type PointerEvent as ReactPointerEvent, type ReactNode } from 'react';
 
 export interface WorkspacePanel {
   id: string;
@@ -23,9 +23,33 @@ export interface WorkspacePanel {
   children: ReactNode;
 }
 
+/** A phone on its side: short and wide. Keep in step with the same query in components.css. */
+export const PHONE_LANDSCAPE = '(orientation: landscape) and (max-height: 520px)';
+
+// Guarded: test environments (jsdom) have no matchMedia.
+const landscapeQuery = () => (typeof window.matchMedia === 'function' ? window.matchMedia(PHONE_LANDSCAPE) : null);
+const subscribeLandscape = (onChange: () => void) => {
+  const mq = landscapeQuery();
+  if (!mq) return () => {};
+  // Resize too: some browsers apply a rotation's new size without firing the query's change event.
+  mq.addEventListener('change', onChange);
+  window.addEventListener('resize', onChange);
+  return () => {
+    mq.removeEventListener('change', onChange);
+    window.removeEventListener('resize', onChange);
+  };
+};
+
+/** True on a phone held sideways (false on the server; the layout corrects itself after mount). */
+export function usePhoneLandscape(): boolean {
+  return useSyncExternalStore(subscribeLandscape, () => landscapeQuery()?.matches ?? false, () => false);
+}
+
 /**
  * A screen as a broadcast board: a strip on top and a grid of panels that fills the viewport.
  * Desktop shows every panel and each scrolls on its own; a phone shows one panel per tab.
+ * A phone on its side shows every panel in columns, or, with `pin`, that panel always on the left and
+ * the others as tabs beside it.
  */
 export function Workspace({
   strip,
@@ -35,7 +59,13 @@ export function Workspace({
   rowTemplate,
   label,
   resizable,
+  pin,
+  pinOff,
 }: {
+  /** Panel kept in view on the left of a phone held sideways (the rest become tabs beside it). */
+  pin?: string;
+  /** The pin is switched off: a phone held sideways shows every panel as a full-width tab, like upright. */
+  pinOff?: boolean;
   /** Panels side by side in one row with draggable splitters; widths are kept per `id`. */
   resizable?: { id: string; widths: number[]; /** Smallest width of each column, in px. */ minPx: number[] };
   /** Explicit row sizes, e.g. 'auto repeat(5, minmax(0, 1fr))' when one row should fit its content. */
@@ -47,11 +77,26 @@ export function Workspace({
   /** Accessible name of the phone tab list. */
   label: string;
 }) {
-  const panels = allPanels.filter((p) => !p.closed);
+  const open = allPanels.filter((p) => !p.closed);
+  const landscape = usePhoneLandscape();
+  // Sideways, a pinned panel sits beside the tabs; without a pin every panel shows and there are no tabs.
+  const pinned = pin && !pinOff ? pin : undefined;
+  const panels = landscape ? (pinned ? open.filter((p) => p.id !== pinned) : pin ? open : []) : open;
   const hasSide = allPanels.some((p) => p.side);
   const base = useId();
   const [active, setActive] = useState(panels[0]?.id);
   const tabs = useRef<(HTMLButtonElement | null)[]>([]);
+  const tablist = useRef<HTMLDivElement>(null);
+  // A new tab starts at its top: when the tabs are stuck to the top of the page, scroll back to just under them.
+  const pick = (id: string) => {
+    setActive(id);
+    const bar = tablist.current;
+    if (!bar || bar.getBoundingClientRect().top > 1) return;
+    requestAnimationFrame(() => {
+      const panel = document.getElementById(`${base}-panel-${id}`);
+      if (panel) window.scrollTo({ top: window.scrollY + panel.getBoundingClientRect().top - bar.offsetHeight });
+    });
+  };
   const current = panels.some((p) => p.id === active) ? active : panels[0]?.id;
 
   const onKey = (e: KeyboardEvent<HTMLDivElement>) => {
@@ -64,7 +109,7 @@ export function Workspace({
       : -1;
     if (next < 0) return;
     e.preventDefault();
-    setActive(panels[next].id);
+    pick(panels[next].id);
     tabs.current[next]?.focus();
   };
 
@@ -77,9 +122,9 @@ export function Workspace({
   } as CSSProperties;
 
   return (
-    <div className="ws">
+    <div className={pinned ? 'ws ws--pinned' : pin ? 'ws ws--tabbed' : 'ws'}>
       <header className="ws__strip">{strip}</header>
-      <div className="ws__tabs" role="tablist" aria-label={label} onKeyDown={onKey} hidden={panels.length < 2}>
+      <div ref={tablist} className="ws__tabs" role="tablist" aria-label={label} onKeyDown={onKey} hidden={panels.length < 2}>
         {panels.map((p, i) => (
           <button
             key={p.id}
@@ -88,10 +133,11 @@ export function Workspace({
             role="tab"
             id={`${base}-tab-${p.id}`}
             className="ws__tab"
+            data-pinned={p.id === pinned ? '' : undefined}
             aria-selected={p.id === current}
             aria-controls={`${base}-panel-${p.id}`}
             tabIndex={p.id === current ? 0 : -1}
-            onClick={() => setActive(p.id)}
+            onClick={() => pick(p.id)}
           >
             {p.title}
           </button>
@@ -106,6 +152,7 @@ export function Workspace({
             aria-labelledby={`${base}-title-${p.id}`}
             data-panel={p.id}
             data-active={p.id === current ? '' : undefined}
+            data-pinned={p.id === pinned ? '' : undefined}
             data-wide={p.wide ? '' : undefined}
             data-side={p.side ? '' : undefined}
             data-closed={p.closed ? '' : undefined}

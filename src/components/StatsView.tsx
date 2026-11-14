@@ -86,7 +86,7 @@ export function StatsView({
         label={d.panels}
         strip={strip}
         rows={1}
-        panels={[{ id: 'table', title: t.listTitle, col: '1 / 13', row: '1 / 2', children: <p className="panel__empty">{t.empty}</p> }]}
+        panels={[{ id: 'table', title: t.listTitle, col: '1 / 13', row: '1 / 2', wide: true, children: <p className="panel__empty">{t.empty}</p> }]}
       />
     );
   }
@@ -147,7 +147,7 @@ export function StatsView({
         label={d.panels}
         strip={strip}
         rows={1}
-        panels={[{ id: 'table', title: t.listTitle, headless: true, col: '1 / 13', row: '1 / 2', flush: true, children: list }]}
+        panels={[{ id: 'table', title: t.listTitle, headless: true, col: '1 / 13', row: '1 / 2', wide: true, flush: true, children: list }]}
       />
     );
   }
@@ -158,7 +158,7 @@ export function StatsView({
         label={d.panels}
         strip={strip}
         rows={1}
-        panels={[{ id: 'table', title: t.tableTitle, col: '1 / 13', row: '1 / 2', children: <p className="panel__empty">{t.empty}</p> }]}
+        panels={[{ id: 'table', title: t.tableTitle, col: '1 / 13', row: '1 / 2', wide: true, children: <p className="panel__empty">{t.empty}</p> }]}
       />
     );
   }
@@ -258,8 +258,8 @@ export function StatsView({
       strip={strip}
       rows={6}
       panels={[
-        { id: 'chart', title: t.chartTitle, range: t.chartNote, col: '1 / 13', row: '1 / 3', children: chart },
-        { id: 'table', title: t.tableTitle, range: `${sessions.length} / ${MAX_COMPARE}`, col: '1 / 13', row: '3 / 7', flush: true, children: table },
+        { id: 'chart', title: t.chartTitle, range: t.chartNote, col: '1 / 13', row: '1 / 3', wide: true, children: chart },
+        { id: 'table', title: t.tableTitle, range: `${sessions.length} / ${MAX_COMPARE}`, col: '1 / 13', row: '3 / 7', wide: true, flush: true, children: table },
       ]}
     />
   );

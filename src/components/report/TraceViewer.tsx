@@ -4,6 +4,7 @@ import { sr } from '@/lib/i18n/sr';
 import { ringAtRadius, viewRadiusMm, type TargetSpec } from '@/lib/report/target';
 import { angleAt, endFor, pointAt, segmentsUpTo, startFor, type Replay, type SegmentKind } from '@/lib/scatt/replay';
 import type { ScattTarget } from '@/lib/scatt/targets';
+import { cssVar, drawTarget, viewTransform } from '@/lib/scatt/drawTarget';
 import { useRingZoom } from './useRingZoom';
 import { DEFAULT_HIT, DEFAULT_TRACE_COLOURS, useReplaySettings, type OverlayKey } from './replaySettings';
 import { TraceSettings } from './TraceSettings';
@@ -76,8 +77,10 @@ export function TraceViewer({
   }, []);
 
   const posRef = useRef(pos);
+  // While playing, the playback loop owns the position (a render that has not committed yet must not pull it back);
+  // otherwise it follows what is shown.
   useEffect(() => {
-    posRef.current = pos;
+    if (!playing) posRef.current = pos;
   });
 
   // Playback: advance by real time times the speed; stop at the end.
@@ -89,25 +92,32 @@ export function TraceViewer({
     const tick = (now: number) => {
       // Start from where the replay is now, so a jump with the arrow keys is picked up while playing.
       cur = Math.min(end, posRef.current + ((now - last) / 1000) * replay.rate * Number(speed));
+      posRef.current = cur;
       last = now;
       setPos({ replay, pos: cur });
       if (cur >= end) {
         setPlaying(false);
-        // Autoplay: run the same shot again, or hand over to the next one after a short beat.
-        if (autoplay === 'loop') endTimer.current = window.setTimeout(() => { setPos({ replay, pos: start }); setPlaying(true); }, 600);
-        else if (autoplay === 'next' && onNext) endTimer.current = window.setTimeout(() => { chain.current = true; onNext(); }, 600);
+        // Autoplay: hand over to the next shot after a short beat.
+        if (autoplay === 'next' && onNext) endTimer.current = window.setTimeout(() => { chain.current = true; onNext(); }, 600);
       } else raf = requestAnimationFrame(tick);
     };
     raf = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(raf);
   }, [playing, replay, end, speed, start, autoplay, onNext]);
 
-  // A shot that follows an autoplayed one starts by itself; leaving or changing shots cancels a pending hand-over.
+  // A shot that follows an autoplayed one (the autoplay setting) starts by itself; leaving or changing shots cancels a
+  // pending hand-over. Any other change of shot, by the user, stops the playback and shows the new shot as it is before playing.
   useEffect(() => {
     if (chain.current) {
       chain.current = false;
+      posRef.current = start;
       setPos({ replay, pos: start });
       setPlaying(true);
+    } else {
+      // Back to the view before any playback: the whole trace and hit drawn, the aiming time shown, nothing running.
+      setPlaying(false);
+      setPos(null);
+      posRef.current = end;
     }
     return () => window.clearTimeout(endTimer.current);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -126,7 +136,10 @@ export function TraceViewer({
 
   const toggle = () => {
     if (playing) return setPlaying(false);
-    if (pos >= end - 0.5) setPos({ replay, pos: start });
+    if (pos >= end - 0.5) {
+      posRef.current = start;
+      setPos({ replay, pos: start });
+    }
     setPlaying(true);
   };
   // Space plays or pauses, Left / Right go a second back or forward.
@@ -134,7 +147,11 @@ export function TraceViewer({
   const seekRef = useRef<(d: number) => void>(() => {});
   useEffect(() => {
     toggleRef.current = toggle;
-    seekRef.current = (d) => setPos({ replay, pos: Math.max(start, Math.min(end, posRef.current + d * replay.rate)) });
+    seekRef.current = (d) => {
+      const to = Math.max(start, Math.min(end, posRef.current + d * replay.rate));
+      posRef.current = to;
+      setPos({ replay, pos: to });
+    };
   });
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -161,6 +178,8 @@ export function TraceViewer({
     };
   }, []);
   const k = Math.floor(pos);
+  // The replay has been moved by playing or scrubbing (the position is only set then).
+  const touched = posState !== null && posState.replay === replay;
   const secs = (pos - replay.shot) / replay.rate;
   const tilt = angleAt(replay, k);
   const ring = ringAtRadius(spec, zoom.R);
@@ -184,7 +203,9 @@ export function TraceViewer({
                 shot: [t.traceShot, String(shotN)],
                 score: [t.traceScore, score, 'trace__stat--score'],
                 speed250: [t.traceSpeed250, stats?.speed250 == null ? '—' : stats.speed250.toFixed(1)],
-                aiming: [t.traceAiming, stats?.aimingS == null ? '—' : `${stats.aimingS.toFixed(1)} s`],
+                // Before the replay has been started: the aiming time. Once it runs (or is scrubbed) the figure is the moment
+                // of the replay against the shot: −3.42 before it, 0.00 at it, 0.30 after it.
+                aiming: [t.traceAiming, touched ? clockText(secs) : stats?.aimingS == null ? '—' : `${stats.aimingS.toFixed(1)} s`],
                 hold: [t.traceHold, `${(2 * replay.hold.r).toFixed(1)} mm`],
                 hold10: [t.scattHoldLabel, stats?.hold10 == null ? '—' : `${stats.hold10}%`],
                 speed1: [t.traceSpeed1, stats?.speed1 == null ? '—' : stats.speed1.toFixed(1)],
@@ -224,9 +245,24 @@ export function TraceViewer({
           style={{ '--p': `${end > start ? ((k - start) / (end - start)) * 100 : 100}%` } as React.CSSProperties}
           onChange={(e) => {
             setPlaying(false);
+            posRef.current = Number(e.target.value);
             setPos({ replay, pos: Number(e.target.value) });
           }}
         />
+        {settings && (
+          <button
+            type="button"
+            className="trace__auto"
+            aria-pressed={autoplay === 'next'}
+            aria-label={t.autoNext}
+            title={autoplay === 'next' ? t.autoNextOn : t.autoNextOff}
+            onClick={() => settings.set({ autoplay: autoplay === 'next' ? 'off' : 'next' })}
+          >
+            <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true" fill="currentColor">
+              <path d="M2.5 3v10a.5.5 0 0 0 .78.42L9.8 8.4a.5.5 0 0 0 0-.8L3.28 2.58A.5.5 0 0 0 2.5 3zM11.5 2.5h2v11h-2z" />
+            </svg>
+          </button>
+        )}
       </div>
       <Level angle={tilt} />
       </div>
@@ -234,13 +270,18 @@ export function TraceViewer({
   );
 }
 
-/** Spirit level for the weapon tilt: the bubble moves with the smoothed angle, clamped at ±10°. */
+/** The replay's distance to the shot in seconds: −3.42 before it, 0.00 at it, 0.30 after (no plus sign). */
+function clockText(secs: number): string {
+  const s = Math.round(secs * 100) / 100;
+  return `${s < 0 ? '−' : ''}${Math.abs(s).toFixed(2)} s`;
+}
+
+/** The weapon tilt as a thin scale: a line with ticks at 0, ±5 and ±10°, the level zone (±0.5°) thicker, and a dot at the smoothed angle (clamped at ±10°). */
 function Level({ angle }: { angle: number | null }) {
-  const ticks = Array.from({ length: 2 * LEVEL_MAX + 1 }, (_, i) => i - LEVEL_MAX);
   const W = 300;
-  const H = 34;
-  const half = W / 2 - H / 2;
-  const x = (deg: number) => W / 2 + (Math.max(-LEVEL_MAX, Math.min(LEVEL_MAX, deg)) / LEVEL_MAX) * half;
+  const H = 20;
+  const m = 8; // room for the dot at the ends
+  const x = (deg: number) => m + ((Math.max(-LEVEL_MAX, Math.min(LEVEL_MAX, deg)) + LEVEL_MAX) / (2 * LEVEL_MAX)) * (W - 2 * m);
   const level = angle !== null && Math.abs(angle) <= 0.5;
   return (
     <div className="level">
@@ -248,27 +289,16 @@ function Level({ angle }: { angle: number | null }) {
         <span className="level__label">{t.traceLevel}</span>
         <span className="level__value num">{angle === null ? t.traceNoTilt : `${angle >= 0 ? '+' : ''}${angle.toFixed(1)}°`}</span>
       </div>
-      <svg viewBox={`0 -12 ${W} ${H + 26}`} role="img" aria-label={angle === null ? t.traceNoTilt : `${t.traceLevel} ${angle.toFixed(1)}°`}>
-        {ticks.map((d) => (
-          <line key={d} x1={x(d)} x2={x(d)} y1={-2} y2={d % 5 === 0 ? -10 : -6} className={d % 5 === 0 ? 'level__tick level__tick--major' : 'level__tick'} />
-        ))}
-        <rect x={0} y={0} width={W} height={H} rx={H / 2} className="level__vial" />
-        <line x1={W / 2 - 22} x2={W / 2 - 22} y1={4} y2={H - 4} className="level__mark" />
-        <line x1={W / 2 + 22} x2={W / 2 + 22} y1={4} y2={H - 4} className="level__mark" />
-        {angle !== null && <circle cx={x(angle)} cy={H / 2} r={13} className={level ? 'level__bubble level__bubble--ok' : 'level__bubble'} />}
+      <svg viewBox={`0 0 ${W} ${H}`} role="img" aria-label={angle === null ? t.traceNoTilt : `${t.traceLevel} ${angle.toFixed(1)}°`}>
+        <line x1={x(-LEVEL_MAX)} x2={x(LEVEL_MAX)} y1={H / 2} y2={H / 2} className="level__line" />
+        <line x1={x(-0.5)} x2={x(0.5)} y1={H / 2} y2={H / 2} className="level__zone" />
         {[-LEVEL_MAX, -5, 0, 5, LEVEL_MAX].map((d) => (
-          <text key={d} x={x(d)} y={H + 12} textAnchor="middle" className="level__num">
-            {d}
-          </text>
+          <line key={d} x1={x(d)} x2={x(d)} y1={d === 0 ? 3 : 6} y2={d === 0 ? H - 3 : H - 6} className={d === 0 ? 'level__tick level__tick--zero' : 'level__tick'} />
         ))}
+        {angle !== null && <circle cx={x(angle)} cy={H / 2} r={4.5} className={level ? 'level__dot level__dot--ok' : 'level__dot'} />}
       </svg>
     </div>
   );
-}
-
-function cssVar(name: string, fallback: string): string {
-  const v = typeof document !== 'undefined' ? getComputedStyle(document.documentElement).getPropertyValue(name).trim() : '';
-  return v || fallback;
 }
 
 /** Target, hold circle, trace segments, the moving aim point and the hit, all in mm scaled to the view radius R. */
@@ -284,50 +314,9 @@ function draw(
   start: number,
   look: { hit: string; colours: Record<SegmentKind, string> },
 ) {
-  const { w, h, dpr } = size;
-  const S = Math.min(w, h) / 2 / (R * 1.04);
-  const X = (mm: number) => w / 2 + mm * S;
-  const Y = (mm: number) => h / 2 - mm * S;
-  const card = cssVar('--target-card', '#e9ecef');
+  const { S, X, Y } = viewTransform(size, R);
   const ink = cssVar('--target-ink', '#14181b');
-  const dim = cssVar('--target-dim', '#7f8aa8');
-  g.setTransform(dpr, 0, 0, dpr, 0, 0);
-  g.fillStyle = card;
-  g.fillRect(0, 0, w, h);
-  const disc = (rad: number, fill: string) => {
-    g.beginPath();
-    g.arc(X(0), Y(0), rad * S, 0, 2 * Math.PI);
-    g.fillStyle = fill;
-    g.fill();
-  };
-  const circle = (rad: number, stroke: string, width: number) => {
-    g.beginPath();
-    g.arc(X(0), Y(0), rad * S, 0, 2 * Math.PI);
-    g.strokeStyle = stroke;
-    g.lineWidth = width;
-    g.stroke();
-  };
-  const black = tg.black / 2;
-  disc(black, ink);
-  const pen = Math.max(0.75, spec.stepMm * 0.02 * S);
-  for (let n = 1; n <= 10; n++) {
-    const rad = tg.rings[n] / 2;
-    if (n === 10 && (!tg.innerTen || rad * S < 3)) disc(Math.max(rad, 1.5 / S), card);
-    else circle(rad, rad > black + 1e-9 ? ink : dim, pen);
-  }
-  if (tg.innerTen) circle(tg.innerTen / 2, dim, pen);
-  const fontPx = Math.min(30, spec.stepMm * 0.22 * S);
-  if (fontPx >= 7) {
-    g.font = `600 ${fontPx.toFixed(1)}px system-ui, sans-serif`;
-    g.textAlign = 'center';
-    g.textBaseline = 'middle';
-    for (let n = 1; n <= 8; n++) {
-      const ro = tg.rings[n] / 2;
-      const rr = ro - (tg.rings[n] - tg.rings[n + 1]) / 4;
-      g.fillStyle = ro > black + 1e-9 ? ink : dim;
-      for (const [sx, sy] of [[0, 1], [1, 0], [0, -1], [-1, 0]]) g.fillText(String(n), X(rr * sx), Y(rr * sy));
-    }
-  }
+  drawTarget(g, size, tg, spec, R);
   // Hold circle of the control interval.
   g.beginPath();
   g.arc(X(r.hold.x), Y(r.hold.y), r.hold.r * S, 0, 2 * Math.PI);

@@ -21,6 +21,12 @@ describe('readScatt (sample)', () => {
     expect(shots[shots.length - 1].tMs).toBe(1792601678571);
   });
 
+  it('reads the match start from the session properties', async () => {
+    const r = await readScatt(file);
+    expect(r.matchStartMs).toBe(1792597308933);
+    expect(r.shots.filter((s) => s.tMs < r.matchStartMs!)).toHaveLength(26);
+  });
+
   it('reads session start, distance and caliber', async () => {
     const r = await readScatt(file);
     expect(r.sessionStartMs).toBe(1792596582905);

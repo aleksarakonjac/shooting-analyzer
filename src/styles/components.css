@@ -195,9 +195,9 @@ button:disabled { opacity: 0.5; cursor: not-allowed; }
     background: var(--ground-deep); border-bottom: 1px solid var(--rule);
   }
   .ws__tab {
-    flex: 1 0 auto; min-height: 2.75rem; padding: 0 var(--space-4);
+    flex: 1 1 0; min-width: 0; min-height: 3rem; padding: 0 var(--space-2); text-align: center;
     background: transparent; color: var(--ink-muted); border: 0; border-radius: 0;
-    box-shadow: inset 0 -3px 0 transparent; font-size: var(--fs-sm);
+    box-shadow: inset 0 -3px 0 transparent; font-size: var(--fs-base); text-transform: uppercase; letter-spacing: 0.04em; font-weight: 700;
   }
   .ws__tab:hover:not(:disabled) { background: var(--panel); color: var(--ink); border-color: transparent; }
   .ws__tab[aria-selected='true'] { color: var(--ink); box-shadow: inset 0 -3px 0 var(--select-bg); background: transparent; }
@@ -206,6 +206,10 @@ button:disabled { opacity: 0.5; cursor: not-allowed; }
   .ws__grid > .panel { display: none; min-height: 60dvh; }
   .ws__grid > .panel[data-active] { display: grid; }
   .ws__grid > .panel .panel__head { display: none; }
+  /* The page scrolls, not the panel: a nested scroller on a phone gives two vertical scrolls (Safari shows it most) */
+  .ws__grid > .panel { grid-template-rows: auto auto; grid-template-columns: minmax(0, 1fr); }
+  .ws__grid > .panel > .panel__body { overflow-x: clip; overflow-y: visible; overscroll-behavior: auto; }
+  .ws__grid .board__row { top: 3rem; }
 }
 
 /* ---------- score box (key figures, the broadcast score) ---------- */
@@ -508,7 +512,7 @@ input[type='file']::file-selector-button { font: inherit; font-weight: 700; marg
 .shots tr[aria-selected='true'] td { background: var(--select-bg); color: var(--select-fg); font-weight: 700; }
 .shots__inner { color: var(--data); font-weight: 700; margin-left: 2px; }
 
-.target { margin: 0; height: 100%; display: grid; grid-template-columns: minmax(0, 1fr) minmax(7rem, 38%); grid-template-rows: minmax(0, 1fr) auto; gap: var(--space-3); }
+.target { margin: 0; height: 100%; display: grid; grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(0, 1fr) auto; gap: var(--space-3); }
 .target > svg { grid-row: 1; grid-column: 1; }
 .target__legend { grid-column: 1 / -1; }
 .target svg { width: 100%; height: 100%; min-height: 12rem; }
@@ -556,13 +560,6 @@ input[type='file']::file-selector-button { font: inherit; font-weight: 700; marg
 .key--trace { width: 1rem; height: 3px; border-radius: 2px; }
 .level { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: var(--space-3); font-size: var(--fs-sm); color: var(--ink-muted); }
 .level svg { width: 100%; max-height: 3.5rem; overflow: visible; }
-.level__vial { fill: rgb(120 200 150 / 0.16); stroke: var(--ink-faint); stroke-width: 1.25; }
-.level__tick { stroke: var(--ink-faint); stroke-width: 1; }
-.level__tick--major { stroke: var(--ink-muted); }
-.level__mark { stroke: var(--ink); stroke-width: 1.5; }
-.level__bubble { fill: rgb(200 220 245 / 0.9); stroke: rgb(0 0 0 / 0.35); }
-.level__bubble--ok { fill: rgb(110 210 150 / 0.95); }
-.level__num { fill: var(--ink-muted); font-size: 11px; font-family: var(--font-body); }
 .level__value { min-width: 4rem; text-align: right; color: var(--ink); font-weight: 700; }
 @media (max-width: 40rem) {
   .trace__time { min-width: 0; }
@@ -702,8 +699,6 @@ input[type='file']::file-selector-button { font: inherit; font-weight: 700; marg
 @media (max-width: 720px) {
   /* Report strip: title, score and state only; the counts live in the series panel. */
   .ws__figures { display: none; }
-  /* The tab bar shows that it scrolls. */
-  .ws__tabs { mask-image: linear-gradient(to right, #000 82%, transparent); }
   /* Bottom navigation fits a 390 px phone. */
   .shell__nav { overflow-x: visible; flex: 6 1 0; min-width: 0; }
   .shell__nav .shell__link { flex: 1 1 0; min-width: 0; font-size: var(--fs-xs); line-height: 1.1; padding: var(--space-1) 2px; }
@@ -746,11 +741,12 @@ input[type='file']::file-selector-button { font: inherit; font-weight: 700; marg
 
 /* ---------- collapsible rail ---------- */
 .shell { transition: grid-template-columns var(--dur) var(--ease-out); }
-.shell[data-collapsed] { grid-template-columns: 4.25rem minmax(0, 1fr); }
+.shell { --rail-w-min: 2.75rem; }
+.shell[data-collapsed] { grid-template-columns: var(--rail-w-min) minmax(0, 1fr); }
 .shell__top { display: flex; flex-direction: column-reverse; align-items: flex-start; gap: var(--space-1); }
 .shell__toggle { align-self: flex-end; min-height: 2.25rem; width: 2.25rem; padding: 0; flex: none; background: transparent; color: var(--ink-faint); border-color: transparent; }
 .shell__toggle:hover:not(:disabled) { background: var(--panel); color: var(--ink); border-color: transparent; }
-.shell[data-collapsed] .shell__rail { padding-left: var(--space-2); padding-right: var(--space-2); }
+.shell[data-collapsed] .shell__rail { padding-left: var(--space-1); padding-right: var(--space-1); }
 .shell[data-collapsed] .shell__link span, .shell[data-collapsed] .shell__out span { display: none; }
 .shell[data-collapsed] .shell__brand { visibility: hidden; }
 .shell[data-collapsed] .shell__top { align-items: center; }
@@ -1107,10 +1103,6 @@ input[type='file']::file-selector-button { font: inherit; font-weight: 700; marg
 .trace__stats .trace__stat--score dd { font-size: var(--fs-plate); }
 .target__ring--on-black { stroke: var(--target-dim); }
 .target__num--on-black { fill: var(--target-dim); }
-.shotfacts { margin: 0; display: grid; gap: var(--space-2); }
-.shotfacts > div { display: flex; justify-content: space-between; align-items: baseline; gap: var(--space-3); }
-.shotfacts dt { font-size: var(--fs-md); color: var(--ink-muted); }
-.shotfacts dd { margin: 0; font-family: var(--font-display); font-weight: 800; font-size: var(--fs-xl); line-height: 1; }
 .analysis .chart-panel { height: 24rem; }
 .chart-card { height: 12rem; min-width: 0; }
 .chart-card .echart-wrap { height: 100%; }
@@ -1147,7 +1139,7 @@ input[type='file']::file-selector-button { font: inherit; font-weight: 700; marg
 /* Collapsed rail: hovering it floats it open over the page (names beside the icons), closing again on leave */
 @media (min-width: 721px) {
   .shell[data-collapsed] .shell__rail {
-    position: relative; z-index: 40; width: 4.25rem; overflow: hidden;
+    position: relative; z-index: 40; width: var(--rail-w-min); overflow: hidden;
     transition: width 220ms var(--ease-out), box-shadow 220ms var(--ease-out);
   }
   .shell[data-collapsed] .shell__link span,
@@ -1156,7 +1148,7 @@ input[type='file']::file-selector-button { font: inherit; font-weight: 700; marg
     transition: max-width 220ms var(--ease-out), opacity 160ms var(--ease-out);
   }
   .shell[data-collapsed] .shell__link,
-  .shell[data-collapsed] .shell__out button { justify-content: flex-start; padding: 0 1rem; }
+  .shell[data-collapsed] .shell__out button { justify-content: flex-start; padding: 0 0.5625rem; }
   .shell[data-collapsed] .shell__rail:hover,
   .shell[data-collapsed] .shell__rail:has(:focus-visible) { width: var(--rail-w); box-shadow: var(--shadow-pop); }
   .shell[data-collapsed] .shell__rail:hover .shell__link span,
@@ -1183,13 +1175,11 @@ input[type='file']::file-selector-button { font: inherit; font-weight: 700; marg
   .shell[data-collapsed] .shell__rail:has(:focus-visible) .shell__top { align-items: flex-start; }
   .shell[data-collapsed] .shell__rail:hover .shell__toggle,
   .shell[data-collapsed] .shell__rail:has(:focus-visible) .shell__toggle { align-self: flex-end; }
-  .shell[data-collapsed] .shell__rail:hover,
-  .shell[data-collapsed] .shell__rail:has(:focus-visible) { padding-left: var(--space-3); padding-right: var(--space-3); }
 }
 
 /* The wordmark keeps its place when the rail is collapsed, so the page links stay put as the rail opens on hover */
 @media (min-width: 721px) {
-  .shell[data-collapsed] .shell__brand { display: grid; width: calc(var(--rail-w) - 1.5rem); overflow: hidden; visibility: visible; opacity: 0; transition: opacity 160ms var(--ease-out); }
+  .shell[data-collapsed] .shell__brand { display: grid; width: calc(var(--rail-w) - 1rem); overflow: hidden; visibility: visible; opacity: 0; transition: opacity 160ms var(--ease-out); }
   .shell[data-collapsed] .shell__rail:hover .shell__brand,
   .shell[data-collapsed] .shell__rail:has(:focus-visible) .shell__brand { opacity: 1; }
 }
@@ -1218,10 +1208,6 @@ input[type='file']::file-selector-button { font: inherit; font-weight: 700; marg
 .shotnote__status { margin: 0; font-size: var(--fs-sm); color: var(--ink-faint); }
 .shotnote__status[data-state='failed'] { color: var(--danger); }
 .shotnote__status[data-state='saved'] { color: var(--ink-muted); }
-.shotfacts > .shotfacts__pair { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-4); align-items: start; }
-.shotfacts__pair > div { display: flex; justify-content: space-between; align-items: baseline; gap: var(--space-2); min-width: 0; }
-.shotfacts__pair > div { justify-content: flex-start; gap: var(--space-2); }
-.shotfacts > .shotfacts__pair { grid-template-columns: repeat(auto-fit, minmax(9.5rem, 1fr)); }
 /* Chart scope bar: the selector and the pill with arrows are the same height */
 .scopebar { --scope-h: 2.25rem; }
 .scopebar .ui-seg__item { height: calc(var(--scope-h) - 2px); min-height: 0; padding: 0 var(--space-3); display: inline-flex; align-items: center; }
@@ -1230,3 +1216,352 @@ input[type='file']::file-selector-button { font: inherit; font-weight: 700; marg
 /* The total box in the report header is as tall as the "⋯" button next to it */
 .ws__strip .ws__score .lane-plate { height: var(--control-h); min-height: 0; padding-block: 0; box-sizing: border-box; align-items: center; }
 .ws__strip-end--row { align-items: center; }
+
+/* ---------- phone: shot and series navigation under the target ---------- */
+.target-pane { display: flex; flex-direction: column; min-height: 0; height: 100%; }
+.target-pane__main { flex: 1 1 auto; min-height: 0; overflow: auto; }
+.shot-nav { flex: none; display: grid; gap: var(--space-2); padding: var(--space-3); border-top: 1px solid var(--rule); background: var(--panel); }
+.shot-nav__series { display: grid; grid-template-columns: 3rem 1fr 3rem; align-items: center; text-align: center; }
+.shot-nav__series button { min-height: 2.75rem; font-size: var(--fs-xl); }
+.shot-nav__shots { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: var(--space-2); touch-action: pan-y; }
+.shot-nav__shot { width: 100%; min-height: 2.75rem; display: grid; justify-items: center; gap: 0; padding: var(--space-1); background: var(--panel-sunk); color: var(--ink); border: 1px solid var(--rule); }
+.shot-nav__shot small { font-size: var(--fs-xs, 0.7rem); color: var(--ink-muted); line-height: 1; }
+.shot-nav__shot[aria-pressed='true'] { background: var(--select-bg); color: var(--select-fg); border-color: var(--select-bg); }
+.shot-nav__shot[aria-pressed='true'] small { color: inherit; }
+@media (min-width: 721px) { .shot-nav { display: none; } }
+
+/* Desktop: denser navigation, the room goes to the data */
+@media (min-width: 721px) {
+  .shell { --rail-w: 9.5rem; }
+  .shell__rail { padding: var(--space-2) var(--space-2) var(--space-3); gap: var(--space-4); }
+  .shell__link { min-height: 2.125rem; padding: 0 var(--space-2); gap: var(--space-2); font-size: var(--fs-sm); }
+  .shell__link svg { width: 18px; height: 18px; }
+  .shell__toggle { min-height: 1.75rem; width: 1.75rem; }
+  .shell__toggle svg { width: 16px; height: 16px; }
+}
+.shot-nav__shot:hover:not(:disabled) { color: var(--ink); }
+.shot-nav__shot[aria-pressed='true']:hover:not(:disabled) { background: var(--select-bg); color: var(--select-fg); border-color: var(--select-bg); }
+
+/* An open series keeps its row in view; only the shots under it scroll sideways */
+.board__row { position: sticky; top: 0; z-index: 2; }
+/* Sideways only: with overflow-x set, overflow-y turns to auto, and the table's fractional height (rows of 34.59 px) can exceed the box by a pixel, so the box scrolls up and down by a hair under the mouse */
+.board__scroll { overflow-x: auto; overflow-y: hidden; overscroll-behavior-x: contain; scroll-snap-type: x proximity; }
+.board__scroll .shots { width: 100%; }
+/* Rest positions at both ends, so a few stray pixels of trackpad drift settle back instead of leaving the table shifted */
+.board__scroll .shots th:first-child, .board__scroll .shots td:first-child { scroll-snap-align: start; }
+.board__scroll .shots th:last-child, .board__scroll .shots td:last-child { scroll-snap-align: end; }
+@media (max-width: 720px) {
+  .board__scroll .shots td, .board__scroll .shots th { padding-inline: 0.3rem; }
+}
+/* The board column must not grow to the table's width, or nothing overflows and nothing scrolls */
+.board-wrap { grid-template-columns: minmax(0, 1fr); }
+.board, .board__item { min-width: 0; }
+
+/* Shot overview on the replay target: scope switch on top right, no transport below */
+.trace--overview { grid-template-rows: minmax(0, 1fr); min-height: 0; }
+.trace__scope { position: absolute; top: var(--space-2); right: var(--space-2); z-index: 1; }
+
+/* Position confidence key under the overview target */
+.trace--overview { grid-template-rows: minmax(0, 1fr) auto; }
+.trace__legend--conf { margin: 0; padding: var(--space-1) var(--space-2); }
+.conf { display: inline-block; width: 0.75rem; height: 0.75rem; border-radius: 50%; vertical-align: middle; margin-right: 2px; background: var(--ink); border: 1.5px solid var(--ink); }
+.conf--scatt { border-style: dashed; }
+.conf--arrow { border-style: dashed; opacity: 0.55; }
+
+/* The first shot of a series shows the break before it, quieter than the gaps between shots */
+.shots__break { color: var(--ink-muted); font-weight: 500; }
+.shots__unit { font-size: 0.75em; font-weight: 500; color: var(--ink-faint); }
+.shots tr[aria-selected='true'] .shots__unit { color: var(--select-muted); }
+.shots__heart { margin-right: 0.25em; vertical-align: -0.05em; color: var(--ink-faint); }
+.shots tr[aria-selected='true'] .shots__heart { color: var(--select-muted); }
+
+/* Phone, target tab: the target takes all the height there is; the transport, the level and the shot navigation sit
+   together at the bottom, right above the bottom menu */
+@media (max-width: 720px) {
+  .ws__grid { display: flex; flex-direction: column; }
+  .ws__grid > .panel[data-active] { flex: 1 1 auto; min-height: 0; }
+  /* the panel head is hidden on a phone, so the body is the only row */
+  .ws__grid > .panel[data-panel='target'] { grid-template-rows: minmax(0, 1fr); min-height: 0; }
+  [data-panel='target'] .panel__body { overflow: visible; min-height: 0; }
+  .target-pane { flex: 1 1 auto; height: auto; min-height: 0; }
+  .target-pane__main { display: flex; flex-direction: column; overflow: visible; }
+  .target-pane__main > * { flex: 1 1 auto; min-height: 0; }
+  .target-pane .trace__canvas { min-height: 16rem; }
+  .trace__foot { padding: var(--space-2) var(--space-3); }
+  .shot-nav { padding: var(--space-2) var(--space-3) var(--space-3); gap: var(--space-1); }
+  .shot-nav__series button, .shot-nav__shot { min-height: 2.5rem; }
+  /* The bottom menu already has its own room (the shell's padding): the page must not be a menu-height longer than the screen */
+  .shell__main { min-height: calc(100dvh - 4.25rem); }
+}
+
+/* The tilt label and number sit beside the level vial, not above it */
+.trace__foot .level { grid-template-columns: auto minmax(0, 1fr); align-items: center; gap: var(--space-3); }
+.trace__foot .level .level__head { flex-direction: column; align-items: flex-start; gap: 0; line-height: 1.15; }
+.trace__foot .level .level__value { font-size: var(--fs-md); }
+.shots__icon { vertical-align: -0.12em; }
+.shots th.shots__shot-head { text-align: center; }
+
+
+/* Pulse key over the timed-shot count: one small column beside the chart switch, never wrapped under it */
+.chart-panel__meta { flex: 1 1 0; min-width: 0; display: grid; gap: 0; font-size: var(--fs-sm); line-height: 1.25; }
+.chart-panel__meta > span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.chart-panel__meta .chart-panel__stat { margin-left: 0; }
+
+/* Three small dots beside the pulse title open the (rarely used) alignment form */
+button.hr-align__toggle { min-height: 1.25rem; padding: 0 var(--space-1); border: 0; color: var(--ink-faint); background: transparent; align-self: center; }
+button.hr-align__toggle:hover:not(:disabled) { color: var(--ink); background: var(--panel-raised); border: 0; }
+.hr-align__toggle[aria-expanded='true'] { color: var(--ink); }
+.hr-align { padding-bottom: var(--space-3); }
+
+/* Phone: the scope switch (Pogodak / Serija / Meč) and the stepper (previous, current, next) share one row and fill its width */
+@media (max-width: 720px) {
+  .scopebar { flex-wrap: nowrap; gap: var(--space-2); }
+  .scopebar > .ui-control { min-width: 0; flex: 1.2 1 0; }
+  .scopebar .ui-seg { display: flex; width: 100%; }
+  .scopebar .ui-seg__item { flex: 1 1 0; min-width: 0; justify-content: center; padding: 0 var(--space-1); font-size: var(--fs-sm); }
+  .scopebar__pill { flex: 1 1 0; min-width: 0; justify-content: space-between; }
+  .scopebar__label { flex: 1; min-width: 0; font-size: var(--fs-sm); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+}
+
+/* The shot's score is what the row is about: a little larger than the figures around it */
+.shots td.shots__value { font-size: 1.12em; font-weight: 700; }
+
+/* The time figure counts down while the replay runs: fixed width so the overlay does not jitter */
+.trace__stats dd.num { font-variant-numeric: tabular-nums; }
+
+/* Figures of the selected shot as mini cards: a hairline-bordered tile each, label small over a large value */
+.facts { margin: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(6.5rem, 1fr)); gap: var(--space-2); }
+.fact { min-width: 0; display: grid; align-content: space-between; gap: var(--space-1); padding: var(--space-2); background: var(--panel-sunk); border: 1px solid var(--rule); border-radius: var(--radius); }
+.fact dt { font-size: var(--fs-xs); font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-muted); line-height: 1.15; overflow-wrap: anywhere; }
+.fact dd { margin: 0; display: flex; align-items: baseline; gap: var(--space-1); font-family: var(--font-display); font-weight: 800; font-size: var(--fs-xl); line-height: 1; font-variant-numeric: tabular-nums; }
+.fact dd small { font-family: var(--font-body); font-size: var(--fs-xs); font-weight: 500; color: var(--ink-faint); letter-spacing: 0; }
+
+/* The selected shot's heading in the analysis tab: the shot number and its score larger than the section titles around it */
+.analysis__title.analysis__title--shot { font-size: var(--fs-lg); color: var(--ink); }
+.analysis__title--shot .panel__range { font-family: var(--font-display); font-size: var(--fs-2xl); font-weight: 800; line-height: 1; letter-spacing: 0; color: var(--ink); }
+
+/* The tilt scale: a hairline, quiet ticks, the level zone a little thicker, one dot */
+.level__line { stroke: var(--rule-strong); stroke-width: 1; }
+.level__tick { stroke: var(--ink-faint); stroke-width: 1; }
+.level__tick--zero { stroke: var(--ink-muted); }
+.level__zone { stroke: var(--ink-faint); stroke-width: 3; stroke-linecap: round; }
+.level__dot { fill: var(--ink); }
+.level__dot--ok { fill: rgb(110 210 150); }
+
+/* Beside the scrubber: whether the replay goes on with the next shot by itself */
+.trace__auto { flex: none; width: 2.25rem; min-height: 2.25rem; padding: 0; background: transparent; color: var(--ink-faint); border: 1px solid var(--rule-strong); }
+.trace__auto:hover:not(:disabled) { background: var(--panel-raised); color: var(--ink); border-color: var(--rule-strong); }
+.trace__auto[aria-pressed='true'], .trace__auto[aria-pressed='true']:hover:not(:disabled) { background: var(--select-bg); color: var(--select-fg); border-color: var(--select-bg); }
+
+/* ---------- notch and home bar (viewport-fit=cover) ----------
+   Nothing that matters may sit under the notch, the rounded corners or the home bar: the menu, the page and every
+   sticky bar keep clear of them. The insets are 0 where the browser already keeps the page clear. */
+.shell__main { padding-top: var(--safe-t); }
+.ws__tabs, .entry-bar, .ws--pinned > .ws__tabs:not([hidden]) { top: var(--safe-t); }
+.auth { padding: max(var(--space-8), var(--safe-t)) max(var(--space-4), var(--safe-r)) max(var(--space-8), var(--safe-b)) max(var(--space-4), var(--safe-l)); }
+.auth__card { width: min(26rem, calc(100vw - 2rem - var(--safe-l) - var(--safe-r))); }
+.route-loading { top: var(--safe-t); }
+/* A solid band under the status bar, so content scrolling past the sticky bars never shows through the notch */
+.shell::before { content: ''; position: fixed; z-index: 25; top: 0; left: 0; right: 0; height: var(--safe-t); background: var(--ground-deep); pointer-events: none; }
+@media (min-width: 721px) {
+  .shell__rail { padding-left: max(var(--space-2), var(--safe-l)); padding-top: max(var(--space-2), var(--safe-t)); padding-bottom: max(var(--space-3), var(--safe-b)); }
+  .shell__main { padding-right: var(--safe-r); padding-bottom: var(--safe-b); }
+  .shell { --rail-w: calc(9.5rem + var(--safe-l)); --rail-w-min: calc(2.75rem + var(--safe-l)); }
+  .shell[data-collapsed] .shell__rail { padding-left: max(var(--space-1), var(--safe-l)); }
+  .ws { height: calc(100dvh - var(--safe-t) - var(--safe-b)); }
+}
+@media (max-width: 720px) {
+  .shell { padding-bottom: calc(4.25rem + var(--safe-b)); }
+  .shell__rail { padding: 0 var(--safe-r) var(--safe-b) var(--safe-l); }
+  .shell__main { padding-left: var(--safe-l); padding-right: var(--safe-r); }
+  .ws__grid .board__row { top: calc(3rem + var(--safe-t)); }
+}
+
+/* ---------- phone on its side: short and wide (keep the query in step with PHONE_LANDSCAPE in Workspace.tsx).
+   Height is what runs out, so the menu moves to a slim rail on the left, the strip drops to one line, the page
+   scrolls, and every panel shows in columns. The report pins the target on the left at full height; the shot
+   list and the analysis are tabs beside it. These rules come last so they win over both the phone (≤720) and
+   tablet (721–1023) rules, whichever width the phone has. ---------- */
+@media (orientation: landscape) and (max-height: 520px) {
+  :root { --control-h: 2.75rem; --pl-rail: calc(4.5rem + var(--safe-l)); }
+
+  /* Shell: a fixed icon rail on the left, the page scrolls beside it */
+  .shell, .shell[data-collapsed] { display: block; height: auto; padding: 0 0 0 var(--pl-rail); }
+  .shell__main { height: auto; min-height: 100dvh; overflow: visible; padding: var(--safe-t) var(--safe-r) var(--safe-b) 0; }
+  .shell__rail, .shell[data-collapsed] .shell__rail {
+    position: fixed; z-index: 30; top: 0; bottom: 0; left: 0; right: auto;
+    width: var(--pl-rail); height: 100dvh; box-shadow: none;
+    flex-direction: column; gap: 0; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: none;
+    padding: var(--safe-t) 0 var(--safe-b) var(--safe-l);
+    border-top: 0; border-right: 1px solid var(--rule-strong);
+  }
+  .shell[data-collapsed] .shell__rail:hover, .shell[data-collapsed] .shell__rail:has(:focus-visible) { width: var(--pl-rail); box-shadow: none; }
+  .shell__top { display: none; }
+  .shell__nav, .shell__account { display: flex; flex-direction: column; flex: 0 0 auto; gap: 0; overflow: visible; min-width: 0; }
+  .shell__nav { flex: 1 0 auto; }
+  .shell__out { flex: 0 0 auto; }
+  .shell__link, .shell__nav .shell__link, .shell__account .shell__link, .shell__out button,
+  .shell[data-collapsed] .shell__link, .shell[data-collapsed] .shell__out button {
+    flex: 0 0 auto; width: 100%; min-height: 3.5rem; height: auto;
+    flex-direction: column; justify-content: center; align-items: center; gap: 2px;
+    padding: var(--space-1) 2px; border-radius: 0; text-align: center;
+    font-size: var(--fs-xs); line-height: 1.1;
+  }
+  .shell__link svg { width: 20px; height: 20px; }
+  .shell__link span, .shell__out span,
+  .shell[data-collapsed] .shell__link span, .shell[data-collapsed] .shell__out span,
+  .shell[data-collapsed] .shell__rail:hover .shell__link span, .shell[data-collapsed] .shell__rail:hover .shell__out span {
+    display: block; max-width: 100%; opacity: 1; overflow-wrap: anywhere; white-space: normal;
+  }
+
+  /* Workspace: page scroll, no tabs, panels in two columns; a lone or wide panel takes the full width */
+  .ws { height: auto; min-height: 100dvh; display: grid; grid-template-rows: auto auto 1fr; grid-template-columns: minmax(0, 1fr); }
+  .ws__tabs { display: none; }
+  .ws__grid {
+    display: grid; overflow: visible; background: var(--rule); gap: 1px;
+    grid-template-columns: repeat(2, minmax(0, 1fr)); grid-template-rows: none; grid-auto-rows: auto; align-content: start;
+  }
+  .ws__grid > .panel, .ws__grid > .panel[data-active] {
+    display: grid; grid-column: auto / span 1 !important; grid-row: auto !important;
+    min-height: min(18rem, 70dvh); grid-template-rows: auto auto; grid-template-columns: minmax(0, 1fr);
+  }
+  .ws__grid > .panel[data-wide], .ws__grid > .panel:only-child { grid-column: 1 / -1 !important; }
+  .ws__grid > .panel .panel__head { display: flex; }
+  .ws__grid > .panel > .panel__body { overflow-x: clip; overflow-y: visible; overscroll-behavior: auto; }
+  .panel:has(> .sr-only) { grid-template-rows: auto; }
+  .ws__grid .board__row { top: 0; }
+
+  /* Side column (sessions overview): beside the list, no slide */
+  .ws__grid--side { display: flex; align-items: stretch; background: var(--rule); gap: 1px; overflow: visible; }
+  .ws__grid--side > .panel:not([data-side]) { flex: 1 1 0; }
+  .panel[data-side] { flex: 0 0 42%; width: auto; margin-left: 0; opacity: 1; visibility: visible; box-shadow: none; border-left: 0; transition: none; }
+  .panel[data-side][data-closed] { display: none; }
+
+  /* Strip: one line, title gives way first */
+  .ws__strip { flex-wrap: nowrap; gap: var(--space-3); padding: var(--space-2) var(--space-4); min-height: 3.25rem; }
+  .ws__head { flex: 1 1 auto; min-width: 0; }
+  .ws__title, .ws__strip .ws__title, .ws__strip .ws__title--session { font-size: var(--fs-xl); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .ws__meta { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: var(--fs-sm); }
+  .ws__head--inline { flex-wrap: nowrap; display: grid; gap: 0; }
+  .ws__strip-end, .ws__strip .dash__tools { margin-left: auto; flex: 0 0 auto; flex-wrap: nowrap; }
+  .ws__strip-end > * { flex: 0 0 auto; }
+  .ws__strip .lane-plate { padding: 0 var(--space-3); min-width: 0; height: var(--control-h); display: flex; align-items: center; gap: var(--space-2); }
+  .ws__strip .lane-plate__value { font-size: var(--fs-xl); }
+  .ws__figures { display: none; }
+  .hide-phone { display: none !important; }
+  .dash__new span, .ws__strip .dash__clear, .dash__side-toggle span { display: none; }
+  .dash__new { padding: 0; width: var(--control-h); justify-content: center; }
+  .stats__opt { display: none; }
+
+  /* Report: the target down the left edge at full height, the strip, tabs and the active panel on the right */
+  .ws--pinned { --pin-w: clamp(15rem, 100dvh - 4.5rem, 48vw); grid-template-columns: var(--pin-w) minmax(0, 1fr); grid-template-rows: auto auto 1fr; }
+  .ws--pinned > .ws__strip { grid-column: 2; grid-row: 1; flex-wrap: wrap; }
+  .ws--pinned > .ws__tabs:not([hidden]) {
+    display: flex; grid-column: 2; grid-row: 2; position: sticky; top: var(--safe-t); z-index: 20;
+    background: var(--ground-deep); border-bottom: 1px solid var(--rule);
+  }
+  .ws--pinned .ws__tab {
+    flex: 1 1 0; min-width: 0; min-height: 2.75rem; padding: 0 var(--space-2); text-align: center;
+    background: transparent; color: var(--ink-muted); border: 0; border-radius: 0;
+    box-shadow: inset 0 -3px 0 transparent; font-size: var(--fs-md); text-transform: uppercase; letter-spacing: 0.04em; font-weight: 700;
+  }
+  /* Before hydration the server's portrait tabs are in the page: the pinned panel's tab must not flash */
+  .ws--pinned .ws__tab[data-pinned] { display: none; }
+  .ws--pinned .ws__tab[aria-selected='true'] { background: transparent; color: var(--ink); box-shadow: inset 0 -3px 0 var(--select-bg); }
+  .ws--pinned .ws__tab:hover:not(:disabled) { background: var(--panel); color: var(--ink); border-color: transparent; }
+  .ws--pinned > .ws__grid { display: contents; }
+  .ws--pinned .ws__grid > .panel { display: none; }
+  .ws--pinned .ws__grid > .panel[data-active] { display: grid; grid-column: 2 !important; grid-row: 3 !important; min-height: 0; }
+  .ws--pinned .ws__grid > .panel .panel__head { display: none; }
+  .ws--pinned .ws__grid .board__row { top: calc(2.75rem + var(--safe-t)); }
+  .ws--pinned .ws__grid > .panel[data-pinned] {
+    display: grid; grid-column: 1 !important; grid-row: 1 / -1 !important; align-self: start;
+    position: sticky; top: var(--safe-t); height: calc(100dvh - var(--safe-t) - var(--safe-b)); min-height: 0; grid-template-rows: minmax(0, 1fr);
+    border-right: 1px solid var(--rule-strong);
+  }
+  .ws--pinned [data-pinned] > .panel__body { overflow: hidden; display: flex; flex-direction: column; min-height: 0; }
+  .ws--pinned .target-pane { flex: 1 1 auto; height: 100%; min-height: 0; }
+  .ws--pinned .target-pane__main { display: flex; flex-direction: column; overflow: hidden; flex: 1 1 auto; min-height: 0; }
+  .ws--pinned .target-pane__main > * { flex: 1 1 auto; min-height: 0; }
+  .ws--pinned .trace { height: 100%; min-height: 0; }
+  .ws--pinned .trace__canvas, .ws--pinned .target-pane .trace__canvas { min-height: 0; }
+  .ws--pinned .trace__foot { padding: var(--space-2) var(--space-3); gap: var(--space-1); }
+  .ws--pinned .target svg { min-height: 0; }
+  /* The replay figures over the target stay small on a small canvas */
+  .ws--pinned .trace__stats { gap: var(--space-1); padding: var(--space-1) var(--space-2); }
+  .ws--pinned .trace__stats dd, .ws--pinned .trace__stats .trace__stat--score dd { font-size: var(--fs-lg); }
+  .ws--pinned .trace__stats dt { font-size: 0.65rem; }
+  /* The shot list is beside the target (or one tab away), so the phone's shot strip under it would only take height */
+  .shot-nav { display: none; }
+
+  /* New and edit session: basics left, data import right, the save bar stays on top */
+  .entry-bar { position: sticky; top: var(--safe-t); }
+  .entry-cols { grid-template-columns: minmax(15rem, 5fr) minmax(0, 7fr); }
+  .entry-basics .form-grid { grid-template-columns: minmax(0, 1fr); }
+  .entry-basics .form-grid > * { grid-column: 1 / -1; }
+  .entry-col { padding: var(--space-4) var(--space-4) var(--space-6); gap: var(--space-5); }
+  .entry .ws__strip { flex-wrap: wrap; }
+  .entry .strip-confirm { flex: 1 0 100%; }
+
+  /* Popovers fit the short screen */
+  .ui-popover { max-height: calc(100dvh - 2rem); }
+  .more { max-height: calc(100dvh - 4rem); }
+  .filters { max-height: calc(100dvh - 4rem); }
+  .stats__pick-form { max-height: calc(100dvh - 5rem); }
+}
+
+
+/* Expand / collapse all series: in the page header, left of the total, on a phone only (desktop has it in the panel header) */
+.ws__slot { display: none; }
+@media (max-width: 720px) {
+  /* left edge of the row, as tall as the total beside it */
+  .ws__slot { display: flex; align-items: stretch; align-self: stretch; margin-right: auto; }
+  .ws__toggle { display: none; height: 100%; min-height: 0; padding: 0 var(--space-3); font-size: var(--fs-sm); white-space: nowrap; }
+  /* only while the list tab is the one open */
+  .ws:has(.panel[data-panel='series'][data-active]) .ws__toggle { display: inline-flex; }
+}
+
+/* With every series folded the rows are all there is: taller, with larger name, group and totals */
+.board-wrap[data-folded] .board__row { min-height: 3.5rem; }
+.board-wrap[data-folded] .board__name { font-size: var(--fs-lg); }
+.board-wrap[data-folded] .board__group { font-size: var(--fs-md); }
+.board-wrap[data-folded] .board__total { font-size: var(--fs-2xl); }
+.board-wrap[data-folded] .board__cum { font-size: var(--fs-md); }
+
+/* Show / hide the target: a phone held sideways only, in the page header beside the series button, left of the total */
+.ws__pin-toggle { display: none; }
+@media (orientation: landscape) and (max-height: 520px) {
+  .ws__slot { display: flex; align-items: stretch; align-self: stretch; gap: var(--space-2); }
+  .ws__toggle, .ws__pin-toggle { height: auto; min-height: 0; padding: 0 var(--space-3); font-size: var(--fs-sm); white-space: nowrap; }
+  .ws__toggle { display: none; }
+  .ws:has(.panel[data-panel='series'][data-active]) .ws__toggle { display: inline-flex; }
+  .ws__pin-toggle { display: inline-flex; gap: var(--space-1); padding-left: var(--space-2); }
+  .ws__pin-toggle svg { flex: none; }
+
+  /* Target hidden: every panel is a tab across the full width, the list and charts get the room */
+  .ws--tabbed > .ws__tabs:not([hidden]) {
+    display: flex; position: sticky; top: var(--safe-t); z-index: 20;
+    background: var(--ground-deep); border-bottom: 1px solid var(--rule);
+  }
+  .ws--tabbed .ws__tab {
+    flex: 1 1 0; min-width: 0; min-height: 2.75rem; padding: 0 var(--space-2); text-align: center;
+    background: transparent; color: var(--ink-muted); border: 0; border-radius: 0;
+    box-shadow: inset 0 -3px 0 transparent; font-size: var(--fs-md); text-transform: uppercase; letter-spacing: 0.04em; font-weight: 700;
+  }
+  .ws--tabbed .ws__tab:hover:not(:disabled) { background: var(--panel); color: var(--ink); border-color: transparent; }
+  .ws--tabbed .ws__tab[aria-selected='true'] { background: transparent; color: var(--ink); box-shadow: inset 0 -3px 0 var(--select-bg); }
+  .ws--tabbed > .ws__grid { display: block; background: none; }
+  .ws--tabbed .ws__grid > .panel { display: none; }
+  .ws--tabbed .ws__grid > .panel[data-active] { display: grid; min-height: 0; }
+  .ws--tabbed .ws__grid > .panel .panel__head { display: none; }
+  .ws--tabbed .ws__grid .board__row { top: calc(2.75rem + var(--safe-t)); }
+  /* The target as a tab: as tall as the screen under the tabs */
+  .ws--tabbed .ws__grid > .panel[data-panel='target'][data-active] { height: calc(100dvh - 2.75rem - var(--safe-t) - var(--safe-b)); grid-template-rows: minmax(0, 1fr); }
+  .ws--tabbed [data-panel='target'] > .panel__body { overflow: hidden; display: flex; flex-direction: column; min-height: 0; }
+  .ws--tabbed .target-pane { flex: 1 1 auto; height: 100%; min-height: 0; }
+  .ws--tabbed .target-pane__main { display: flex; flex-direction: column; overflow: hidden; flex: 1 1 auto; min-height: 0; }
+  .ws--tabbed .target-pane__main > * { flex: 1 1 auto; min-height: 0; }
+  .ws--tabbed .trace__canvas { min-height: 0; }
+  .ws--tabbed .trace__foot { padding: var(--space-2) var(--space-3); gap: var(--space-1); }
+  .ws--tabbed .target svg { min-height: 0; }
+}

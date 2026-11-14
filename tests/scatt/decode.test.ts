@@ -33,7 +33,7 @@ describe('SCATT traces (sample file)', () => {
     for (const [tid, , idx, x, y, angle] of expected) {
       const t = r.traces.get(Number(tid))!;
       expect(t.x[Number(idx)]).toBeCloseTo(Number(x), 6);
-      expect(t.y[Number(idx)]).toBeCloseTo(Number(y), 6);
+      expect(t.y[Number(idx)]).toBeCloseTo(-Number(y), 6); // the reference keeps SCATT's y down; ours is y up
       expect(t.angle![Number(idx)]).toBeCloseTo(Number(angle), 9);
     }
   });
