@@ -4,7 +4,7 @@ import type { TrainingSummary } from './periodStats';
 /** The PostgREST select that yields what `toSummary` needs. */
 export const SUMMARY_SELECT =
   'id,name,trained_on,discipline,shooter_id,kind,stage,place,started_at,ended_at,tz,events(name),' +
-  'matches(align_state,series(idx,total,total_decimal,group_mm,shots(count))),' +
+  'matches(align_state,selection,series(idx,total,total_decimal,group_mm,shots(count))),' +
   'hr_samples_ref(avg_bpm)';
 
 export interface SummaryRow {
@@ -22,6 +22,8 @@ export interface SummaryRow {
   events?: { name: string } | null;
   matches: {
     align_state: 'proposed' | 'confirmed';
+    /** Set only when a SCATT file was paired with the SIUS result. */
+    selection?: unknown | null;
     series: {
       idx: number;
       total: number | null;
@@ -50,6 +52,7 @@ export const toSummary = (r: SummaryRow): TrainingSummary => {
     tz: r.tz,
     matches: r.matches.map((m) => ({
       alignState: m.align_state,
+      paired: m.selection != null,
       series: m.series.map((s) => ({
         idx: s.idx,
         total: s.total,

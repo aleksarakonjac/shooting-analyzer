@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { filtersHref, parseFilters } from '@/lib/stats/filters';
+import { filtersHref, hasFilters, parseFilters } from '@/lib/stats/filters';
 
 const now = new Date('2026-11-10T09:00:00Z');
 const tz = 'Europe/Belgrade';
@@ -7,7 +7,7 @@ const tz = 'Europe/Belgrade';
 describe('parseFilters', () => {
   it('defaults to the recent sessions with no other filter and the result chart', () => {
     expect(parseFilters({}, now, tz)).toEqual({
-      quick: 'recent', year: null, month: null, from: null, to: null, discipline: null, kind: null, stage: null, place: null, event: null, chart: 'rez', side: false, limit: 30,
+      quick: 'recent', year: null, month: null, from: null, to: null, discipline: null, kind: null, stage: null, place: null, event: null, scatt: null, pulse: null, chart: 'rez', side: false, limit: 30,
     });
   });
 
@@ -30,6 +30,22 @@ describe('parseFilters', () => {
     expect(f).toMatchObject({ discipline: 'air_rifle', kind: 'takmicenje', stage: 'finale', place: 'Beograd', event: '00000000-0000-0000-0000-000000000001', chart: 'puls' });
     const bad = parseFilters({ d: 'x', v: 'x', deo: 'x', e: 'drop table', g: 'x', od: '2026-13-45' }, now, tz);
     expect(bad).toMatchObject({ discipline: null, kind: null, stage: null, event: null, chart: 'rez', quick: 'recent' });
+  });
+});
+
+describe('SCATT and pulse filters', () => {
+  it('reads with (1) and without (0), and ignores anything else', () => {
+    expect(parseFilters({ sc: '1', pu: '0' }, now, tz)).toMatchObject({ scatt: true, pulse: false });
+    expect(parseFilters({ sc: '0', pu: '1' }, now, tz)).toMatchObject({ scatt: false, pulse: true });
+    expect(parseFilters({ sc: 'x', pu: '' }, now, tz)).toMatchObject({ scatt: null, pulse: null });
+  });
+
+  it('writes them back to the address, counts as a narrowing filter, and starts the list over', () => {
+    const f = parseFilters({ sc: '0', pu: '1', n: '90' }, now, tz);
+    expect(filtersHref('/', f, { chart: 'puls' })).toBe('/?sc=0&pu=1&g=puls&n=90');
+    expect(filtersHref('/', f, { scatt: null })).toBe('/?pu=1');
+    expect(hasFilters(f)).toBe(true);
+    expect(hasFilters(parseFilters({}, now, tz))).toBe(false);
   });
 });
 

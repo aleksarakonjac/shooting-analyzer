@@ -17,7 +17,8 @@ export interface TrainingSummary {
   /** Local calendar date, YYYY-MM-DD. */
   trainedOn: string;
   discipline: DisciplineId;
-  matches: { alignState: 'proposed' | 'confirmed'; series: SeriesSummary[] }[];
+  /** `paired`: a SCATT file was matched to the SIUS shots, so a proposed alignment is something to confirm. */
+  matches: { alignState: 'proposed' | 'confirmed'; paired?: boolean; series: SeriesSummary[] }[];
   /** Warm-up shots and failed attempts. */
   /** Average heart rate over the match shots, computed when the training was saved. */
   hrAvg: number | null;
@@ -100,6 +101,10 @@ export interface SetStats {
   avgGroupMm: number | null;
   avgHr: number | null;
 }
+
+/** Whether a session has a SCATT file paired to its SIUS shots, and whether it has a pulse; the list flags and filters read these. */
+export const hasScatt = (t: TrainingSummary) => t.matches.some((m) => m.paired);
+export const hasPulse = (t: TrainingSummary) => t.hrAvg !== null;
 
 /** A session's heart rate counts only when its shots are aligned to the clock (not only proposed). */
 export const hrCounts = (t: TrainingSummary) => t.hrAvg !== null && !(t.matches.length > 0 && t.matches.every((m) => m.alignState === 'proposed'));

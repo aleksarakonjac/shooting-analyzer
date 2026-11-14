@@ -8,9 +8,9 @@ import { AppShell } from '../../src/components/AppShell';
 const html = (el: React.ReactElement) => renderToStaticMarkup(el);
 
 describe('FlagBadge', () => {
-  it('says "Predloženo" with a pennant marker for proposed', () => {
+  it('says "Čeka potvrdu" with a pennant marker for proposed', () => {
     const out = html(<FlagBadge state="proposed" />);
-    expect(out).toContain('Predloženo');
+    expect(out).toContain('Čeka potvrdu');
     expect(out).toContain('data-marker="pennant"');
     expect(out).toContain('data-state="proposed"');
   });

@@ -1,6 +1,6 @@
 import { createClient } from '@/lib/supabase/server';
 import type { SessionFilters } from './filters';
-import type { TrainingSummary } from './periodStats';
+import { hasPulse, hasScatt, type TrainingSummary } from './periodStats';
 import { SUMMARY_SELECT, toSummary, type SummaryRow } from './summaryQuery';
 
 /**
@@ -18,9 +18,17 @@ export async function loadSessions(shooterId: string, f: SessionFilters): Promis
   if (f.place) q = q.ilike('place', f.place.replace(/[\\%_]/g, (c) => `\\${c}`));
   if (f.event) q = q.eq('event_id', f.event);
   q = q.order('trained_on', { ascending: false }).order('started_at', { ascending: false, nullsFirst: false }).order('created_at', { ascending: false });
-  if (f.quick === 'recent') q = q.limit(f.limit + 1);
+  // The SCATT and pulse filters read what the rows hold, so they are applied after the fetch and the
+  // recent view's row cap moves after them: otherwise a filter could leave a short, misleading page.
+  const dataFilter = f.scatt !== null || f.pulse !== null;
+  if (f.quick === 'recent' && !dataFilter) q = q.limit(f.limit + 1);
   const { data } = await q;
-  return ((data ?? []) as unknown as SummaryRow[]).map(toSummary);
+  let rows = ((data ?? []) as unknown as SummaryRow[]).map(toSummary);
+  if (dataFilter) {
+    rows = rows.filter((r) => (f.scatt === null || hasScatt(r) === f.scatt) && (f.pulse === null || hasPulse(r) === f.pulse));
+    if (f.quick === 'recent') rows = rows.slice(0, f.limit + 1);
+  }
+  return rows;
 }
 
 /** Places and events the shooter has used, for the filter choices. */

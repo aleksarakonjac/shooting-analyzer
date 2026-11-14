@@ -71,6 +71,8 @@ export function FilterBar({
   const [deo, setDeo] = useState<string>(filters.stage ?? ANY);
   const [m, setM] = useState<string>(filters.place ?? ANY);
   const [e, setE] = useState<string>(filters.event ?? ANY);
+  const [sc, setSc] = useState<string>(filters.scatt === null ? ANY : filters.scatt ? '1' : '0');
+  const [pu, setPu] = useState<string>(filters.pulse === null ? ANY : filters.pulse ? '1' : '0');
   const any = { id: ANY, label: t.any };
 
   return (
@@ -94,6 +96,8 @@ export function FilterBar({
             <Select label={t.stage} name="deo" value={deo} onChange={setDeo} items={[any, ...(['slobodno', 'eliminacije', 'kvalifikacije', 'finale'] as const).map((id) => ({ id, label: nt.stages[id] }))]} />
             <Select label={t.place} name="m" value={m} onChange={setM} items={[any, ...places.map((p) => ({ id: p, label: p }))]} />
             {events.length > 0 && <Select label={t.event} name="e" value={e} onChange={setE} items={[any, ...events.map((x) => ({ id: x.id, label: x.name }))]} />}
+            <Select label={t.scatt} name="sc" value={sc} onChange={setSc} items={[any, { id: '1', label: t.withScatt }, { id: '0', label: t.noScatt }]} />
+            <Select label={t.pulse} name="pu" value={pu} onChange={setPu} items={[any, { id: '1', label: t.withPulse }, { id: '0', label: t.noPulse }]} />
             {filters.chart !== 'rez' && <input type="hidden" name="g" value={filters.chart} />}
             {filters.side && <input type="hidden" name="s" value="1" />}
             <div className="filters__actions">

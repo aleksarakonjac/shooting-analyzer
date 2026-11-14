@@ -34,6 +34,10 @@ export interface SessionFilters {
   stage: SessionStage | null;
   place: string | null;
   event: string | null;
+  /** true = only sessions with a SCATT file, false = only without; null = either. */
+  scatt: boolean | null;
+  /** true = only sessions with a pulse, false = only without; null = either. */
+  pulse: boolean | null;
   chart: ChartKind;
   /** The side panel with the figures and charts is open. */
   side: boolean;
@@ -41,7 +45,7 @@ export interface SessionFilters {
   limit: number;
 }
 
-export type FilterSearch = Partial<Record<'y' | 'mo' | 'od' | 'do' | 'd' | 'v' | 'deo' | 'm' | 'e' | 'g' | 'n' | 's', string>>;
+export type FilterSearch = Partial<Record<'y' | 'mo' | 'od' | 'do' | 'd' | 'v' | 'deo' | 'm' | 'e' | 'sc' | 'pu' | 'g' | 'n' | 's', string>>;
 
 /** How many sessions the list shows at first, and how many more each "show more" adds. */
 export const RECENT_LIMIT = 30;
@@ -60,6 +64,8 @@ const validDate = (v: string | undefined): string | null => {
 const dayAfter = (v: string) => new Date(Date.parse(`${v}T00:00:00Z`) + 86_400_000).toISOString().slice(0, 10);
 const dayBefore = (v: string) => new Date(Date.parse(`${v}T00:00:00Z`) - 86_400_000).toISOString().slice(0, 10);
 const pick = <T extends string>(list: readonly T[], v: string | undefined): T | null => (v && (list as readonly string[]).includes(v) ? (v as T) : null);
+
+const yesNo = (v: string | undefined): boolean | null => (v === '1' ? true : v === '0' ? false : null);
 
 const parseLimit = (v: string | undefined): number => {
   const n = v && /^\d+$/.test(v) ? Number(v) : RECENT_LIMIT;
@@ -97,6 +103,8 @@ export function parseFilters(s: FilterSearch, now: Date, tz: string): SessionFil
     stage: pick(STAGES, s.deo),
     place,
     event: s.e && UUID.test(s.e) ? s.e : null,
+    scatt: yesNo(s.sc),
+    pulse: yesNo(s.pu),
     chart: pick(CHARTS, s.g) ?? 'rez',
     side: s.s === '1',
     limit: parseLimit(s.n),
@@ -119,6 +127,8 @@ export function filtersHref(base: string, f: SessionFilters, patch: Partial<Sess
   if (n.stage) q.set('deo', n.stage);
   if (n.place) q.set('m', n.place);
   if (n.event) q.set('e', n.event);
+  if (n.scatt !== null) q.set('sc', n.scatt ? '1' : '0');
+  if (n.pulse !== null) q.set('pu', n.pulse ? '1' : '0');
   if (n.chart !== 'rez') q.set('g', n.chart);
   if (n.side) q.set('s', '1');
   // A longer list survives a chart switch; any other change starts the list over.
@@ -130,4 +140,4 @@ export function filtersHref(base: string, f: SessionFilters, patch: Partial<Sess
 
 /** True when anything narrows the view beyond the default recent sessions. */
 export const hasFilters = (f: SessionFilters) =>
-  f.quick !== 'recent' || Boolean(f.discipline || f.kind || f.stage || f.place || f.event);
+  f.quick !== 'recent' || Boolean(f.discipline || f.kind || f.stage || f.place || f.event) || f.scatt !== null || f.pulse !== null;

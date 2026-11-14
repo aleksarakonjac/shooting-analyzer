@@ -422,7 +422,6 @@ input[type='file']::file-selector-button { font: inherit; font-weight: 700; marg
 .dash__list a:focus-visible { outline-offset: -2px; }
 .dash__date { color: var(--ink-muted); font-size: var(--fs-md); font-weight: 600; }
 .dash__name { flex: 1; min-width: 0; display: grid; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.dash__flag { color: var(--proposed); font-size: var(--fs-sm); font-weight: 600; }
 .dash__who { color: var(--ink-muted); font-size: var(--fs-sm); text-align: right; }
 .dash__list strong { font-family: var(--font-display); font-weight: 800; font-size: var(--fs-xl); }
 
@@ -814,31 +813,67 @@ input[type='file']::file-selector-button { font: inherit; font-weight: 700; marg
   grid-template-columns: 5rem minmax(0, 1fr) auto minmax(4rem, 8rem) 4.75rem;
   padding: 0 var(--space-4);
 }
+.srows { list-style: none; margin: 0; padding: 0; }
+.srows li { border-bottom: 1px solid var(--rule-strong); }
+
+/* One group per month: a heading that folds the group away, then its own column headings, then its rows.
+   Both stay pinned while the group scrolls past, the column headings just under the month. */
+.smonth { --smonth-h: 2.25rem; }
+.smonth__title { margin: 0; position: sticky; top: 0; z-index: 2; font-size: inherit; }
+.smonth__toggle, button.smonth__toggle {
+  width: 100%; min-height: var(--smonth-h); justify-content: flex-start; gap: var(--space-2);
+  padding: 0 var(--space-4); border: 0; border-bottom: 1px solid var(--rule-strong); border-radius: 0;
+  background: var(--panel-raised); color: var(--ink);
+  font-size: var(--fs-md); font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; text-align: left;
+}
+.smonth__toggle:hover:not(:disabled) { background: var(--rule); border-color: var(--rule-strong); color: var(--ink); }
+.smonth__toggle:active:not(:disabled) { background: var(--rule); }
+.smonth__toggle .ui-chev { flex: none; color: var(--ink-muted); transition: transform var(--dur) var(--ease-out); }
+.smonth:not([data-open]) .smonth__toggle .ui-chev { transform: rotate(-90deg); }
+.smonth:not([data-open]) .smonth__title { position: static; }
+.smonth__count { margin-left: auto; font-size: var(--fs-sm); font-weight: 600; letter-spacing: 0; text-transform: none; color: var(--ink-muted); }
 .stable__head {
-  position: sticky; top: 0; z-index: 1; min-height: 2rem;
+  position: sticky; top: var(--smonth-h); z-index: 1; min-height: 2rem;
   background: var(--panel); border-bottom: 1px solid var(--rule-strong);
   font-size: var(--fs-xs); font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-faint);
 }
-.stable__head .num, .srow__total { text-align: right; }
-.srows { list-style: none; margin: 0; padding: 0; }
-.srows li { border-bottom: 1px solid var(--rule-strong); }
-.srows li.srows__month {
-  padding: var(--space-2) var(--space-4); background: var(--panel-raised); border-bottom: 1px solid var(--rule-strong);
-  font-size: var(--fs-md); font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--ink);
+.stable__sort, button.stable__sort {
+  width: fit-content; min-height: 2rem; padding: 0; gap: 4px; justify-content: flex-start; border: 0; border-radius: 0;
+  background: transparent; color: inherit; font: inherit; letter-spacing: inherit; text-transform: inherit;
 }
+.stable__sort.num { justify-self: end; }
+.stable__sort:hover:not(:disabled), .stable__sort[aria-pressed='true'] { background: transparent; border-color: transparent; color: var(--ink); }
+.stable__sort:active:not(:disabled) { background: transparent; }
+.stable__arrow { flex: none; color: var(--data); transition: transform var(--dur) var(--ease-out); }
+.stable__arrow[data-dir='desc'] { transform: rotate(180deg); }
+@media (prefers-reduced-motion: reduce) { .smonth__toggle .ui-chev, .stable__arrow { transition: none; } }
+.stable__head .num, .srow__total { text-align: right; }
 .srow { min-height: 3rem; padding-top: var(--space-2); padding-bottom: var(--space-2); color: var(--ink); text-decoration: none; }
 .srow:hover { background: var(--panel-raised); }
 .srow:focus-visible { outline-offset: -2px; }
 .srow__day { display: grid; gap: 1px; line-height: 1.1; }
 .srow__date { font-family: var(--font-display); font-weight: 800; font-size: var(--fs-lg); }
 .srow__wd { font-size: var(--fs-xs); font-weight: 600; color: var(--ink-muted); text-transform: uppercase; letter-spacing: 0.06em; }
-.srow__name { font-size: var(--fs-base); font-weight: 600; overflow-wrap: anywhere; }
+.srow__name { display: flex; flex-wrap: wrap; align-items: center; gap: 2px var(--space-2); min-width: 0; }
+.srow__title { font-size: var(--fs-base); font-weight: 600; overflow-wrap: anywhere; }
 .srow__tags { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: var(--space-1); }
 .srow__tag {
   padding: 1px var(--space-2); border: 1px solid var(--rule-strong); border-radius: 999px;
   font-size: var(--fs-xs); font-weight: 600; color: var(--ink-muted); white-space: nowrap;
 }
 .srow__place { font-size: var(--fs-sm); color: var(--ink-muted); overflow-wrap: anywhere; }
+/* Three kinds of mark in the tag row: pills say what the session is, the gold dashed chip asks for an action
+   (same language as the report's alignment flag), a framed square-cornered mark beside the name says which data it lacks. */
+.srow__confirm {
+  padding: 1px var(--space-2); border: 1px dashed var(--proposed); border-radius: 999px; background: var(--proposed-soft);
+  font-size: var(--fs-xs); font-weight: 700; color: var(--proposed); white-space: nowrap;
+}
+.srow__miss {
+  display: inline-flex; align-items: center; gap: 4px; padding: 1px var(--space-2);
+  border: 1px solid var(--ink-faint); border-radius: var(--radius); background: var(--panel-sunk);
+  font-size: var(--fs-xs); font-weight: 700; color: var(--ink-muted); white-space: nowrap;
+}
+.srow__miss svg { flex: none; }
 .srow__total { font-family: var(--font-display); font-weight: 800; font-size: var(--fs-xl); }
 .stable__foot {
   display: flex; align-items: center; justify-content: space-between; gap: var(--space-3);

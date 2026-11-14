@@ -50,16 +50,63 @@ describe('SessionsView', () => {
 
   it('groups the list by month and drops the pulse note from the figures', () => {
     view([tr('a', '2026-11-09'), tr('b', '2026-10-30'), tr('c', '2026-10-02')]);
-    expect(document.querySelectorAll('.srows__month')).toHaveLength(2);
+    expect(document.querySelectorAll('.smonth')).toHaveLength(2);
     expect(screen.getByText('Novembar 2026.')).toBeTruthy();
     expect(screen.getByText('Oktobar 2026.')).toBeTruthy();
     expect(screen.queryByText(/potvrđena poravnanja/)).toBeNull();
   });
 
+  it('gives every month its own column headings and a session count', () => {
+    view([tr('a', '2026-11-09'), tr('b', '2026-10-30'), tr('c', '2026-10-02')]);
+    const months = Array.from(document.querySelectorAll('.smonth'));
+    for (const m of months) expect(within(m as HTMLElement).getByRole('button', { name: 'Rezultat' })).toBeTruthy();
+    expect(within(months[0] as HTMLElement).getByText('1 sesija')).toBeTruthy();
+    expect(within(months[1] as HTMLElement).getByText('2 sesije')).toBeTruthy();
+  });
+
+  it('folds a month away and brings it back', () => {
+    view([tr('a', '2026-11-09'), tr('b', '2026-10-30')]);
+    const oct = screen.getByRole('button', { name: /Oktobar 2026/ });
+    expect(oct.getAttribute('aria-expanded')).toBe('true');
+    fireEvent.click(oct);
+    expect(oct.getAttribute('aria-expanded')).toBe('false');
+    expect(screen.queryByRole('link', { name: /Sesija b/ })).toBeNull();
+    expect(screen.getByRole('link', { name: /Sesija a/ })).toBeTruthy();
+    fireEvent.click(oct);
+    expect(screen.getByRole('link', { name: /Sesija b/ })).toBeTruthy();
+  });
+
+  it('sorts the rows inside every month by the clicked column, and flips on a second click', () => {
+    const rows = (month: number) => Array.from(document.querySelectorAll('.smonth')[month].querySelectorAll('.srow__title')).map((e) => e.textContent);
+    const mk = (id: string, day: string, total: number) => tr(id, day, { matches: [{ alignState: 'confirmed', series: [{ idx: 1, total, totalDecimal: total, groupMm: 8, shotCount: 10 }] }] });
+    view([mk('a', '2026-11-09', 90), mk('b', '2026-11-08', 99), mk('c', '2026-10-05', 80), mk('d', '2026-10-04', 95)]);
+    expect(rows(0)).toEqual(['Sesija a', 'Sesija b']);
+    fireEvent.click(within(document.querySelectorAll('.smonth')[0] as HTMLElement).getByRole('button', { name: 'Rezultat' }));
+    expect(rows(0)).toEqual(['Sesija b', 'Sesija a']);
+    expect(rows(1)).toEqual(['Sesija d', 'Sesija c']);
+    fireEvent.click(within(document.querySelectorAll('.smonth')[0] as HTMLElement).getByRole('button', { name: /Rezultat/ }));
+    expect(rows(0)).toEqual(['Sesija a', 'Sesija b']);
+  });
+
+  it('marks missing SCATT and pulse beside the session name, and only asks to confirm a paired alignment', () => {
+    view([
+      tr('a', '2026-11-09'),
+      tr('b', '2026-11-08', { hrAvg: 90, matches: [{ alignState: 'proposed', paired: true, series: [{ idx: 1, total: 100, totalDecimal: 100, groupMm: 8, shotCount: 10 }] }] }),
+    ]);
+    const a = screen.getByRole('link', { name: /Sesija a/ });
+    expect(within(a.querySelector('.srow__name') as HTMLElement).getByText('Bez SCATT-a')).toBeTruthy();
+    expect(within(a.querySelector('.srow__name') as HTMLElement).getByText('Bez pulsa')).toBeTruthy();
+    expect(within(a).queryByText('Potvrdi spoj')).toBeNull();
+    const b = screen.getByRole('link', { name: /Sesija b/ });
+    expect(within(b).getByText('Potvrdi spoj')).toBeTruthy();
+    expect(within(b).queryByText('Bez SCATT-a')).toBeNull();
+    expect(within(b).queryByText('Bez pulsa')).toBeNull();
+  });
+
   it('lists one page of a long period and offers the next', () => {
     const many = Array.from({ length: 45 }, (_, i) => tr(String(i), `2026-11-${String((i % 9) + 1).padStart(2, '0')}`));
     view(many, { y: '2026' });
-    expect(document.querySelectorAll('.srows > li:not(.srows__month)')).toHaveLength(30);
+    expect(document.querySelectorAll('.srows > li')).toHaveLength(30);
     expect(screen.getByText('30 od 45')).toBeTruthy();
     expect(screen.getByRole('link', { name: 'Prikaži još 15' }).getAttribute('href')).toBe('/?y=2026&n=60');
   });
@@ -67,7 +114,7 @@ describe('SessionsView', () => {
   it('offers older sessions when the recent view has more than one page', () => {
     const many = Array.from({ length: 31 }, (_, i) => tr(String(i), '2026-11-01'));
     view(many);
-    expect(document.querySelectorAll('.srows > li:not(.srows__month)')).toHaveLength(30);
+    expect(document.querySelectorAll('.srows > li')).toHaveLength(30);
     expect(screen.getByRole('link', { name: 'Prikaži starije' }).getAttribute('href')).toBe('/?n=60');
   });
 

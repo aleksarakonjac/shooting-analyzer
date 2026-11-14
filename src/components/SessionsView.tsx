@@ -1,10 +1,11 @@
 'use client';
-import Link, { useLinkStatus } from 'next/link';
-import { Fragment, useState, type ReactNode } from 'react';
+import Link from 'next/link';
+import { useState } from 'react';
 import { LanePlate } from '@/components/LanePlate';
 import { Workspace } from '@/components/Workspace';
 import { FilterBar } from '@/components/sessions/FilterBar';
 import { SessionsChart } from '@/components/sessions/SessionsChart';
+import { MoreLink, SessionsList } from '@/components/sessions/SessionsList';
 import { DISCIPLINES } from '@/lib/domain/disciplines';
 import type { DisciplineId } from '@/lib/domain/types';
 import { sr } from '@/lib/i18n/sr';
@@ -12,15 +13,7 @@ import { filtersHref, hasFilters, RECENT_LIMIT, type ChartKind, type SessionFilt
 import { ChevronLeft, ChevronRight } from '@/components/ui/icons';
 import { sessionPoints, setStats, type TrainingSummary } from '@/lib/stats/periodStats';
 
-/** Dims its link's label while that navigation is still loading. */
-function Pending({ children }: { children: ReactNode }) {
-  const { pending } = useLinkStatus();
-  return <span className={pending ? 'is-pending' : undefined}>{children}</span>;
-}
-
 const t = sr.dashboard;
-const nt = sr.newTraining;
-const WEEKDAYS = ['ned', 'pon', 'uto', 'sre', 'čet', 'pet', 'sub'];
 const CHARTS: { id: ChartKind; label: string }[] = [
   { id: 'rez', label: t.chartRez },
   { id: 'puls', label: t.chartPuls },
@@ -31,14 +24,6 @@ const PLUS = (
   <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="2.25"
     strokeLinecap="round"><path d="M12 5v14M5 12h14" /></svg>
 );
-
-const dayParts = (iso: string) => {
-  const d = new Date(`${iso}T12:00:00Z`);
-  return { weekday: WEEKDAYS[d.getUTCDay()], date: `${d.getUTCDate()}. ${d.getUTCMonth() + 1}.`, year: d.getUTCFullYear() };
-};
-
-const hm = (iso: string, tz: string) =>
-  new Intl.DateTimeFormat('sr-Latn-RS', { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: tz }).format(new Date(iso));
 
 /** The sessions list first, then the figures and a chart of the filtered set (pure; the loader fetches). */
 export function SessionsView({
@@ -78,7 +63,7 @@ export function SessionsView({
   const stats = setStats(same);
   const dec = discipline ? DISCIPLINES[discipline].decimal : true;
   const thisYear = new Date().getUTCFullYear();
-  const activeCount = [f.discipline, f.kind, f.stage, f.place, f.event].filter(Boolean).length;
+  const activeCount = [f.discipline, f.kind, f.stage, f.place, f.event].filter(Boolean).length + (f.scatt !== null ? 1 : 0) + (f.pulse !== null ? 1 : 0);
   const dash = (v: number | null, digits = 1) => (v === null ? t.noValue : v.toFixed(digits));
 
   const strip = (
@@ -132,72 +117,17 @@ export function SessionsView({
   const moreHref = filtersHref(base, f, { limit: f.limit + RECENT_LIMIT });
 
   const list = (
-    <div className="stable">
-      <div className="stable__head" aria-hidden="true">
-        <span>{t.colDate}</span>
-        <span>{t.colSession}</span>
-        <span className="stable__opt">{t.colKind}</span>
-        <span className="stable__opt">{t.colPlace}</span>
-        <span className="num">{t.colTotal}</span>
-      </div>
-      <ol className="srows">
-        {shown.map((x, i) => {
-          const series = x.matches.flatMap((m) => m.series);
-          const xdec = DISCIPLINES[x.discipline].decimal;
-          const total = series.length
-            ? Math.round(series.reduce((a, s) => a + ((xdec ? (s.totalDecimal ?? s.total) : s.total) ?? 0), 0) * 10) / 10
-            : null;
-          const proposed = x.matches.some((m) => m.alignState === 'proposed');
-          const day = dayParts(x.trainedOn);
-          const monthKey = x.trainedOn.slice(0, 7);
-          const newMonth = i === 0 || shown[i - 1].trainedOn.slice(0, 7) !== monthKey;
-          const tags = [
-            DISCIPLINES[x.discipline].nameSr,
-            x.kind && x.kind !== 'trening' ? nt.kinds[x.kind] : null,
-            x.stage && x.stage !== 'slobodno' ? nt.stages[x.stage] : null,
-            x.eventName ?? null,
-          ].filter((v): v is string => Boolean(v));
-          const time = x.startedAt && x.tz ? hm(x.startedAt, x.tz) : null;
-          return (
-            <Fragment key={x.id}>
-              {newMonth && (
-                <li className="srows__month" aria-hidden="true">
-                  {t.months[Number(monthKey.slice(5)) - 1]} {monthKey.slice(0, 4)}.
-                </li>
-              )}
-              <li>
-                <Link href={`/trening/${x.id}`} className="srow">
-                  <span className="srow__day">
-                    <span className="srow__date num">{day.date}</span>
-                    <span className="srow__wd">
-                      {day.weekday}
-                      {time && <span className="num"> {time}</span>}
-                    </span>
-                  </span>
-                  <span className="srow__name">
-                    {x.name}
-                    {proposed && <small className="dash__flag">{t.proposed}</small>}
-                  </span>
-                  <span className="srow__tags">
-                    {tags.map((tag, k) => <span key={k} className="srow__tag">{tag}</span>)}
-                  </span>
-                  <span className="srow__place">{x.place || t.noValue}</span>
-                  <strong className="srow__total num">{total === null ? t.noValue : total.toFixed(xdec ? 1 : 0)}</strong>
-                </Link>
-              </li>
-            </Fragment>
-          );
-        })}
-      </ol>
-      {more > 0 && (
-        <div className="stable__foot">
-          <span className="num">{f.quick === 'recent' ? t.recentRange(shown.length) : t.shownOf(shown.length, set.length)}</span>
-          <Link className="button button--quiet" href={moreHref} scroll={false}>
-            <Pending>{f.quick === 'recent' ? t.showOlder : t.showMore(more)}</Pending>
-          </Link>
-        </div>
-      )}
-    </div>
+    <SessionsList
+      shown={shown}
+      footer={
+        more > 0 && (
+          <div className="stable__foot">
+            <span className="num">{f.quick === 'recent' ? t.recentRange(shown.length) : t.shownOf(shown.length, set.length)}</span>
+            <MoreLink href={moreHref} label={f.quick === 'recent' ? t.showOlder : t.showMore(more)} />
+          </div>
+        )
+      }
+    />
   );
 
   const figures = (
