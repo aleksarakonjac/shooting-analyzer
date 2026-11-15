@@ -126,33 +126,27 @@ export function ShotsViewer({
       g.setLineDash([]);
     }
     g.globalAlpha = 1;
-    // Hits in the app's data cyan, in shooting order so the later (more visible) ones lie on top. A dashed edge
-    // marks a position whose direction is not confirmed (SCATT alone, or the SIUS arrow alone, drawn lighter).
+    // Hits in the app's data cyan, in shooting order so the later (more visible) ones lie on top. No outline: only a
+    // position whose direction is not confirmed (SCATT alone, or the SIUS arrow alone, drawn lighter) gets a dashed edge.
     const fill = cssVar('--data', '#39c6f0');
     const text = cssVar('--ground', '#0b1530');
     const font = cssVar('--font-display', 'system-ui, sans-serif');
     for (const s of shown) {
-      const on = mode === 'shot';
       const sure = s.confidence === 'verified' || s.confidence === 'sius';
       g.globalAlpha = s.alpha * (s.confidence === 'arrow-only' ? 0.6 : 1);
       g.beginPath();
       g.arc(X(s.x), Y(s.y), rad, 0, 2 * Math.PI);
       g.fillStyle = fill;
       g.fill();
-      g.strokeStyle = ink;
-      g.lineWidth = 1.5;
-      if (!sure) g.setLineDash([4, 3]);
-      g.stroke();
-      g.setLineDash([]);
-      if (on) {
-        g.beginPath();
-        g.arc(X(s.x), Y(s.y), rad + 4, 0, 2 * Math.PI);
+      if (!sure) {
         g.strokeStyle = ink;
-        g.lineWidth = 2;
+        g.lineWidth = 1.5;
+        g.setLineDash([4, 3]);
         g.stroke();
+        g.setLineDash([]);
       }
       if (label) {
-        g.font = `800 ${Math.min(26, rad * 1.25).toFixed(1)}px ${font}`;
+        g.font = `800 ${Math.min(44, rad * 1.7).toFixed(1)}px ${font}`;
         g.textAlign = 'center';
         g.textBaseline = 'middle';
         g.fillStyle = text;
