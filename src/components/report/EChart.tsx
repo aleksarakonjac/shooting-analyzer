@@ -2,7 +2,7 @@
 import { useEffect, useRef, useState } from 'react';
 import type { ECharts } from 'echarts/core';
 import { sr } from '@/lib/i18n/sr';
-import type { ZoomWindow } from '@/lib/report/zoom';
+import { swipePan, type ZoomWindow } from '@/lib/report/zoom';
 
 /** Loads only the ECharts parts we use, on the client. */
 async function loadEcharts() {
@@ -38,8 +38,8 @@ function currentWindow(c: ECharts): ZoomWindow {
 /**
  * One ECharts canvas that follows its container size. Charts sharing a `group`
  * move their cursors and zoom together. `onPick` gets the clicked point's data.
- * Charts with a zoom slider zoom by it; the time charts also pinch to zoom and swipe sideways to pan (see `zoomPinch` in
- * charts.ts), while a plain wheel and a vertical swipe stay with the page. A button resets.
+ * Charts with a zoom slider zoom by it; the time charts also pinch to zoom (see `zoomPinch` in charts.ts), and once
+ * zoomed a sideways swipe (touch, or two fingers on a trackpad) pans them, while a plain wheel and a vertical swipe stay with the page. A button resets.
  */
 export function EChart({
   option,
@@ -191,11 +191,18 @@ export function EChart({
       };
       host.addEventListener('click', onClickCapture, true);
       host.addEventListener('click', onClickBubble);
-      // A plain wheel scrolls the page; only a pinch (a wheel with ctrl, as a trackpad sends it) reaches the chart's zoom.
+      // A pinch (a wheel with ctrl, as a trackpad sends it) reaches the chart's zoom. A sideways two-finger swipe pans a
+      // zoomed chart; any other wheel scrolls the page.
       const onWheel = (e: WheelEvent) => {
-        if (!e.ctrlKey) e.stopImmediatePropagation();
+        if (e.ctrlKey) return;
+        e.stopImmediatePropagation();
+        const next = swipePan(e, host.clientWidth, currentWindow(c));
+        if (!next) return;
+        // Not passive: the swipe pans the chart instead of going back a page.
+        e.preventDefault();
+        c.dispatchAction({ type: 'dataZoom', start: next.start, end: next.end });
       };
-      host.addEventListener('wheel', onWheel, { capture: true, passive: true });
+      host.addEventListener('wheel', onWheel, { capture: true, passive: false });
       host.addEventListener('touchstart', onTouchStart, { capture: true, passive: true });
       host.addEventListener('touchmove', onTouchMove, { capture: true, passive: true });
       cleanup = () => {

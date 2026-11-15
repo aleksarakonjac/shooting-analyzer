@@ -44,3 +44,17 @@ export function wheelGesture(
   if (Math.abs(dx) > Math.abs(dy)) return { kind: 'pan', share: dx / Math.max(1, width) };
   return { kind: 'zoom', factor: Math.exp(dy * 0.0015) };
 }
+
+/**
+ * A trackpad's sideways two-finger swipe over a zoomed chart: the window it pans to, or null when the gesture is
+ * not for the chart (a pinch, an upright swipe that scrolls the page, or a chart showing all of its axis).
+ */
+export function swipePan(
+  e: { deltaX: number; deltaY: number; deltaMode: number; ctrlKey: boolean },
+  width: number,
+  w: ZoomWindow,
+): ZoomWindow | null {
+  if (e.ctrlKey || (w.start <= 0.01 && w.end >= 99.99)) return null;
+  const g = wheelGesture(e, width);
+  return g.kind === 'pan' ? panWindow(w, g.share) : null;
+}

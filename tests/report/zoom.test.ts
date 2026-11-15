@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { wheelGesture, zoomWindow, panWindow } from '@/lib/report/zoom';
+import { wheelGesture, zoomWindow, panWindow, swipePan } from '@/lib/report/zoom';
 
 describe('zoomWindow', () => {
   it('zooms in around the cursor, keeping the point under it in place', () => {
@@ -42,5 +42,21 @@ describe('wheelGesture', () => {
       expect(g.factor).toBeGreaterThan(1);
       expect(g.factor).toBeLessThan(1.2);
     }
+  });
+});
+
+describe('swipePan', () => {
+  const zoomedIn = { start: 20, end: 40 };
+  it('a sideways two-finger swipe pans a zoomed chart', () => {
+    expect(swipePan({ deltaX: 100, deltaY: 5, deltaMode: 0, ctrlKey: false }, 500, zoomedIn)).toEqual({ start: 24, end: 44 });
+    expect(swipePan({ deltaX: -100, deltaY: 0, deltaMode: 0, ctrlKey: false }, 500, zoomedIn)).toEqual({ start: 16, end: 36 });
+  });
+  it('leaves the gesture alone when the chart is not zoomed, the swipe is upright, or it is a pinch', () => {
+    expect(swipePan({ deltaX: 100, deltaY: 0, deltaMode: 0, ctrlKey: false }, 500, { start: 0, end: 100 })).toBeNull();
+    expect(swipePan({ deltaX: 5, deltaY: 100, deltaMode: 0, ctrlKey: false }, 500, zoomedIn)).toBeNull();
+    expect(swipePan({ deltaX: 100, deltaY: 0, deltaMode: 0, ctrlKey: true }, 500, zoomedIn)).toBeNull();
+  });
+  it('stops at the ends', () => {
+    expect(swipePan({ deltaX: 5000, deltaY: 0, deltaMode: 0, ctrlKey: false }, 500, zoomedIn)).toEqual({ start: 80, end: 100 });
   });
 });
