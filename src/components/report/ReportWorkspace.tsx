@@ -73,14 +73,15 @@ function ReportBoard({
   canEdit = false,
   commentsEnabled = false,
 }: Omit<ReportProps, 'replayPrefs'>) {
-  const [sel, setSel] = useState<Selection>({ series: view.series[0]?.idx ?? null, shot: view.series[0]?.shots[0]?.n ?? null });
+  // Opens on the first series with no shot picked, so the target shows the whole match.
+  const [sel, setSel] = useState<Selection>({ series: view.series[0]?.idx ?? null, shot: null });
   // Back on a session the viewer left: reopen it on the series and shot they were on (kept per browser).
   const [restored, setRestored] = useState(false);
   useEffect(() => {
     const last = readLastSession();
     if (last?.id === trainingId) {
       const se = view.series.find((s) => s.idx === last.series);
-      if (se) setSel({ series: se.idx, shot: se.shots.some((sh) => sh.n === last.shot) ? last.shot : se.shots[0]?.n ?? null });
+      if (se) setSel({ series: se.idx, shot: last.shot !== null && se.shots.some((sh) => sh.n === last.shot) ? last.shot : null });
       else if (last.series === null && last.shot === null) setSel({ series: null, shot: null });
     }
     setRestored(true);
@@ -282,7 +283,12 @@ function ReportBoard({
 
   // Every hit with a position, for the overview on the same target as the replay: SCATT's point set against the
   // SIUS score, else where SIUS put it (its coordinates, or its arrow and score). Competition sessions have only SIUS.
-  const [overview, setOverview] = useState<OverviewScope>('series');
+  // Opening a session shows the whole match; picking Serija / Meč on the target leaves the single-shot view.
+  const [overview, setOverview] = useState<OverviewScope>('match');
+  const pickOverview = (scope: OverviewScope) => {
+    setOverview(scope);
+    setSel({ series: sel.series, shot: null });
+  };
   const overviewShots = useMemo<OverviewShot[]>(
     () =>
       view.series.flatMap((se) =>
@@ -317,7 +323,7 @@ function ReportBoard({
             onNext={nextShot ? () => setSel(nextShot) : undefined}
             onBack={() => setSel({ series: sel.series, shot: null })}
           />
-        ) : view.series.length ? (overviewShots.length ? <ShotsViewer spec={targetSpec(discipline)} target={scattTarget} shots={overviewShots} series={sel.series} shot={sel.shot} group={overviewGroup} scope={sel.series === null ? 'match' : overview} unplaced={unplaced} onScope={setOverview} onPick={(se, n) => setSel({ series: se, shot: n })} /> : <TargetPlot discipline={discipline} series={view.series} selected={sel.series} holes={holes} caliberMm={scatt.status === 'ready' ? scatt.caliberMm : undefined} onPickShot={(n) => setSel({ series: sel.series, shot: n })} />) : <p className="panel__empty">{t.noMatch}</p>
+        ) : view.series.length ? (overviewShots.length ? <ShotsViewer spec={targetSpec(discipline)} target={scattTarget} shots={overviewShots} series={sel.series} shot={sel.shot} group={overviewGroup} scope={overview} unplaced={unplaced} onScope={pickOverview} onPick={(se, n) => setSel({ series: se, shot: n })} /> : <TargetPlot discipline={discipline} series={view.series} selected={sel.series} holes={holes} caliberMm={scatt.status === 'ready' ? scatt.caliberMm : undefined} onPickShot={(n) => setSel({ series: sel.series, shot: n })} />) : <p className="panel__empty">{t.noMatch}</p>
   );
   const panels: WorkspacePanel[] = [
     {

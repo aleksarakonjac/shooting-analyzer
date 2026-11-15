@@ -8,6 +8,7 @@ import type { ScattTarget } from '@/lib/scatt/targets';
 import { Segmented } from '../ui/Segmented';
 import { DEFAULT_HIT, useReplaySettings } from './replaySettings';
 import { useRingZoom } from './useRingZoom';
+import { overviewHits } from '@/lib/report/overview';
 
 const t = sr.report;
 
@@ -62,18 +63,22 @@ export function ShotsViewer({
 }) {
   const settings = useReplaySettings();
   const hit = settings?.hit ?? DEFAULT_HIT;
-  const shown = useMemo(() => (scope === 'series' ? shots.filter((s) => s.series === series) : shots), [shots, scope, series]);
+  // One shot when one is picked; else the chosen series or the whole match, fading from the first shot to the last.
+  const { mode, hits: shown } = useMemo(() => overviewHits(shots, { scope, series, shot }), [shots, scope, series, shot]);
   const wrap = useRef<HTMLDivElement>(null);
   const canvas = useRef<HTMLCanvasElement>(null);
   const [size, setSize] = useState({ w: 0, h: 0, dpr: 1 });
 
+  // A single shot is framed like its whole series, so it is seen in place and stepping shots keeps the same view.
+  const frameSeries = mode === 'shot' ? (shown[0]?.series ?? null) : mode === 'series' ? series : null;
+  const framed = useMemo(() => (frameSeries === null ? shown : shots.filter((s) => s.series === frameSeries)), [frameSeries, shown, shots]);
   const fitR = useMemo(() => {
     let reach = 0;
-    for (const s of shown) reach = Math.max(reach, Math.hypot(s.x, s.y));
-    if (scope === 'series' && group) reach = Math.max(reach, Math.hypot(group.x, group.y) + group.r);
+    for (const s of framed) reach = Math.max(reach, Math.hypot(s.x, s.y));
+    if (frameSeries !== null && group) reach = Math.max(reach, Math.hypot(group.x, group.y) + group.r);
     return viewRadiusMm(spec, reach + target.caliber / 2);
-  }, [shown, scope, group, spec, target]);
-  const zoom = useRingZoom(spec, fitR, canvas, `${scope}:${scope === 'series' ? series : ''}`);
+  }, [framed, frameSeries, group, spec, target]);
+  const zoom = useRingZoom(spec, fitR, canvas, frameSeries === null ? 'match' : `series:${frameSeries}`);
 
   useEffect(() => {
     const el = wrap.current;
@@ -93,7 +98,7 @@ export function ShotsViewer({
     drawTarget(g, size, target, spec, zoom.R);
     const { S, X, Y } = viewTransform(size, zoom.R);
     const ink = cssVar('--target-ink', '#14181b');
-    if (scope === 'series' && group) {
+    if (mode === 'series' && group) {
       g.beginPath();
       g.arc(X(group.x), Y(group.y), group.r * S, 0, 2 * Math.PI);
       g.setLineDash([6, 4]);
@@ -107,7 +112,7 @@ export function ShotsViewer({
     // Where SCATT read the hit when it differs from the SIUS-corrected one: a faint ring and a thin line, a hint on the aiming.
     for (const s of shown) {
       if (s.movedMm < 0.05) continue;
-      g.globalAlpha = scope === 'match' && s.series !== series ? 0.15 : 0.55;
+      g.globalAlpha = 0.55 * s.alpha;
       g.beginPath();
       g.moveTo(X(s.sx), Y(s.sy));
       g.lineTo(X(s.x), Y(s.y));
@@ -121,43 +126,41 @@ export function ShotsViewer({
       g.setLineDash([]);
     }
     g.globalAlpha = 1;
-    // The selected shot is drawn last, on top; other series (match view) are dimmed.
-    const order = [...shown].sort((a, b) => Number(a.n === shot) - Number(b.n === shot));
-    for (const s of order) {
-      const on = s.n === shot;
-      const dimmed = scope === 'match' && s.series !== series;
-      g.globalAlpha = dimmed ? 0.4 : 1;
-      // Position confidence: solid = the SIUS arrow confirms the direction; dashed = direction from SCATT alone;
-      // dashed and light = direction from the arrow alone; solid too where SIUS measured the position itself.
+    // Hits in the app's data cyan, in shooting order so the later (more visible) ones lie on top. A dashed edge
+    // marks a position whose direction is not confirmed (SCATT alone, or the SIUS arrow alone, drawn lighter).
+    const fill = cssVar('--data', '#39c6f0');
+    const text = cssVar('--ground', '#0b1530');
+    const font = cssVar('--font-display', 'system-ui, sans-serif');
+    for (const s of shown) {
+      const on = mode === 'shot';
       const sure = s.confidence === 'verified' || s.confidence === 'sius';
+      g.globalAlpha = s.alpha * (s.confidence === 'arrow-only' ? 0.6 : 1);
       g.beginPath();
       g.arc(X(s.x), Y(s.y), rad, 0, 2 * Math.PI);
-      if (s.confidence === 'arrow-only') g.globalAlpha = dimmed ? 0.2 : 0.55;
-      g.fillStyle = hit;
+      g.fillStyle = fill;
       g.fill();
-      g.strokeStyle = on ? cssVar('--select-bg', '#fff') : ink;
-      g.lineWidth = on ? 3 : 1.5;
+      g.strokeStyle = ink;
+      g.lineWidth = 1.5;
       if (!sure) g.setLineDash([4, 3]);
       g.stroke();
       g.setLineDash([]);
-      g.globalAlpha = dimmed ? 0.4 : 1;
       if (on) {
         g.beginPath();
         g.arc(X(s.x), Y(s.y), rad + 4, 0, 2 * Math.PI);
         g.strokeStyle = ink;
-        g.lineWidth = 1.5;
+        g.lineWidth = 2;
         g.stroke();
       }
       if (label) {
-        g.font = `700 ${Math.min(14, rad * 0.9).toFixed(1)}px system-ui, sans-serif`;
+        g.font = `800 ${Math.min(26, rad * 1.25).toFixed(1)}px ${font}`;
         g.textAlign = 'center';
         g.textBaseline = 'middle';
-        g.fillStyle = ink;
-        g.fillText(String(scope === 'series' ? s.idx : s.n), X(s.x), Y(s.y));
+        g.fillStyle = text;
+        g.fillText(String(mode === 'match' ? s.n : s.idx), X(s.x), Y(s.y) + rad * 0.06);
       }
     }
     g.globalAlpha = 1;
-  }, [size, shown, scope, series, shot, group, target, spec, zoom.R, hit]);
+  }, [size, shown, mode, group, target, spec, zoom.R, hit]);
 
   // A click on a hit picks that shot.
   const pick = (e: MouseEvent<HTMLCanvasElement>) => {
@@ -179,7 +182,7 @@ export function ShotsViewer({
   };
 
   const count = (c: HitConfidence) => shown.filter((s) => s.confidence === c).length;
-  const missing = scope === 'series' ? unplaced.series : unplaced.match;
+  const missing = mode === 'series' ? unplaced.series : mode === 'match' ? unplaced.match : 0;
   const ring = ringAtRadius(spec, zoom.R);
   return (
     <figure className="trace trace--overview">
@@ -187,7 +190,7 @@ export function ShotsViewer({
         <canvas
           ref={canvas}
           role="img"
-          aria-label={`${scope === 'series' ? t.scopeSeries : t.scopeMatch}: ${shown.length}`}
+          aria-label={`${mode === 'shot' ? t.scopeShot : mode === 'series' ? t.scopeSeries : t.scopeMatch}: ${shown.length}`}
           onClick={pick}
           onDoubleClick={zoom.fit}
         />
@@ -196,7 +199,7 @@ export function ShotsViewer({
             label={t.overviewScope}
             hideLabel
             full={false}
-            value={scope}
+            value={mode === 'shot' ? null : mode}
             onChange={onScope}
             options={[
               { id: 'series', label: t.scopeSeries },
@@ -214,7 +217,6 @@ export function ShotsViewer({
       </div>
       <p className="trace__legend trace__legend--conf">
         {/* Only the kinds this view has: a competition session (SIUS alone) shows one line, not three zeros. */}
-        {count('sius') > 0 && <span><i className="conf conf--verified" aria-hidden="true" /> {t.confSius} {count('sius')}</span>}
         {count('verified') > 0 && <span><i className="conf conf--verified" aria-hidden="true" /> {t.confVerified} {count('verified')}</span>}
         {count('scatt-only') > 0 && <span><i className="conf conf--scatt" aria-hidden="true" /> {t.confScatt} {count('scatt-only')}</span>}
         {count('arrow-only') > 0 && <span><i className="conf conf--arrow" aria-hidden="true" /> {t.confArrow} {count('arrow-only')}</span>}

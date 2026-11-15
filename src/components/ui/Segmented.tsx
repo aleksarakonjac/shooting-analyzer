@@ -21,7 +21,8 @@ export function Segmented<T extends string>({
   /** Form field name, for plain form submits. */
   name?: string;
   label: string;
-  value: T;
+  /** null: none of the options is the current state (e.g. a single shot is shown instead). */
+  value: T | null;
   onChange: (v: T) => void;
   options: { id: T; label: string }[];
 }) {
