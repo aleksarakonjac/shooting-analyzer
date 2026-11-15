@@ -76,14 +76,18 @@ function tokenPatch(t: SiusTokens, key: string, now: number): Partial<SiusLinkRo
 
 /**
  * Records the attempt first, then counts it with all others: parallel requests each see every recorded attempt,
- * so together they can never exceed the hourly caps (a rejected attempt still counts, which only errs on the
- * safe side). Throws SiusUnavailable(limit) when over a cap.
+ * so together they can never exceed the hourly caps. A rejected attempt is removed again, so one user retrying
+ * cannot use up the shared budget. Throws SiusUnavailable(limit) when over a cap.
  */
 async function takeLoginSlot(ctx: Ctx, userId: string) {
-  await ctx.store.recordLogin(userId);
+  const attempt = await ctx.store.recordLogin(userId);
   const since = ctx.now() - HOUR;
-  if ((await ctx.store.countLogins(userId, since)) > USER_LIMIT) throw new SiusUnavailable(true);
-  if ((await ctx.store.countLogins(null, since)) > GLOBAL_LIMIT) throw new SiusUnavailable(true);
+  const over =
+    (await ctx.store.countLogins(userId, since)) > USER_LIMIT || (await ctx.store.countLogins(null, since)) > GLOBAL_LIMIT;
+  if (over) {
+    await ctx.store.removeLogin(attempt);
+    throw new SiusUnavailable(true);
+  }
 }
 
 async function passwordLogin(ctx: Ctx, userId: string, row: SiusLinkRow): Promise<string> {

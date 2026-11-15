@@ -24,7 +24,10 @@ export interface SiusLinkStore {
   remove(userId: string): Promise<void>;
   /** Password logins since `sinceMs`, for one user or (null) everyone. */
   countLogins(userId: string | null, sinceMs: number): Promise<number>;
-  recordLogin(userId: string): Promise<void>;
+  /** Records a password login attempt; returns its id. */
+  recordLogin(userId: string): Promise<number>;
+  /** Drops an attempt that was refused by the limits. */
+  removeLogin(attemptId: number): Promise<void>;
 }
 
 /** Service-role store; null when the service key is not configured. */
@@ -55,10 +58,14 @@ export function supabaseSiusStore(): SiusLinkStore | null {
       return count ?? 0;
     },
     async recordLogin(userId) {
-      const { error } = await db.from('sius_login_attempts').insert({ user_id: userId });
+      const { data, error } = await db.from('sius_login_attempts').insert({ user_id: userId }).select('id').single();
       if (error) throw new Error(`sius_login_attempts write failed (${error.code})`);
       // Keep the table small: only the last hour is ever counted.
       await db.from('sius_login_attempts').delete().lt('at', new Date(Date.now() - 2 * 3600_000).toISOString());
+      return Number(data.id);
+    },
+    async removeLogin(attemptId) {
+      await db.from('sius_login_attempts').delete().eq('id', attemptId);
     },
   };
 }

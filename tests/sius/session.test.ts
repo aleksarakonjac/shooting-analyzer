@@ -18,7 +18,8 @@ const U = 'user-1';
 function memStore(initial: Partial<SiusLinkRow> | null) {
   const rows = new Map<string, SiusLinkRow>();
   if (initial) rows.set(U, { user_id: U, email: 'me@x', password_enc: null, refresh_token_enc: null, access_token_enc: null, access_expires_at: null, sius_user_id: null, broken_at: null, broken_reason: null, updated_at: new Date(NOW - 3600_000).toISOString(), ...initial });
-  const logins: { userId: string; at: number }[] = [];
+  const logins: { id: number; userId: string; at: number }[] = [];
+  let seq = 0;
   const store: SiusLinkStore = {
     get: vi.fn(async (id) => (rows.has(id) ? { ...rows.get(id)! } : null)),
     save: vi.fn(async (id, patch) => {
@@ -27,7 +28,15 @@ function memStore(initial: Partial<SiusLinkRow> | null) {
     }),
     remove: vi.fn(async (id) => void rows.delete(id)),
     countLogins: vi.fn(async (id, since) => logins.filter((l) => (id === null || l.userId === id) && l.at >= since).length),
-    recordLogin: vi.fn(async (id) => void logins.push({ userId: id, at: NOW })),
+    recordLogin: vi.fn(async (id) => {
+      const row = { id: ++seq, userId: id, at: NOW };
+      logins.push(row);
+      return row.id;
+    }),
+    removeLogin: vi.fn(async (attempt) => {
+      const i = logins.findIndex((l) => l.id === attempt);
+      if (i >= 0) logins.splice(i, 1);
+    }),
   };
   return { rows, logins, store };
 }
@@ -120,7 +129,7 @@ describe('getAccessToken', () => {
 
   it('4th password login in an hour for one user → unavailable without calling SIUS', async () => {
     const m = memStore(base);
-    for (let i = 0; i < 3; i++) m.logins.push({ userId: U, at: NOW - 10_000 });
+    for (let i = 0; i < 3; i++) m.logins.push({ id: -1, userId: U, at: NOW - 10_000 });
     const d = deps(m.store, { refresh: vi.fn(async (): Promise<SiusTokens> => { throw new SiusAuthFailure('blocked'); }) });
     const err = await getAccessToken(U, d).catch((e) => e);
     expect(err).toBeInstanceOf(SiusUnavailable);
@@ -130,16 +139,24 @@ describe('getAccessToken', () => {
 
   it('parallel requests cannot pass the per-user limit together', async () => {
     const m = memStore(base);
-    for (let i = 0; i < 2; i++) m.logins.push({ userId: U, at: NOW - 10_000 });
+    for (let i = 0; i < 2; i++) m.logins.push({ id: -1, userId: U, at: NOW - 10_000 });
     const login = vi.fn<Login>(async () => tokens('AT-login'));
     const d = deps(m.store, { login, refresh: vi.fn(async (): Promise<SiusTokens> => { throw new SiusAuthFailure('blocked'); }) });
     await Promise.allSettled([getAccessToken(U, d), getAccessToken(U, d), getAccessToken(U, d)]);
     expect(login.mock.calls.length).toBeLessThanOrEqual(1);
   });
 
+  it('rejected attempts do not use up the global budget', async () => {
+    const m = memStore(base);
+    for (let i = 0; i < 3; i++) m.logins.push({ id: -1, userId: U, at: NOW - 10_000 });
+    const d = deps(m.store, { refresh: vi.fn(async (): Promise<SiusTokens> => { throw new SiusAuthFailure('blocked'); }) });
+    for (let i = 0; i < 40; i++) await getAccessToken(U, d).catch(() => undefined);
+    expect(await m.store.countLogins(null, NOW - 3600_000)).toBe(3);
+  });
+
   it('31st password login in an hour across users → unavailable', async () => {
     const m = memStore(base);
-    for (let i = 0; i < 30; i++) m.logins.push({ userId: `other-${i}`, at: NOW - 10_000 });
+    for (let i = 0; i < 30; i++) m.logins.push({ id: -1, userId: `other-${i}`, at: NOW - 10_000 });
     const d = deps(m.store, { refresh: vi.fn(async (): Promise<SiusTokens> => { throw new SiusAuthFailure('blocked'); }) });
     await expect(getAccessToken(U, d)).rejects.toBeInstanceOf(SiusUnavailable);
     expect(d.auth.login).not.toHaveBeenCalled();
@@ -147,7 +164,7 @@ describe('getAccessToken', () => {
 
   it('logins older than an hour do not count', async () => {
     const m = memStore(base);
-    for (let i = 0; i < 3; i++) m.logins.push({ userId: U, at: NOW - 3700_000 });
+    for (let i = 0; i < 3; i++) m.logins.push({ id: -1, userId: U, at: NOW - 3700_000 });
     const d = deps(m.store, { refresh: vi.fn(async (): Promise<SiusTokens> => { throw new SiusAuthFailure('blocked'); }) });
     await expect(getAccessToken(U, d)).resolves.toBe('AT-login');
   });
@@ -209,7 +226,7 @@ describe('connect', () => {
 
   it('respects the per-user limit', async () => {
     const m = memStore(null);
-    for (let i = 0; i < 3; i++) m.logins.push({ userId: U, at: NOW - 1000 });
+    for (let i = 0; i < 3; i++) m.logins.push({ id: -1, userId: U, at: NOW - 1000 });
     const d = deps(m.store);
     await expect(connect(U, 'a', 'b', d)).rejects.toMatchObject({ limit: true });
     expect(d.auth.login).not.toHaveBeenCalled();
