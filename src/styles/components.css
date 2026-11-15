@@ -1944,3 +1944,26 @@ html[data-target-motion]::view-transition-old(root), html[data-target-motion]::v
 .wordmark__o { position: relative; display: inline-block; box-sizing: border-box; width: 0.47em; height: 0.8em; margin: 0 0.03em; vertical-align: baseline; border: 0.135em solid currentColor; border-radius: 0.235em; }
 .wordmark__o::after { content: ''; position: absolute; left: 50%; top: 50%; width: 0.12em; height: 0.12em; border-radius: 50%; background: var(--data); transform: translate(-50%, -50%) skewX(10deg); }
 .landing__name { font-size: clamp(2.75rem, 9vw, 4.5rem); }
+
+/* ---------- pull to refresh (phones) ---------- */
+/* The app's own pull replaces the browser's (Android would otherwise reload the whole page on top of it). */
+@media (pointer: coarse) { html, body { overscroll-behavior-y: none; } }
+.ptr {
+  position: fixed; z-index: 70; top: var(--safe-t, 0px); left: 50%;
+  display: grid; justify-items: center; gap: var(--space-1);
+  pointer-events: none; opacity: 0; transition: opacity 120ms var(--ease-out);
+}
+.ptr:not([data-state='idle']) { opacity: 1; }
+.ptr[data-state='idle'], .ptr[data-state='refreshing'] { transition: opacity 160ms var(--ease-out), transform 220ms var(--ease-out); }
+.ptr__disc {
+  display: grid; place-items: center; width: 2.5rem; height: 2.5rem;
+  background: var(--panel-raised); color: var(--ink-muted); border: 1px solid var(--rule-strong); border-radius: var(--radius);
+  box-shadow: 0 2px 4px rgb(0 0 0 / 0.35), 0 14px 32px -10px rgb(0 0 0 / 0.6);
+}
+.ptr__disc svg { transition: transform 120ms linear; }
+.ptr[data-state='ready'] .ptr__disc, .ptr[data-state='refreshing'] .ptr__disc { color: var(--data); border-color: var(--data); }
+.ptr__label { font-size: var(--fs-xs); font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-muted); }
+.ptr[data-state='ready'] .ptr__label { color: var(--ink); }
+.ptr__spin { animation: ptr-spin 0.8s linear infinite; }
+@keyframes ptr-spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .ptr__spin { animation-duration: 2s; } .ptr, .ptr__disc svg { transition: none; } }

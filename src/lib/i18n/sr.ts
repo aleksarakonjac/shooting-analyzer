@@ -707,6 +707,7 @@ export const sr = {
       },
     },
   },
+  pull: { pull: 'Povuci za osvežavanje', release: 'Pusti za osvežavanje', refreshing: 'Osvežavam…' },
   sius: {
     title: 'SIUS Cloud',
     email: 'SIUS e-pošta',
