@@ -16,6 +16,7 @@ import { parseSiusCsv } from '@/lib/parsers/siusCsv';
 import { looksLikePrnx } from '@/lib/parsers/siusPrnx';
 import { mergeScattData } from '@/lib/scatt/merge';
 import { parseTcx, reinterpretAsZone, type HrSample } from '@/lib/parsers/tcx';
+import { HealthPull, pullBody, type PulledInfo } from './HealthPull';
 import { hrCoverage } from '@/lib/report/derive';
 import { isRepeatedHour, toInstantRange, type Fold } from '@/lib/import/times';
 import { isFinalDiscipline } from '@/lib/finals/format';
@@ -83,6 +84,8 @@ export interface SessionEdit {
   hrZone: string | null;
 }
 
+const NO_HEALTH = { status: 'none' as const, isCoach: false };
+
 export function NewTrainingForm({
   userId,
   tz,
@@ -93,7 +96,10 @@ export function NewTrainingForm({
   edit,
   inbox = [],
   autoInbox = [],
+  health = NO_HEALTH,
 }: {
+  /** The shooter's Google Health connection, and whether the person entering is their coach. */
+  health?: { status: 'none' | 'ok' | 'broken'; isCoach: boolean };
   /** SCATT files sent from the phone (share-sheet Shortcut) and waiting to be entered. */
   inbox?: InboxItem[];
   /** Inbox ids to load straight away (the Shortcut opens the page with the file it just sent). */
@@ -245,6 +251,16 @@ export function NewTrainingForm({
       setErrors((e) => ({ ...e, hr: undefined }));
     } catch {
       setErrors((e) => ({ ...e, hr: t.unreadable }));
+    }
+  };
+
+  // Pulse from Google Health arrives as a TCX file and goes the same way as an upload.
+  const onHealthPulled = async (file: File, info: PulledInfo) => {
+    await addHr(file);
+    if (!timeFrom && !timeTo && info.workout) {
+      const hm = new Intl.DateTimeFormat('en-GB', { hour: '2-digit', minute: '2-digit', hourCycle: 'h23', timeZone: venueTz });
+      setTimeFrom(hm.format(info.workout.startMs));
+      setTimeTo(hm.format(info.workout.endMs));
     }
   };
 
@@ -771,6 +787,18 @@ export function NewTrainingForm({
       <SourceCard title={t.hrTitle} error={errors.hr}>
         <FileField label={t.hrFile} accept=".tcx,application/xml,text/xml" onChange={onHr} fileName={hrLoaded?.file.name} />
         {inboxTray('tcx')}
+        <HealthPull
+          status={health.status}
+          isCoach={health.isCoach}
+          tz={venueTz}
+          body={() => {
+            if (!trainedOn) return null;
+            const range = toInstantRange(trainedOn, timeFrom, timeTo, venueTz, { from: foldFrom, to: foldTo });
+            const times = shotTimes.length ? shotTimes : (scatt?.shots.map((x) => x.tMs) ?? []);
+            return pullBody({ trainingId: edit?.trainingId, shooterId: userId, date: trainedOn, shotTimes: times, startedAt: range.startedAt, endedAt: range.endedAt });
+          }}
+          onPulled={onHealthPulled}
+        />
         {hrLoaded && (
           <>
             <p className="source-card__loaded">

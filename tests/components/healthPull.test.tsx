@@ -1,0 +1,112 @@
+// @vitest-environment jsdom
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { HealthPull, pullBody } from '../../src/components/HealthPull';
+
+afterEach(() => {
+  cleanup();
+  vi.unstubAllGlobals();
+});
+
+const ok = {
+  status: 200,
+  tcx: '<TrainingCenterDatabase/>',
+  fileName: 'google-health-2026-11-13-1600.tcx',
+  workout: { id: 'w', startMs: Date.UTC(2026, 10, 13, 15, 13), endMs: Date.UTC(2026, 10, 13, 16, 31) },
+  range: { fromMs: Date.UTC(2026, 10, 13, 15, 0), toMs: Date.UTC(2026, 10, 13, 16, 40) },
+  source: 'shots',
+};
+
+function stubFetch(status: number, body: unknown) {
+  const fn = vi.fn(async (_url: string, _init?: RequestInit) => new Response(JSON.stringify(body), { status }));
+  vi.stubGlobal('fetch', fn);
+  return fn;
+}
+
+const base = { tz: 'Europe/Belgrade', isCoach: false, body: () => ({ shooterId: 's', date: '2026-11-13' }), onPulled: () => {} };
+
+describe('pullBody', () => {
+  it('sends trainingId in edit mode', () => {
+    expect(pullBody({ trainingId: 't1', shooterId: 's', date: '2026-11-13', shotTimes: [5, 1], startedAt: null, endedAt: null })).toEqual({ trainingId: 't1' });
+  });
+  it('sends the shot span otherwise', () => {
+    expect(pullBody({ shooterId: 's', date: '2026-11-13', shotTimes: [5, null, 1, undefined, 9], startedAt: 'a', endedAt: null })).toEqual({
+      shooterId: 's',
+      date: '2026-11-13',
+      shotSpan: { fromMs: 1, toMs: 9 },
+      startedAt: 'a',
+      endedAt: null,
+    });
+  });
+  it('sends no span without timed shots', () => {
+    expect(pullBody({ shooterId: 's', date: '2026-11-13', shotTimes: [null], startedAt: null, endedAt: null })).toMatchObject({ shotSpan: null });
+  });
+});
+
+describe('HealthPull', () => {
+  it('shows the pull button only when connected', () => {
+    const { rerender } = render(<HealthPull {...base} status="none" />);
+    expect(screen.queryByRole('button', { name: 'Povuci puls sa Google Health' })).toBeNull();
+    rerender(<HealthPull {...base} status="ok" />);
+    expect(screen.getByRole('button', { name: 'Povuci puls sa Google Health' })).toBeTruthy();
+  });
+
+  it('tells about a broken link', () => {
+    render(<HealthPull {...base} status="broken" />);
+    expect(screen.getByText('Veza sa Google Health je istekla — strelac treba ponovo da je poveže.')).toBeTruthy();
+  });
+
+  it('hands the pulled TCX on as a file and shows the range and workout', async () => {
+    const fetchFn = stubFetch(200, ok);
+    const onPulled = vi.fn();
+    render(<HealthPull {...base} status="ok" onPulled={onPulled} />);
+    fireEvent.click(screen.getByRole('button', { name: 'Povuci puls sa Google Health' }));
+    await waitFor(() => expect(onPulled).toHaveBeenCalledTimes(1));
+    const [file, info] = onPulled.mock.calls[0];
+    expect(file).toBeInstanceOf(File);
+    expect(file.name).toBe('google-health-2026-11-13-1600.tcx');
+    expect(await file.text()).toBe('<TrainingCenterDatabase/>');
+    expect(info.workout).toEqual(ok.workout);
+    expect(JSON.parse(String(fetchFn.mock.calls[0][1]?.body))).toEqual({ shooterId: 's', date: '2026-11-13' });
+    expect(fetchFn.mock.calls[0][0]).toBe('/api/google-health/pulse');
+    expect(screen.getByText('Puls povučen sa Google Health: 16:00–17:40')).toBeTruthy();
+    expect(screen.getByText('Pronađena vežba Shooting 16:13–17:31')).toBeTruthy();
+  });
+
+  it('pulls again and hands on the new file', async () => {
+    stubFetch(200, ok);
+    const onPulled = vi.fn();
+    render(<HealthPull {...base} status="ok" onPulled={onPulled} />);
+    const button = screen.getByRole('button', { name: 'Povuci puls sa Google Health' });
+    fireEvent.click(button);
+    await waitFor(() => expect(onPulled).toHaveBeenCalledTimes(1));
+    fireEvent.click(screen.getByRole('button', { name: 'Povuci puls sa Google Health' }));
+    await waitFor(() => expect(onPulled).toHaveBeenCalledTimes(2));
+  });
+
+  it('shows error on 403', async () => {
+    stubFetch(403, { status: 403, error: 'forbidden' });
+    render(<HealthPull {...base} status="ok" />);
+    fireEvent.click(screen.getByRole('button', { name: 'Povuci puls sa Google Health' }));
+    expect((await screen.findByRole('alert')).textContent).toBe('Nemaš pristup pulsu ovog strelca.');
+  });
+
+  it('explains no_data', async () => {
+    stubFetch(404, { status: 404, error: 'no_data' });
+    render(<HealthPull {...base} status="ok" />);
+    fireEvent.click(screen.getByRole('button', { name: 'Povuci puls sa Google Health' }));
+    expect((await screen.findByRole('alert')).textContent).toBe('Google Health nema puls za ovo vreme — da li je sat sinhronizovan?');
+  });
+
+  it('gives the coach a different no_window hint', async () => {
+    stubFetch(422, { status: 422, error: 'no_window' });
+    render(<HealthPull {...base} status="ok" isCoach />);
+    fireEvent.click(screen.getByRole('button', { name: 'Povuci puls sa Google Health' }));
+    expect((await screen.findByRole('alert')).textContent).toBe('Učitaj SCATT ili sačekaj vežbu Shooting sa sata.');
+  });
+
+  it('is disabled when there is nothing to ask for', () => {
+    render(<HealthPull {...base} status="ok" body={() => null} />);
+    expect((screen.getByRole('button', { name: 'Povuci puls sa Google Health' }) as HTMLButtonElement).disabled).toBe(true);
+  });
+});

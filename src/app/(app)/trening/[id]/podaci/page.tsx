@@ -2,6 +2,7 @@ import { Suspense } from 'react';
 import { notFound, redirect } from 'next/navigation';
 import { connection } from 'next/server';
 import { NewTrainingForm, type SessionEdit } from '@/components/NewTrainingForm';
+import { healthFor } from '@/lib/googleHealth/status';
 import { getSessionProfile } from '@/lib/auth/session';
 import type { DisciplineId } from '@/lib/domain/types';
 import type { MatchSelection } from '@/lib/alignment/align';
@@ -105,6 +106,7 @@ async function Body({ params, searchParams }: { params: Promise<{ id: string }>;
       edit={edit}
       inbox={inbox}
       autoInbox={autoInbox}
+      health={await healthFor(tr.shooter_id, profile.id)}
     />
   );
 }

@@ -2,6 +2,7 @@ import { Suspense } from 'react';
 import { notFound, redirect } from 'next/navigation';
 import { connection } from 'next/server';
 import { NewTrainingForm } from '@/components/NewTrainingForm';
+import { healthFor } from '@/lib/googleHealth/status';
 import { linkedShooters } from '@/lib/auth/linkedShooters';
 import { getSessionProfile } from '@/lib/auth/session';
 import { recentPlaces } from '@/lib/import/places';
@@ -33,6 +34,7 @@ async function Body({ params }: { params: Promise<{ shooterId: string }> }) {
       title={`${sr.coach.newTitle}: ${shooter.name}`}
       places={await recentPlaces(shooter.id)}
       events={await shooterEvents(shooter.id)}
+      health={await healthFor(shooter.id, profile.id)}
     />
   );
 }
