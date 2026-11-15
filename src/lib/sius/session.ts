@@ -74,12 +74,16 @@ function tokenPatch(t: SiusTokens, key: string, now: number): Partial<SiusLinkRo
   };
 }
 
-/** Throws SiusUnavailable(limit) before a password login that would exceed the hourly caps; else counts it. */
+/**
+ * Records the attempt first, then counts it with all others: parallel requests each see every recorded attempt,
+ * so together they can never exceed the hourly caps (a rejected attempt still counts, which only errs on the
+ * safe side). Throws SiusUnavailable(limit) when over a cap.
+ */
 async function takeLoginSlot(ctx: Ctx, userId: string) {
-  const since = ctx.now() - HOUR;
-  if ((await ctx.store.countLogins(userId, since)) >= USER_LIMIT) throw new SiusUnavailable(true);
-  if ((await ctx.store.countLogins(null, since)) >= GLOBAL_LIMIT) throw new SiusUnavailable(true);
   await ctx.store.recordLogin(userId);
+  const since = ctx.now() - HOUR;
+  if ((await ctx.store.countLogins(userId, since)) > USER_LIMIT) throw new SiusUnavailable(true);
+  if ((await ctx.store.countLogins(null, since)) > GLOBAL_LIMIT) throw new SiusUnavailable(true);
 }
 
 async function passwordLogin(ctx: Ctx, userId: string, row: SiusLinkRow): Promise<string> {

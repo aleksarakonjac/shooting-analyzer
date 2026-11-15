@@ -128,6 +128,15 @@ describe('getAccessToken', () => {
     expect(d.auth.login).not.toHaveBeenCalled();
   });
 
+  it('parallel requests cannot pass the per-user limit together', async () => {
+    const m = memStore(base);
+    for (let i = 0; i < 2; i++) m.logins.push({ userId: U, at: NOW - 10_000 });
+    const login = vi.fn<Login>(async () => tokens('AT-login'));
+    const d = deps(m.store, { login, refresh: vi.fn(async (): Promise<SiusTokens> => { throw new SiusAuthFailure('blocked'); }) });
+    await Promise.allSettled([getAccessToken(U, d), getAccessToken(U, d), getAccessToken(U, d)]);
+    expect(login.mock.calls.length).toBeLessThanOrEqual(1);
+  });
+
   it('31st password login in an hour across users → unavailable', async () => {
     const m = memStore(base);
     for (let i = 0; i < 30; i++) m.logins.push({ userId: `other-${i}`, at: NOW - 10_000 });
