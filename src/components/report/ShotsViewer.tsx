@@ -130,8 +130,8 @@ export function ShotsViewer({
       g.setLineDash([]);
     }
     g.globalAlpha = 1;
-    // Hits in the app's data cyan, in shooting order so the later (more visible) ones lie on top. No outline: only a
-    // position whose direction is not confirmed (SCATT alone, or the SIUS arrow alone, drawn lighter) gets a dashed edge.
+    // Hits in the app's data cyan, in shooting order so the later (more visible) ones lie on top. A position whose
+    // direction is not confirmed (SCATT alone, or the SIUS arrow alone, drawn lighter) gets a dashed edge.
     const fill = cssVar('--data', '#39c6f0');
     const text = cssVar('--ground', '#0b1530');
     const font = cssVar('--font-display', 'system-ui, sans-serif');
@@ -142,13 +142,12 @@ export function ShotsViewer({
       g.arc(X(s.x), Y(s.y), rad, 0, 2 * Math.PI);
       g.fillStyle = fill;
       g.fill();
-      if (!sure) {
-        g.strokeStyle = ink;
-        g.lineWidth = 1.5;
-        g.setLineDash([4, 3]);
-        g.stroke();
-        g.setLineDash([]);
-      }
+      // A thin dark edge keeps overlapping hits apart; dashed where the direction is not confirmed.
+      g.strokeStyle = ink;
+      g.lineWidth = 1.25;
+      if (!sure) g.setLineDash([4, 3]);
+      g.stroke();
+      g.setLineDash([]);
       if (label) {
         // The number follows the zoom only between limits: never smaller than readable, never filling the hit.
         g.font = `800 ${Math.max(LABEL_MIN_PX, Math.min(LABEL_MAX_PX, rad * 0.95)).toFixed(1)}px ${font}`;
