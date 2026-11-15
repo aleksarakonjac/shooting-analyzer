@@ -9,7 +9,7 @@ import { sr } from '@/lib/i18n/sr';
 import { buildPreview, groupByPosition } from '@/lib/import/draft';
 import { defaultTrainingName, replaceTrainingData, saveTraining, type SessionKind, type SessionStage, type TrainingDraft } from '@/lib/import/saveTraining';
 import { findImported, type ImportedMatch } from '@/lib/import/duplicates';
-import { MAX_UPLOAD_BYTES, sha256Hex, uploadSource, type SourceKind } from '@/lib/import/uploadSource';
+import { MAX_UPLOAD_BYTES, sha256Hex, uploadSource, type SourceKind, type SourceMeta } from '@/lib/import/uploadSource';
 import { decodeText } from '@/lib/parsers/decode';
 import type { ScattData } from '@/lib/parsers/scatt';
 import { parseSiusCsv } from '@/lib/parsers/siusCsv';
@@ -28,6 +28,8 @@ import { FinalEntry, type FinalDraft } from './FinalEntry';
 import { Segmented } from './ui/Segmented';
 import { ManualEntry } from './entry/ManualEntry';
 import { PasteEntry } from './entry/PasteEntry';
+import { SiusCloudTab, type CloudPick } from './entry/SiusCloudTab';
+import { cloudPickTarget, prefillSession, restoreCloudResult } from '@/lib/sius/formPrefill';
 import { FlagBadge } from './FlagBadge';
 import { LanePlate } from './LanePlate';
 import { MatchSelector } from './MatchSelector';
@@ -50,6 +52,8 @@ interface Loaded<T> {
   sha: string;
   /** Came from the phone inbox; removed from there once the session is saved. */
   inboxId?: string;
+  /** SIUS Cloud JSON: its source kind and metadata (exercise id, first shot, count). */
+  cloud?: SourceMeta;
 }
 interface HrData {
   samples: HrSample[];
@@ -131,6 +135,9 @@ export function NewTrainingForm({
   const [foldFrom, setFoldFrom] = useState<Fold>('earlier');
   const [foldTo, setFoldTo] = useState<Fold>('earlier');
   const [finalDraft, setFinalDraft] = useState<FinalDraft | null>(null);
+  // A final picked from SIUS Cloud: shots for the finals grid and the JSON kept as the source file.
+  const [finalPrefill, setFinalPrefill] = useState<{ value: number; tMs?: number }[] | undefined>(undefined);
+  const [finalSource, setFinalSource] = useState<{ file: File; meta: SourceMeta } | null>(null);
   const onFinalDraft = useCallback((d: FinalDraft) => setFinalDraft(d), []);
   const [hrZoneChosen, setHrZoneChosen] = useState<string | null>(null);
   const [name, setName] = useState(init?.name ?? '');
@@ -190,8 +197,8 @@ export function NewTrainingForm({
     setSelection(s && sc ? proposeSelection(s, sc) : undefined);
   };
 
-  const applySius = (s: ParsedSiusResult, file: File | null, sha = '', inboxId?: string) => {
-    setSiusFile(file ? { file, data: s, sha, inboxId } : null);
+  const applySius = (s: ParsedSiusResult, file: File | null, sha = '', inboxId?: string, cloud?: SourceMeta) => {
+    setSiusFile(file ? { file, data: s, sha, inboxId, cloud } : null);
     setManual(file ? null : s);
     setErrors((e) => ({ ...e, sius: undefined }));
     if (!disciplineId && s.disciplineId) setDisciplineId(s.disciplineId);
@@ -199,6 +206,30 @@ export function NewTrainingForm({
       setTrainedOn(new Intl.DateTimeFormat('en-CA', { timeZone: tz }).format(s.reportTime));
     }
     repropose(s, scatt);
+  };
+
+  /** A SIUS Cloud pick: into the match (series), or into the finals grid when it is a final. */
+  const applyCloud = async (p: CloudPick) => {
+    const target = cloudPickTarget(stage, p.session?.stage);
+    if (target === 'final') {
+      if (!disciplineId && p.parsed.disciplineId) setDisciplineId(p.parsed.disciplineId);
+      setFinalPrefill(p.parsed.series.flatMap((x) => x.shots).map((x) => ({ value: x.value, tMs: x.tMs })));
+      setFinalSource({ file: p.file, meta: p.meta });
+    } else {
+      const sha = await sha256Hex(await p.file.arrayBuffer());
+      applySius(p.parsed, p.file, sha, undefined, p.meta);
+    }
+    // After applySius, so the competition's own day wins over the shot time read in the owner's zone.
+    if (p.session) {
+      const ch = prefillSession({ name, eventName, place, dateTouched }, p.session);
+      if (ch.name !== undefined) setName(ch.name);
+      if (ch.eventName !== undefined) setEventName(ch.eventName);
+      if (ch.place !== undefined) setPlace(ch.place);
+      if (ch.trainedOn !== undefined) setTrainedOn(ch.trainedOn);
+      if (ch.stage !== undefined) setStage(ch.stage);
+    } else if (target === 'final') {
+      setStage('finale');
+    }
   };
 
   const tooLarge = (file: File, key: 'sius' | 'scatt' | 'hr'): boolean => {
@@ -375,13 +406,23 @@ export function NewTrainingForm({
       };
       const load = async (kind: SourceKind[]) => (await loadAll(kind))[0] ?? null;
       try {
-        const [siusF, scattFs, hrF] = await Promise.all([load(['sius_csv', 'sius_pdf', 'sius_prnx']), loadAll(['scatt']), load(['tcx'])]);
-        const siusP = siusF ? await parseSiusFile(siusF, tz) : null;
+        const [siusF, scattFs, hrF, cloudF] = await Promise.all([
+          load(['sius_csv', 'sius_pdf', 'sius_prnx']),
+          loadAll(['scatt']),
+          load(['tcx']),
+          load(['sius_cloud']),
+        ]);
+        const siusP: { parsed: ParsedSiusResult; sha: string; cloud?: SourceMeta } | null = siusF
+          ? await parseSiusFile(siusF, tz)
+          : cloudF
+            ? await readCloudFile(cloudF, edit)
+            : null;
+        const siusFileF = siusF ?? (siusP ? cloudF : null);
         const scattPs = await Promise.all(scattFs.map(parseScattFile));
         const scattLoadedAll = scattFs.map((file, i) => ({ file, data: scattPs[i].data, sha: scattPs[i].sha }));
         const scattMerged = scattPs.length ? mergeScattData(scattPs.map((p) => p.data)) : null;
         const hrP = hrF ? await parseHrFile(hrF) : null;
-        if (siusF && siusP) setSiusFile({ file: siusF, data: siusP.parsed, sha: siusP.sha });
+        if (siusFileF && siusP) setSiusFile({ file: siusFileF, data: siusP.parsed, sha: siusP.sha, cloud: siusP.cloud });
         else if (edit.storedSius) setManual(edit.storedSius);
         setScattFiles(scattLoadedAll);
         if (hrF && hrP) {
@@ -469,16 +510,18 @@ export function NewTrainingForm({
         const { error } = await createClient().rpc('save_final', { payload: { training_id: trainingId, ...finalDraft.payload } });
         if (error) throw new Error(error.message);
       }
-      const files: [File | undefined, SourceKind][] = [
-        [siusFile?.file, siusFile ? siusKind(siusFile.file) : 'sius_csv'],
+      const files: [File | undefined, SourceKind, SourceMeta?][] = [
+        [siusFile?.file, siusFile ? (siusFile.cloud ? 'sius_cloud' : siusKind(siusFile.file)) : 'sius_csv', siusFile?.cloud],
         ...scattFiles.map((f): [File, SourceKind] => [f.file, 'scatt']),
         [hrLoaded?.file, 'tcx'],
+        // A final from SIUS Cloud keeps its JSON too, so "uvezeno" and the duplicate check see it.
+        ...(!edit && stage === 'finale' && finalSource ? [[finalSource.file, 'sius_cloud', finalSource.meta] as [File, SourceKind, SourceMeta]] : []),
       ];
       let failedUploads = 0;
-      for (const [file, kind] of files) {
+      for (const [file, kind, meta] of files) {
         if (!file) continue;
         try {
-          await uploadSource(file, trainingId, kind);
+          await uploadSource(file, trainingId, kind, undefined, meta);
         } catch {
           failedUploads++;
         }
@@ -699,7 +742,12 @@ export function NewTrainingForm({
 
   const finaleResults =
     stage !== 'finale' || edit ? null : disciplineId && isFinalDiscipline(disciplineId) ? (
-      <FinalEntry key={disciplineId} discipline={disciplineId} tz={venueTz} date={trainedOn} onDraft={onFinalDraft} />
+      <div className="stack">
+        <SourceCard title={sr.sius.cloud.tab}>
+          <SiusCloudTab shooterId={userId} sessionKind={kind} date={trainedOn} onApply={(p) => void applyCloud(p)} />
+        </SourceCard>
+        <FinalEntry key={disciplineId} discipline={disciplineId} tz={venueTz} date={trainedOn} onDraft={onFinalDraft} prefill={finalPrefill} />
+      </div>
     ) : (
       <p className="panel__empty">{t.finaleNoDiscipline}</p>
     );
@@ -720,6 +768,11 @@ export function NewTrainingForm({
                 {inboxTray('sius_pdf')}
               </SourceCard>
             ),
+          },
+          {
+            id: 'cloud',
+            label: sr.sius.cloud.tab,
+            content: <SiusCloudTab shooterId={userId} sessionKind={kind} date={trainedOn} onApply={(p) => void applyCloud(p)} />,
           },
           { id: 'manual', label: t.tabManual, content: <ManualEntry disciplineId={disciplineId} onApply={(r) => applySius(r, null)} /> },
           { id: 'paste', label: t.tabPaste, content: <PasteEntry disciplineId={disciplineId} date={trainedOn} tz={venueTz} onApply={(r) => applySius(r, null)} /> },
@@ -905,6 +958,23 @@ export function NewTrainingForm({
 /** Which kind of SIUS report a file is, by its name or type (the stored copy is named after its hash, with the kind's extension). */
 const siusKind = (file: File): SourceKind =>
   /\.prnx$/i.test(file.name) ? 'sius_prnx' : /pdf/i.test(file.type + file.name) ? 'sius_pdf' : 'sius_csv';
+
+/** A stored SIUS Cloud JSON, read back for editing with the saved positions (see restoreCloudResult). */
+async function readCloudFile(file: File, edit: SessionEdit): Promise<{ parsed: ParsedSiusResult; sha: string; cloud: SourceMeta } | null> {
+  const bytes = new Uint8Array(await file.arrayBuffer());
+  try {
+    const raw = JSON.parse(new TextDecoder().decode(bytes));
+    const stored = edit.storedSius ?? { discipline: '', total: 0, series: [] };
+    const parsed = restoreCloudResult(raw, edit.initial.disciplineId, stored);
+    const first = parsed.series.flatMap((x) => x.shots).find((x) => x.tMs !== undefined)?.tMs;
+    const shotCount = parsed.series.reduce((a, x) => a + x.shots.length, 0);
+    // Stored files are named by content hash; the existing source row keeps the real exercise id (re-upload is a no-op).
+    const externalId = file.name.replace(/\.json$/, '');
+    return { parsed, sha: await sha256Hex(bytes), cloud: { externalId, firstShotAt: first !== undefined ? new Date(first).toISOString() : null, shotCount } };
+  } catch {
+    return null;
+  }
+}
 
 /** Reads a SIUS CSV, PDF or print-preview (.prnx) report. */
 async function parseSiusFile(file: File, tz: string): Promise<{ parsed: ParsedSiusResult; sha: string }> {

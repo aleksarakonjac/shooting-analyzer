@@ -37,6 +37,7 @@ export function FinalEntry({
   tz,
   date,
   onDraft,
+  prefill,
 }: {
   trainingId?: string;
   discipline: FinalDiscipline;
@@ -44,6 +45,8 @@ export function FinalEntry({
   /** Day the shots were fired (YYYY-MM-DD), for pasted times that carry no date. */
   date: string;
   onDraft?: (draft: FinalDraft) => void;
+  /** Shots picked from SIUS Cloud: fill the grid once per new pick (the owner can still edit it). */
+  prefill?: { value: number; tMs?: number }[];
 }) {
   const router = useRouter();
   const stages = FINAL_FORMATS[discipline];
@@ -57,6 +60,13 @@ export function FinalEntry({
   const [mode, setMode] = useState<'manual' | 'paste'>('manual');
   const [message, setMessage] = useState<{ kind: 'error' | 'status'; text: string } | null>(null);
   const [busy, setBusy] = useState(false);
+  // A new prefill array (a new pick) replaces the grid; the same one again leaves the owner's edits alone.
+  const [appliedPrefill, setAppliedPrefill] = useState<typeof prefill>(undefined);
+  if (prefill && prefill !== appliedPrefill) {
+    setAppliedPrefill(prefill);
+    setCells(Array.from({ length: max }, (_, i) => (prefill[i] ? String(prefill[i].value) : '')));
+    setTMs(prefill.slice(0, max).map((p) => p.tMs ?? null));
+  }
 
   const values = cells.map(toValue);
   // Trailing empty cells are not part of the final.

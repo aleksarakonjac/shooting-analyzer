@@ -13,7 +13,7 @@ import { getExerciseShots, listExercises } from './training';
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const SIUS_ID = /^[A-Za-z0-9_-]{1,64}$/;
-const FORBIDDEN = { state: 'forbidden' } as const;
+const FORBIDDEN: svc.SiusState = { state: 'forbidden' };
 const DUP_WINDOW_MS = 2000;
 
 const okSel = (s: svc.CompetitionSelection | null | undefined): s is svc.CompetitionSelection =>

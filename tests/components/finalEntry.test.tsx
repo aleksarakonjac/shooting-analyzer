@@ -27,4 +27,18 @@ describe('FinalEntry', () => {
     const first = screen.getAllByRole('textbox').find((el) => (el as HTMLInputElement).value === '10.6');
     expect(first).toBeTruthy();
   });
+
+  it('fills the grid once from a SIUS Cloud pick, with shot times', () => {
+    const drafts: unknown[] = [];
+    const prefill = [{ value: 10.6, tMs: Date.parse('2026-11-03T11:30:00Z') }, { value: 9.9, tMs: Date.parse('2026-11-03T11:30:40Z') }];
+    const { rerender } = render(<FinalEntry discipline="air_rifle" tz="Europe/Belgrade" date="2026-11-03" onDraft={(d) => drafts.push(d)} prefill={prefill} />);
+    expect((screen.getByLabelText('Pogodak 1') as HTMLInputElement).value).toBe('10.6');
+    expect((screen.getByLabelText('Pogodak 2') as HTMLInputElement).value).toBe('9.9');
+    // The owner edits a cell; re-rendering with the same prefill keeps the edit.
+    fireEvent.change(screen.getByLabelText('Pogodak 2'), { target: { value: '10.0' } });
+    rerender(<FinalEntry discipline="air_rifle" tz="Europe/Belgrade" date="2026-11-03" onDraft={(d) => drafts.push(d)} prefill={prefill} />);
+    expect((screen.getByLabelText('Pogodak 2') as HTMLInputElement).value).toBe('10.0');
+    const last = drafts.at(-1) as { ok: boolean; payload?: { shots: { t_ms: number | null }[] } };
+    expect(JSON.stringify(last)).toContain(String(Date.parse('2026-11-03T11:30:00Z')));
+  });
 });
