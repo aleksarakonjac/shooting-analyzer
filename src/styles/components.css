@@ -583,6 +583,15 @@ input[type='file']::file-selector-button { font: inherit; font-weight: 700; marg
 .shots tr:hover td { background: var(--panel-raised); }
 .shots tr[aria-selected='true'] td { background: var(--select-bg); color: var(--select-fg); font-weight: 700; }
 .shots__inner { color: var(--data); font-weight: 700; margin-left: 2px; }
+/* Sighters ("Proba"): a quiet row before the series they precede, never part of the totals. */
+.board__sighters {
+  display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--space-2);
+  padding: var(--space-2) var(--space-4); border-bottom: 1px dashed var(--rule);
+  color: var(--ink-muted); font-size: var(--fs-sm);
+}
+.board__sighters .board__name { font-weight: 600; }
+/* Decimal score next to a whole 3x20 value. */
+.shots__dec { margin-left: 0.35em; color: var(--ink-faint); font-size: var(--fs-xs); }
 
 .target { margin: 0; height: 100%; display: grid; grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(0, 1fr) auto; gap: var(--space-3); }
 .target > svg { grid-row: 1; grid-column: 1; }

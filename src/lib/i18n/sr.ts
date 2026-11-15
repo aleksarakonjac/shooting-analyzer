@@ -227,6 +227,8 @@ export const sr = {
     finaleNoDiscipline: 'Finale postoji za vazdušnu pušku, vazdušni pištolj i MK trostav.',
   },
   report: {
+    sighters: 'Proba',
+    sightersTitle: 'Probni hici; ne ulaze u zbir ni u statistiku.',
     close: 'Zatvori',
     analysis: 'Analiza',
     total: 'Ukupno',

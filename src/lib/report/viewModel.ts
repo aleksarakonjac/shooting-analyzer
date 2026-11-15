@@ -11,7 +11,7 @@ export interface RawSeries {
   mpi_x: number | string | null;
   mpi_y: number | string | null;
   group_mm: number | string | null;
-  shots: { id?: string; idx: number; value: number | string; inner: boolean | null; direction?: string | null; t_ms: number | string | null; scatt_shot_id?: number | null; comment?: string | null }[];
+  shots: { id?: string; idx: number; value: number | string; value_decimal?: number | string | null; inner: boolean | null; direction?: string | null; t_ms: number | string | null; scatt_shot_id?: number | null; comment?: string | null }[];
 }
 
 export interface ShotView {
@@ -23,6 +23,8 @@ export interface ShotView {
   n: number;
   idx: number;
   value: number;
+  /** Decimal score next to a whole `value` (SIUS Cloud 3x20), for a secondary figure. */
+  valueDecimal: number | null;
   inner: boolean;
   /** SIUS direction arrow of the hit (45° steps), when the report carried one. */
   direction: string | null;
@@ -45,11 +47,30 @@ export interface SeriesView {
   lastShot: number;
 }
 
+/** A stored sighter shot (sighter_shots row). */
+export interface RawSighter {
+  before_series: number;
+  position: Position | null;
+  idx: number;
+  value: number | string;
+  value_decimal: number | string | null;
+  inner: boolean | null;
+  t_ms: number | string | null;
+}
+
+export interface SighterGroupView {
+  beforeSeries: number;
+  position: Position | null;
+  shots: { idx: number; value: number; valueDecimal: number | null; inner: boolean; tMs: number | null }[];
+}
+
 export interface ReportView {
   decimal: boolean;
   /** Score from which a pip is drawn filled (the owner's setting). */
   pipTop: number;
   series: SeriesView[];
+  /** Sighters ("Proba"), never part of totals, shot numbers or stats. */
+  sighters: SighterGroupView[];
   total: number;
   shotCount: number;
   timedShots: number;
@@ -59,7 +80,21 @@ const num = (v: number | string | null | undefined): number | null => (v === nul
 const round1 = (v: number) => Math.round(v * 10) / 10;
 
 /** Plain, ordered data for the report panels (server and client alike). */
-export function buildReportView(raw: RawSeries[], discipline: DisciplineId, pipTop?: number): ReportView {
+/** Sighter rows grouped by the series they precede, in shooting order. */
+function groupSighters(rows: RawSighter[]): SighterGroupView[] {
+  const groups: SighterGroupView[] = [];
+  for (const r of [...rows].sort((a, b) => a.idx - b.idx)) {
+    let g = groups.at(-1);
+    if (!g || g.beforeSeries !== r.before_series) {
+      g = { beforeSeries: r.before_series, position: r.position ?? null, shots: [] };
+      groups.push(g);
+    }
+    g.shots.push({ idx: r.idx, value: Number(r.value), valueDecimal: num(r.value_decimal), inner: Boolean(r.inner), tMs: num(r.t_ms) });
+  }
+  return groups;
+}
+
+export function buildReportView(raw: RawSeries[], discipline: DisciplineId, pipTop?: number, sighters: RawSighter[] = []): ReportView {
   const decimal = DISCIPLINES[discipline].decimal;
   const top = pipTop ?? defaultPipTop(decimal);
   let n = 0;
@@ -72,7 +107,7 @@ export function buildReportView(raw: RawSeries[], discipline: DisciplineId, pipT
         .map((sh): ShotView => {
           n += 1;
           const value = Number(sh.value);
-          return { id: sh.id ?? null, comment: sh.comment ?? '', n, idx: sh.idx, value, inner: Boolean(sh.inner), direction: sh.direction ?? null, tMs: num(sh.t_ms), band: scoreBand(value, decimal, top), series: s.idx, scattId: sh.scatt_shot_id ?? null };
+          return { id: sh.id ?? null, comment: sh.comment ?? '', n, idx: sh.idx, value, valueDecimal: num(sh.value_decimal), inner: Boolean(sh.inner), direction: sh.direction ?? null, tMs: num(sh.t_ms), band: scoreBand(value, decimal, top), series: s.idx, scattId: sh.scatt_shot_id ?? null };
         });
       const mx = num(s.mpi_x);
       const my = num(s.mpi_y);
@@ -93,6 +128,7 @@ export function buildReportView(raw: RawSeries[], discipline: DisciplineId, pipT
     decimal,
     pipTop: top,
     series,
+    sighters: groupSighters(sighters),
     total: round1(series.reduce((a, s) => a + s.total, 0)),
     shotCount: all.length,
     timedShots: all.filter((s) => s.tMs !== null).length,

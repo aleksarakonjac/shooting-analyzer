@@ -5,7 +5,8 @@ import { sr } from '@/lib/i18n/sr';
 import type { HrSample } from '@/lib/parsers/tcx';
 import type { Selection } from '@/lib/report/charts';
 import { hrAt } from '@/lib/report/hrAt';
-import type { ReportView } from '@/lib/report/viewModel';
+import { boardRows } from '@/lib/report/sighters';
+import type { ReportView, SighterGroupView } from '@/lib/report/viewModel';
 import type { ShotAnalysis } from '@/lib/scatt/analysis';
 
 const t = sr.report;
@@ -127,7 +128,28 @@ export function SeriesBoard({
   useEffect(() => {
     box.current?.querySelector('tr[aria-selected="true"]')?.scrollIntoView({ block: 'nearest' });
   }, [selection.shot]);
-  if (view.series.length === 0) return <p className="panel__empty">{t.noMatch}</p>;
+  if (view.series.length === 0 && view.sighters.length === 0) return <p className="panel__empty">{t.noMatch}</p>;
+  // Sighter groups attached to the series they precede; groups with no such series follow the list.
+  const before = new Map<number, SighterGroupView[]>();
+  const trailing: SighterGroupView[] = [];
+  {
+    let pending: SighterGroupView[] = [];
+    for (const row of boardRows(view.series, view.sighters)) {
+      if (row.kind === 'sighters') pending.push(view.sighters[row.group]);
+      else {
+        if (pending.length) before.set(row.idx, pending);
+        pending = [];
+      }
+    }
+    trailing.push(...pending);
+  }
+  const sighterRow = (g: SighterGroupView, key: number) => (
+    <div key={key} className="board__sighters" data-testid="sighters" title={t.sightersTitle}>
+      <span className="board__name">{t.sighters}</span>{' '}
+      <small className="num">{g.shots.length}</small>{' '}
+      <span className="num rows__muted">{g.shots.map((x) => (x.valueDecimal ?? x.value).toFixed(x.valueDecimal !== null || view.decimal ? 1 : 0)).join(' ')}</span>
+    </div>
+  );
   // Running match total after each series: the finals-scoreboard figure.
   const cumulative = view.series.reduce<number[]>((acc, s) => [...acc, Math.round(((acc.at(-1) ?? 0) + s.total) * 10) / 10], []);
   return (
@@ -141,6 +163,7 @@ export function SeriesBoard({
         return (
           <li key={s.id} className="board__item" data-open={open || undefined} data-testid="series">
             {posHead && <div className="board__pos">{posHead}</div>}
+            {before.get(s.idx)?.map(sighterRow)}
             <button
               type="button"
               className="board__row"
@@ -191,6 +214,7 @@ export function SeriesBoard({
                       <td className="num">{sh.n}</td>
                       <td className="num shots__value">
                         <i className="pip" data-band={sh.band} aria-hidden="true" /> {fmt(sh.value)}
+                        {sh.valueDecimal !== null && <small className="shots__dec">{sh.valueDecimal.toFixed(1)}</small>}
                         {sh.inner && <span className="shots__inner" title="Unutrašnja desetka">*</span>}
                       </td>
                       <td className={gaps.get(sh.n)?.afterBreak ? 'num shots__break' : 'num'} title={sh.tMs !== null ? clock.format(sh.tMs) : undefined}>
@@ -207,6 +231,7 @@ export function SeriesBoard({
           </li>
         );
       })}
+      {trailing.length > 0 && <li className="board__item">{trailing.map(sighterRow)}</li>}
       </ol>
     </div>
   );

@@ -17,7 +17,7 @@ import { isFinalDiscipline } from '@/lib/finals/format';
 import { sr } from '@/lib/i18n/sr';
 import { hrWindows } from '@/lib/report/derive';
 import { pipTopFor } from '@/lib/report/target';
-import { buildReportView, type RawSeries } from '@/lib/report/viewModel';
+import { buildReportView, type RawSeries, type RawSighter } from '@/lib/report/viewModel';
 import { createClient } from '@/lib/supabase/server';
 import { confirmAlignmentForm } from '@/lib/trainings';
 import { storedMismatch, type StoredSelection } from '@/lib/alignment/align';
@@ -51,7 +51,7 @@ export default function ReportPage({
   );
 }
 
-const SOURCE_LABEL: Record<string, string> = { sius_csv: 'SIUS CSV', sius_pdf: 'SIUS PDF', sius_prnx: 'SIUS PRNX', scatt: 'SCATT', tcx: 'Puls (TCX)' };
+const SOURCE_LABEL: Record<string, string> = { sius_csv: 'SIUS CSV', sius_pdf: 'SIUS PDF', sius_prnx: 'SIUS PRNX', sius_cloud: 'SIUS Cloud', scatt: 'SCATT', tcx: 'Puls (TCX)' };
 
 async function Body({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ izmena?: string; greska?: string }> }) {
   const [{ id }, { izmena, greska }] = await Promise.all([params, searchParams]);
@@ -92,8 +92,20 @@ async function Body({ params, searchParams }: { params: Promise<{ id: string }>;
     : { data: [] as { id: string; comment: string | null }[], error: null };
   const commentsEnabled = !commentError;
   const commentOf = new Map((commentRows ?? []).map((r) => [r.id as string, (r.comment as string | null) ?? '']));
-  const series = tr.matches.flatMap((m) => m.series).map((se) => ({ ...se, shots: se.shots.map((sh) => ({ ...sh, comment: sh.id ? commentOf.get(sh.id) ?? '' : '' })) }));
-  const view = buildReportView(series, tr.discipline, pipTopFor(me?.pip_top as Record<string, unknown> | null, tr.discipline));
+  // Decimals and sighters (SIUS Cloud) are read apart too, so the report opens before migration 0030 has run.
+  const { data: decimalRows } = shotIds.length
+    ? await supabase.from('shots').select('id, value_decimal').in('id', shotIds)
+    : { data: [] as { id: string; value_decimal: number | string | null }[] };
+  const decimalOf = new Map((decimalRows ?? []).map((r) => [r.id as string, r.value_decimal as number | string | null]));
+  const matchIds = tr.matches.map((m) => m.id);
+  const { data: sighterRows } = matchIds.length
+    ? await supabase.from('sighter_shots').select('before_series, position, idx, value, value_decimal, inner, t_ms').in('match_id', matchIds).order('idx')
+    : { data: [] as RawSighter[] };
+  const series = tr.matches.flatMap((m) => m.series).map((se) => ({
+    ...se,
+    shots: se.shots.map((sh) => ({ ...sh, comment: sh.id ? commentOf.get(sh.id) ?? '' : '', value_decimal: sh.id ? decimalOf.get(sh.id) ?? null : null })),
+  }));
+  const view = buildReportView(series, tr.discipline, pipTopFor(me?.pip_top as Record<string, unknown> | null, tr.discipline), (sighterRows ?? []) as RawSighter[]);
   const hrRef = Array.isArray(tr.hr_samples_ref) ? tr.hr_samples_ref[0] : tr.hr_samples_ref;
   const tcx = tr.source_files.find((f) => f.kind === 'tcx')?.storage_path ?? null;
   const scattPaths = tr.source_files.filter((f) => f.kind === 'scatt').map((f) => f.storage_path);

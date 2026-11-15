@@ -73,4 +73,32 @@ describe('SeriesBoard', () => {
     // Match start to the last shot: 160 s.
     expect([...document.querySelectorAll('.board__dur')].map((e) => e.textContent)).toEqual(['2:40']);
   });
+
+  it('shows Proba rows before their series, outside the total, and decimals as a secondary figure', () => {
+    cleanup();
+    const pos = (idx: number, position: 'kneeling' | 'prone') => ({ id: `s${idx}`, idx, position, total: 20, total_decimal: 20.9, mpi_x: null, mpi_y: null, group_mm: null,
+      shots: [{ idx: 1, value: 10, value_decimal: 10.6, inner: false, t_ms: null }, { idx: 2, value: 10, value_decimal: 10.3, inner: false, t_ms: null }] });
+    const v = buildReportView([pos(1, 'kneeling'), pos(2, 'prone')], 'smallbore_3p', undefined, [
+      { before_series: 1, position: 'kneeling', idx: 1, value: 9, value_decimal: 9.4, inner: false, t_ms: null },
+      { before_series: 1, position: 'kneeling', idx: 2, value: 10, value_decimal: 10.1, inner: false, t_ms: null },
+      { before_series: 2, position: 'prone', idx: 3, value: 10, value_decimal: 10.5, inner: false, t_ms: null },
+    ]);
+    render(<SeriesBoard {...props} view={v} openIds={open([1])} />);
+    const proba = screen.getAllByTestId('sighters');
+    expect(proba).toHaveLength(2);
+    expect(proba[0].textContent).toContain('Proba');
+    expect(proba[0].textContent).toContain('2');
+    expect(proba[0].textContent).toContain('9.4');
+    // Σ after the last series counts only match shots.
+    expect(document.body.textContent).toContain('Σ 40');
+    expect(document.querySelector('.shots__dec')?.textContent).toBe('10.6');
+  });
+
+  it('repeated position starts a new group', () => {
+    cleanup();
+    const mk = (idx: number, position: 'kneeling' | 'prone') => ({ id: `r${idx}`, idx, position, total: 10, total_decimal: null, mpi_x: null, mpi_y: null, group_mm: null, shots: [{ idx: 1, value: 10, inner: false, t_ms: null }] });
+    const v = buildReportView([mk(1, 'kneeling'), mk(2, 'kneeling'), mk(3, 'kneeling'), mk(4, 'prone'), mk(5, 'prone'), mk(6, 'kneeling'), mk(7, 'kneeling')], 'smallbore_3p');
+    render(<SeriesBoard {...props} view={v} openIds={open([])} />);
+    expect([...document.querySelectorAll('.board__pos')].map((e) => e.textContent)).toEqual(['Klečeći', 'Ležeći', 'Klečeći']);
+  });
 });
