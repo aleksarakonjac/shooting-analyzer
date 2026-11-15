@@ -11,6 +11,9 @@ import { useRingZoom } from './useRingZoom';
 import { overviewHits } from '@/lib/report/overview';
 
 const t = sr.report;
+/** Hit numbers on the overview target, in px: they scale with the zoom between these. */
+const LABEL_MIN_PX = 11;
+const LABEL_MAX_PX = 34;
 
 export interface OverviewShot {
   /** Shot number through the match. */
@@ -108,7 +111,8 @@ export function ShotsViewer({
       g.setLineDash([]);
     }
     const rad = Math.max(3, (target.caliber / 2) * S);
-    const label = rad >= 7;
+    // Numbers only where the hit is big enough to hold the smallest one.
+    const label = rad >= LABEL_MIN_PX * 0.8;
     // Where SCATT read the hit when it differs from the SIUS-corrected one: a faint ring and a thin line, a hint on the aiming.
     for (const s of shown) {
       if (s.movedMm < 0.05) continue;
@@ -146,7 +150,8 @@ export function ShotsViewer({
         g.setLineDash([]);
       }
       if (label) {
-        g.font = `800 ${Math.min(44, rad * 1.7).toFixed(1)}px ${font}`;
+        // The number follows the zoom only between limits: never smaller than readable, never filling the hit.
+        g.font = `800 ${Math.max(LABEL_MIN_PX, Math.min(LABEL_MAX_PX, rad * 0.95)).toFixed(1)}px ${font}`;
         g.textAlign = 'center';
         g.textBaseline = 'middle';
         g.fillStyle = text;
