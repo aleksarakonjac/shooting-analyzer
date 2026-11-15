@@ -79,7 +79,7 @@ function formFields(html: string): Record<string, string> | null {
   const end = html.indexOf('</form>', start);
   const formHtml = html.slice(start, end < 0 ? undefined : end);
   const fields: Record<string, string> = {};
-  for (const m of formHtml.matchAll(/<input([^>]*)>/gs)) {
+  for (const m of formHtml.matchAll(/<input([^>]*)>/g)) {
     const attrs = m[1];
     if (/type="checkbox"/.test(attrs)) continue;
     const name = attrs.match(/name="?([^"\s/>]+)"?/);
