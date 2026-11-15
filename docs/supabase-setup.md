@@ -26,3 +26,23 @@ Use a separate project for development, never one holding real data. Nothing bel
 2. Supabase → Authentication → Providers → Google: enable, paste the client ID and secret.
 3. Supabase → Authentication → URL Configuration: add the site URL and `https://<your-domain>/auth/callback` (plus `http://localhost:3000/auth/callback` for development) to the redirect allow-list.
 4. A new Google account is a pending account like any other: the admin is mailed once with the approval link (same `RESEND_API_KEY`, `ADMIN_EMAIL`, `SUPABASE_SERVICE_ROLE_KEY`).
+
+## Google Health (pulse import)
+
+Pulse is read from the Google Health API v4 with the shooter's consent. The Google Cloud project and OAuth client
+are the ones already used for Google sign-in.
+
+1. **Environment** (Vercel → Project → Settings → Environment Variables, and `.env.local` for development):
+   - `GOOGLE_HEALTH_CLIENT_ID`, `GOOGLE_HEALTH_CLIENT_SECRET`: the OAuth client (same values as the Supabase Google provider).
+   - `GOOGLE_HEALTH_TOKEN_KEY`: 32 random bytes, base64 (`openssl rand -base64 32`). Encrypts stored refresh tokens;
+     changing it disconnects everyone (they reconnect on the account page).
+   - `GOOGLE_HEALTH_STATE_SECRET`: any long random string (`openssl rand -base64 32`). Signs the OAuth `state`.
+   Without all four the feature stays off (no button, connect returns an error).
+2. **OAuth client** (Google Auth Platform → Clients → the web client) → Authorized redirect URIs, add:
+   - `https://<production domain>/api/google-health/callback`
+   - `http://localhost:3000/api/google-health/callback`
+3. **Data Access** (consent screen): keep only
+   `googlehealth.health_metrics_and_measurements.readonly` and `googlehealth.activity_and_fitness.readonly`;
+   remove `googlehealth.location.readonly`.
+4. **Migration**: apply `supabase/migrations/0029_google_health.sql` (SQL editor), as with the other migrations.
+5. Until the app is verified, Google allows at most 100 users and shows an "unverified app" warning on consent.
