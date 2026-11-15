@@ -3,9 +3,14 @@ import { GoogleHealthError } from './client';
 import { buildTcx, tcxFileName } from './tcx';
 import { chooseWindows, type Span, type Workout } from './window';
 
-export type PullInput =
-  | { trainingId: string }
-  | { shooterId: string; date: string; shotSpan?: Span | null; startedAt?: string | null; endedAt?: string | null };
+/** Unsaved shot and entered times from the form. On a saved training only the shooter's own are used. */
+interface FormTimes {
+  shotSpan?: Span | null;
+  startedAt?: string | null;
+  endedAt?: string | null;
+}
+
+export type PullInput = ({ trainingId: string } & FormTimes) | ({ shooterId: string; date: string } & FormTimes);
 
 export interface PullDeps {
   /** Signed-in active user, null otherwise. */
@@ -30,7 +35,17 @@ export interface PullDeps {
 export type PullError = 'unauthorized' | 'forbidden' | 'not_found' | 'no_data' | 'not_connected' | 'reconnect' | 'no_window' | 'google_unavailable';
 
 export type PullResult =
-  | { status: 200; tcx: string; fileName: string; workout: Workout | null; range: Span; source: 'shots' | 'workout' | 'training' }
+  | {
+      status: 200;
+      tcx: string;
+      fileName: string;
+      workout: Workout | null;
+      /** The stretch asked for. */
+      range: Span;
+      /** First and last sample actually received (the watch may not have synced all of it yet). */
+      received: Span & { count: number };
+      source: 'shots' | 'workout' | 'training';
+    }
   | { status: 401 | 403 | 404 | 409 | 422 | 503; error: PullError };
 
 const fail = (status: 401 | 403 | 404 | 409 | 422 | 503, error: PullError): PullResult => ({ status, error });
@@ -40,6 +55,9 @@ const shiftDate = (date: string, days: number) => {
   d.setUTCDate(d.getUTCDate() + days);
   return d.toISOString().slice(0, 10);
 };
+
+/** Civil date of an instant in `tz`, YYYY-MM-DD. */
+const civilDate = (ms: number, tz: string) => new Intl.DateTimeFormat('en-CA', { timeZone: tz }).format(ms);
 
 function span(fromIso: string | null | undefined, toIso: string | null | undefined): Span | null {
   const a = Date.parse(fromIso ?? '');
@@ -62,6 +80,11 @@ export async function pullPulse(input: PullInput, deps: PullDeps): Promise<PullR
     const t = await deps.loadTraining(input.trainingId);
     if (!t) return fail(404, 'not_found');
     ({ shooterId, date, shotSpan: shots, training } = t);
+    // The shooter may have loaded SCATT or typed times since saving; a coach gets only what is stored.
+    if (deps.callerId === shooterId) {
+      shots = input.shotSpan ?? shots;
+      training = span(input.startedAt, input.endedAt) ?? training;
+    }
   } else {
     shooterId = input.shooterId;
     date = input.date;
@@ -76,16 +99,28 @@ export async function pullPulse(input: PullInput, deps: PullDeps): Promise<PullR
   if (!link) return fail(409, 'not_connected');
   if (link.brokenAt) return fail(409, 'reconnect');
 
+  let refreshToken: string;
   try {
-    const access = await deps.google.refresh(deps.decrypt(link.refreshTokenEnc));
-    const workouts = await deps.google.workouts(access, shiftDate(date, -1), shiftDate(date, 2));
+    refreshToken = deps.decrypt(link.refreshTokenEnc);
+  } catch {
+    // Sealed with another key (the key was changed): only a new connection helps.
+    await deps.markBroken(shooterId);
+    return fail(409, 'reconnect');
+  }
+
+  try {
+    const access = await deps.google.refresh(refreshToken);
+    // Listed a day either side so a workout past midnight UTC is found, then kept to the training's own date.
+    const listed = await deps.google.workouts(access, shiftDate(date, -1), shiftDate(date, 2));
+    const workouts = listed.filter((w) => civilDate(w.startMs, deps.tz) === date);
     const win = chooseWindows({ shots, workouts, training, isCoach });
     if (!win.ok) return fail(422, 'no_window');
     const samples = await deps.google.heartRate(access, win.fetch);
     if (samples.length === 0) return fail(404, 'no_data');
     const tcx = buildTcx(samples);
     await deps.touch(shooterId);
-    return { status: 200, tcx, fileName: tcxFileName(samples[0].tMs, deps.tz), workout: win.workout, range: win.fetch, source: win.source };
+    const received = { fromMs: samples[0].tMs, toMs: samples[samples.length - 1].tMs, count: samples.length };
+    return { status: 200, tcx, fileName: tcxFileName(samples[0].tMs, deps.tz), workout: win.workout, range: win.fetch, received, source: win.source };
   } catch (e) {
     if (e instanceof GoogleHealthError && e.code === 'invalid_grant') {
       await deps.markBroken(shooterId);
@@ -105,8 +140,17 @@ const isoOrNull = (v: unknown): string | null | undefined =>
 export function parsePullInput(body: unknown): PullInput | null {
   if (!body || typeof body !== 'object') return null;
   const b = body as Record<string, unknown>;
-  if (b.trainingId !== undefined) return typeof b.trainingId === 'string' && UUID.test(b.trainingId) ? { trainingId: b.trainingId } : null;
-  if (typeof b.shooterId !== 'string' || !UUID.test(b.shooterId) || typeof b.date !== 'string' || !DATE.test(b.date)) return null;
+  const times = formTimes(b);
+  if (b.trainingId !== undefined) {
+    if (typeof b.trainingId !== 'string' || !UUID.test(b.trainingId) || !times) return null;
+    const hasTimes = b.shotSpan !== undefined || b.startedAt !== undefined || b.endedAt !== undefined;
+    return hasTimes ? { trainingId: b.trainingId, ...times } : { trainingId: b.trainingId };
+  }
+  if (typeof b.shooterId !== 'string' || !UUID.test(b.shooterId) || typeof b.date !== 'string' || !DATE.test(b.date) || !times) return null;
+  return { shooterId: b.shooterId, date: b.date, ...times };
+}
+
+function formTimes(b: Record<string, unknown>): Required<FormTimes> | null {
   let shotSpan: Span | null = null;
   if (b.shotSpan !== undefined && b.shotSpan !== null) {
     const s = b.shotSpan as Record<string, unknown>;
@@ -116,5 +160,5 @@ export function parsePullInput(body: unknown): PullInput | null {
   const startedAt = isoOrNull(b.startedAt);
   const endedAt = isoOrNull(b.endedAt);
   if (startedAt === undefined || endedAt === undefined) return null;
-  return { shooterId: b.shooterId, date: b.date, shotSpan, startedAt, endedAt };
+  return { shotSpan, startedAt, endedAt };
 }

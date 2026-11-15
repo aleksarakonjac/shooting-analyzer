@@ -137,3 +137,38 @@ describe('parsePullInput', () => {
     expect(parsePullInput(null)).toBeNull();
   });
 });
+
+describe('final review fixes', () => {
+  it('ignores a SHOOTING workout from another day when there are no shots', async () => {
+    const friday = { id: 'fri', startMs: Date.UTC(2026, 10, 13, 17), endMs: Date.UTC(2026, 10, 13, 19) };
+    const saturday = { id: 'sat', startMs: Date.UTC(2026, 10, 14, 9), endMs: Date.UTC(2026, 10, 14, 10) };
+    const r = await pullPulse({ shooterId: 'shooter', date: '2026-11-14' }, deps({}, { workouts: vi.fn(async () => [friday, saturday]) }));
+    expect(r).toMatchObject({ status: 200, source: 'workout', workout: saturday });
+    const none = await pullPulse({ shooterId: 'shooter', date: '2026-11-15' }, deps({}, { workouts: vi.fn(async () => [friday, saturday]) }));
+    expect(none).toEqual({ status: 422, error: 'no_window' });
+  });
+
+  it('lets the shooter add unsaved shots to a saved training', async () => {
+    const d = deps({ loadTraining: vi.fn(async () => ({ shooterId: 'shooter', date: '2026-11-13', shotSpan: null, training: null })) });
+    const r = await pullPulse({ trainingId: 't1', shotSpan: { fromMs: at(10), toMs: at(11) } }, d);
+    expect(r).toMatchObject({ status: 200, source: 'shots', range: { fromMs: at(9, 40), toMs: at(11, 20) } });
+  });
+
+  it('ignores unsaved times from a coach on a saved training', async () => {
+    const d = deps({ callerId: 'coach', loadTraining: vi.fn(async () => ({ shooterId: 'shooter', date: '2026-11-13', shotSpan: null, training: null })) });
+    expect(await pullPulse({ trainingId: 't1', shotSpan: { fromMs: at(10), toMs: at(11) } }, d)).toEqual({ status: 422, error: 'no_window' });
+  });
+
+  it('reports the span of the pulse actually received', async () => {
+    const d = deps({}, { heartRate: vi.fn(async (_a: string, s: Span) => everyTwoSeconds({ fromMs: s.fromMs, toMs: s.fromMs + 10 * 60_000 })) });
+    const r = await pullPulse(fresh, d);
+    if (r.status !== 200) throw new Error('expected 200');
+    expect(r.received).toEqual({ fromMs: at(15), toMs: at(15, 10) - 2000, count: 300 });
+  });
+
+  it('a token that cannot be decrypted marks the link broken', async () => {
+    const d = deps({ decrypt: () => { throw new Error('bad tag'); } });
+    expect(await pullPulse(fresh, d)).toEqual({ status: 409, error: 'reconnect' });
+    expect(d.markBroken).toHaveBeenCalledWith('shooter');
+  });
+});

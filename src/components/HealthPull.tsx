@@ -15,18 +15,23 @@ export function pullBody(o: {
   startedAt: string | null;
   endedAt: string | null;
 }): PullInput {
-  if (o.trainingId) return { trainingId: o.trainingId };
   const times = o.shotTimes.filter((x): x is number => typeof x === 'number' && Number.isFinite(x));
   const shotSpan: Span | null = times.length ? { fromMs: Math.min(...times), toMs: Math.max(...times) } : null;
+  // On a saved training the server reads what is stored; the form's own (unsaved) times go along for the shooter.
+  if (o.trainingId) return { trainingId: o.trainingId, shotSpan, startedAt: o.startedAt, endedAt: o.endedAt };
   return { shooterId: o.shooterId, date: o.date, shotSpan, startedAt: o.startedAt, endedAt: o.endedAt };
 }
 
 export interface PulledInfo {
   range: Span;
+  received: Span;
   workout: Workout | null;
 }
 
-type Ok = { status: 200; tcx: string; fileName: string; workout: Workout | null; range: Span };
+type Ok = { status: 200; tcx: string; fileName: string; workout: Workout | null; range: Span; received?: Span };
+
+/** Pulse that stops this long before the asked-for end most likely means the watch has not synced yet. */
+const SHORT_MS = 10 * 60_000;
 
 /** "Pull pulse from Google Health" in the heart-rate card: the result goes on as a TCX file, like an upload. */
 export function HealthPull({
@@ -61,7 +66,7 @@ export function HealthPull({
       const res = await fetch('/api/google-health/pulse', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(request) });
       const data = (await res.json().catch(() => null)) as (Ok | { error?: PullError }) | null;
       if (res.ok && data && 'tcx' in data) {
-        const info = { range: data.range, workout: data.workout };
+        const info = { range: data.range, received: data.received ?? data.range, workout: data.workout };
         onPulled(new File([data.tcx], data.fileName, { type: 'application/xml' }), info);
         setDone(info);
       } else {
@@ -84,7 +89,8 @@ export function HealthPull({
       {error && <p role="alert">{error}</p>}
       {done && !error && (
         <>
-          <p role="status">{t.pull.done(hm(done.range.fromMs), hm(done.range.toMs))}</p>
+          <p role="status">{t.pull.done(hm(done.received.fromMs), hm(done.received.toMs))}</p>
+          {done.received.toMs < done.range.toMs - SHORT_MS && <p>{t.pull.short}</p>}
           {done.workout && <p>{t.pull.workout(hm(done.workout.startMs), hm(done.workout.endMs))}</p>}
         </>
       )}

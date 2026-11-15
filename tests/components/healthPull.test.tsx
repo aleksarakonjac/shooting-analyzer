@@ -26,9 +26,6 @@ function stubFetch(status: number, body: unknown) {
 const base = { tz: 'Europe/Belgrade', isCoach: false, body: () => ({ shooterId: 's', date: '2026-11-13' }), onPulled: () => {} };
 
 describe('pullBody', () => {
-  it('sends trainingId in edit mode', () => {
-    expect(pullBody({ trainingId: 't1', shooterId: 's', date: '2026-11-13', shotTimes: [5, 1], startedAt: null, endedAt: null })).toEqual({ trainingId: 't1' });
-  });
   it('sends the shot span otherwise', () => {
     expect(pullBody({ shooterId: 's', date: '2026-11-13', shotTimes: [5, null, 1, undefined, 9], startedAt: 'a', endedAt: null })).toEqual({
       shooterId: 's',
@@ -108,5 +105,24 @@ describe('HealthPull', () => {
   it('is disabled when there is nothing to ask for', () => {
     render(<HealthPull {...base} status="ok" body={() => null} />);
     expect((screen.getByRole('button', { name: 'Povuci puls sa Google Health' }) as HTMLButtonElement).disabled).toBe(true);
+  });
+});
+
+describe('HealthPull received range', () => {
+  it('shows the pulse received and warns when it stops early', async () => {
+    stubFetch(200, { ...ok, received: { fromMs: Date.UTC(2026, 10, 13, 15, 0), toMs: Date.UTC(2026, 10, 13, 15, 30), count: 900 } });
+    render(<HealthPull {...base} status="ok" />);
+    fireEvent.click(screen.getByRole('button', { name: 'Povuci puls sa Google Health' }));
+    expect(await screen.findByText('Puls povučen sa Google Health: 16:00–16:30')).toBeTruthy();
+    expect(screen.getByText('Puls se završava pre kraja treninga — sat možda još nije sinhronizovan. Sinhronizuj ga i povuci ponovo.')).toBeTruthy();
+  });
+
+  it('sends unsaved shots with the training id in edit mode', () => {
+    expect(pullBody({ trainingId: 't1', shooterId: 's', date: '2026-11-13', shotTimes: [5, 1], startedAt: 'a', endedAt: null })).toEqual({
+      trainingId: 't1',
+      shotSpan: { fromMs: 1, toMs: 5 },
+      startedAt: 'a',
+      endedAt: null,
+    });
   });
 });
