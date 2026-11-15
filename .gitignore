@@ -8,3 +8,7 @@ next-env.d.ts
 *.tsbuildinfo
 .DS_Store
 .vercel
+
+# Google Health spike: OAuth token and pulled data
+scripts/google-health-spike/.token.json
+scripts/google-health-spike/out/
