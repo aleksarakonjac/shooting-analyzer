@@ -1,16 +1,16 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { getSessionProfile } from '@/lib/auth/session';
-import { createAdminClient, siteUrl } from '@/lib/supabase/admin';
+import { createAdminClient } from '@/lib/supabase/admin';
 import { exchangeCode, getIdentity } from '@/lib/googleHealth/client';
 import { completeConnect } from '@/lib/googleHealth/connect';
 import { encryptToken } from '@/lib/googleHealth/crypto';
-import { googleHealthEnv } from '@/lib/googleHealth/server';
+import { googleHealthEnv, healthCallbackUrl } from '@/lib/googleHealth/server';
 
 const NONCE_COOKIE = 'gh_nonce';
 
 /** Google sends the user back here with a one-time code; the connection is stored and the user returns to /nalog. */
 export async function GET(request: NextRequest) {
-  const base = siteUrl() ?? request.nextUrl.origin;
+  const base = request.nextUrl.origin;
   const env = googleHealthEnv();
   const admin = createAdminClient();
   const q = request.nextUrl.searchParams;
@@ -24,7 +24,7 @@ export async function GET(request: NextRequest) {
         nonce: request.cookies.get(NONCE_COOKIE)?.value ?? null,
         now: Date.now(),
         stateSecret: env.stateSecret,
-        exchange: (code) => exchangeCode({ clientId: env.clientId, clientSecret: env.clientSecret, redirectUri: `${base}/api/google-health/callback`, code }),
+        exchange: (code) => exchangeCode({ clientId: env.clientId, clientSecret: env.clientSecret, redirectUri: healthCallbackUrl(base), code }),
         identity: (accessToken) => getIdentity(accessToken),
         encrypt: (plain) => encryptToken(plain, env.tokenKey),
         async save(row) {

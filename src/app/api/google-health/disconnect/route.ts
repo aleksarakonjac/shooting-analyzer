@@ -1,13 +1,13 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { getSessionProfile } from '@/lib/auth/session';
-import { createAdminClient, siteUrl } from '@/lib/supabase/admin';
+import { createAdminClient } from '@/lib/supabase/admin';
 import { revokeToken } from '@/lib/googleHealth/client';
 import { decryptToken } from '@/lib/googleHealth/crypto';
 import { googleHealthEnv } from '@/lib/googleHealth/server';
 
 /** Removes the signed-in user's Google Health connection: revoked at Google (best effort), deleted here. */
 export async function POST(request: NextRequest) {
-  const base = siteUrl() ?? request.nextUrl.origin;
+  const base = request.nextUrl.origin;
   const profile = await getSessionProfile();
   if (!profile) return NextResponse.redirect(`${base}/login`, 303);
   const env = googleHealthEnv();

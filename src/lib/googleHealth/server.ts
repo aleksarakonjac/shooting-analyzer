@@ -7,3 +7,12 @@ export function googleHealthEnv(): { clientId: string; clientSecret: string; tok
   if (!clientId || !clientSecret || !tokenKey || !stateSecret) return null;
   return { clientId, clientSecret, tokenKey, stateSecret };
 }
+
+/**
+ * The OAuth callback on the address the app is open at (localhost in development, the live domain in production).
+ * Not SITE_URL: that names the live site even in development. Google accepts only redirect URIs registered on the
+ * client, so a forged Host cannot steer the code anywhere.
+ */
+export function healthCallbackUrl(origin: string): string {
+  return `${origin.replace(/\/$/, '')}/api/google-health/callback`;
+}

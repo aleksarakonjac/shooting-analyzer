@@ -31,3 +31,11 @@ describe('OAuth state', () => {
     expect(verifyState('not-a-state', secret, { userId: 'u1', nonce: 'n1', now: 0 })).toBe(false);
   });
 });
+
+describe('healthCallbackUrl', () => {
+  it('builds the callback on the address the app is open at', async () => {
+    const { healthCallbackUrl } = await import('../../src/lib/googleHealth/server');
+    expect(healthCallbackUrl('http://localhost:3000')).toBe('http://localhost:3000/api/google-health/callback');
+    expect(healthCallbackUrl('https://example.app/')).toBe('https://example.app/api/google-health/callback');
+  });
+});
