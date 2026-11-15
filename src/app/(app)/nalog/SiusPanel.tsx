@@ -24,16 +24,24 @@ export function SiusPanel({ userId, status, athleteId }: { userId: string; statu
     setPassword('');
     setError(null);
     start(async () => {
-      const r = await connectSius(email, pw);
-      if (r.ok) router.refresh();
-      else setError(r.error in t.errors ? (r.error as ErrorKey) : 'unavailable');
+      try {
+        const r = await connectSius(email, pw);
+        if (r.ok) router.refresh();
+        else setError(r.error in t.errors ? (r.error as ErrorKey) : 'unavailable');
+      } catch {
+        setError('unavailable');
+      }
     });
   }
 
   function disconnect() {
     start(async () => {
-      await disconnectSius();
-      router.refresh();
+      try {
+        await disconnectSius();
+        router.refresh();
+      } catch {
+        setError('unavailable');
+      }
     });
   }
 
@@ -41,8 +49,12 @@ export function SiusPanel({ userId, status, athleteId }: { userId: string; statu
     e.preventDefault();
     setAthleteSaved(false);
     start(async () => {
-      const r = await siusConfirmAthlete(userId, athlete.trim());
-      setAthleteSaved('ok' in r);
+      try {
+        const r = await siusConfirmAthlete(userId, athlete.trim());
+        setAthleteSaved('ok' in r);
+      } catch {
+        setAthleteSaved(false);
+      }
     });
   }
 

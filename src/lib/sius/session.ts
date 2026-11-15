@@ -61,8 +61,18 @@ type Ctx = ReturnType<typeof resolve>;
 
 const cachedValid = (row: SiusLinkRow, key: string, now: number): string | null =>
   row.access_token_enc && row.access_expires_at && Date.parse(row.access_expires_at) > now + EARLY_MS
-    ? open(row.access_token_enc, key)
+    ? unseal(row.access_token_enc, key)
     : null;
+
+/** A sealed value that no longer opens (the key changed or the row was altered): the link needs a new login. */
+class UnreadableSecret extends Error {}
+function unseal(sealed: string, key: string): string {
+  try {
+    return open(sealed, key);
+  } catch {
+    throw new UnreadableSecret();
+  }
+}
 
 function tokenPatch(t: SiusTokens, key: string, now: number): Partial<SiusLinkRow> {
   return {
@@ -98,10 +108,11 @@ async function passwordLogin(ctx: Ctx, userId: string, row: SiusLinkRow): Promis
   }
   await takeLoginSlot(ctx, userId);
   try {
-    const t = await ctx.auth.login(row.email, open(row.password_enc, ctx.key));
+    const t = await ctx.auth.login(row.email, unseal(row.password_enc, ctx.key));
     await ctx.store.save(userId, tokenPatch(t, ctx.key, now));
     return t.accessToken;
   } catch (e) {
+    if (e instanceof UnreadableSecret) throw e;
     if (!(e instanceof SiusAuthFailure) || e.kind === 'unavailable') throw new SiusUnavailable();
     const stamp = new Date(now).toISOString();
     if (e.kind === 'bad_password') {
@@ -115,6 +126,16 @@ async function passwordLogin(ctx: Ctx, userId: string, row: SiusLinkRow): Promis
 
 export async function getAccessToken(userId: string, deps: SessionDeps = {}): Promise<string> {
   const ctx = resolve(deps);
+  try {
+    return await accessToken(ctx, userId);
+  } catch (e) {
+    if (!(e instanceof UnreadableSecret)) throw e;
+    await ctx.store.save(userId, { broken_at: new Date(ctx.now()).toISOString(), broken_reason: 'blocked', access_token_enc: null });
+    throw new SiusReconnectNeeded('blocked');
+  }
+}
+
+async function accessToken(ctx: Ctx, userId: string): Promise<string> {
   const row = await ctx.store.get(userId);
   if (!row) throw new SiusNotConnected();
   if (row.broken_at) throw new SiusReconnectNeeded(row.broken_reason === 'bad_password' ? 'bad_password' : 'blocked');
@@ -124,10 +145,11 @@ export async function getAccessToken(userId: string, deps: SessionDeps = {}): Pr
 
   if (row.refresh_token_enc) {
     try {
-      const t = await ctx.auth.refresh(open(row.refresh_token_enc, ctx.key));
+      const t = await ctx.auth.refresh(unseal(row.refresh_token_enc, ctx.key));
       await ctx.store.save(userId, tokenPatch(t, ctx.key, ctx.now()));
       return t.accessToken;
     } catch (e) {
+      if (e instanceof UnreadableSecret) throw e;
       if (!(e instanceof SiusAuthFailure) || e.kind === 'unavailable') throw new SiusUnavailable();
       // A concurrent request may have renewed the tokens while this refresh failed: use those instead.
       const again = await ctx.store.get(userId);

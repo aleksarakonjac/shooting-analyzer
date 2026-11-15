@@ -190,3 +190,23 @@ describe('SiusCloudTab: Takmičenje', () => {
     await waitFor(() => expect(onApply).toHaveBeenCalled());
   });
 });
+
+describe('SiusCloudTab: a failing action', () => {
+  it('shows unavailable with retry instead of loading forever', async () => {
+    a.siusExercises.mockRejectedValueOnce(new Error('boom')).mockResolvedValueOnce({ items: [exercise('ex-1', '10m Air Rifle', '2026-11-01', 60)], more: false });
+    renderTab();
+    fireEvent.click(await screen.findByRole('button', { name: 'Pokušaj ponovo' }));
+    expect(await screen.findByRole('button', { name: /10m Air Rifle/ })).toBeTruthy();
+  });
+
+  it('a failing step in the competition flow can be retried', async () => {
+    const comp = { id: 'c1', name: 'GP', city: 'X', country: 'Y', startDate: '2026-10-31T21:00:00Z', endDate: '2026-11-01T21:00:00Z', timeZone: 'UTC' };
+    a.siusCompetitions.mockResolvedValue({ items: [comp], more: false });
+    a.siusEvents.mockRejectedValueOnce(new Error('boom')).mockResolvedValueOnce([{ id: 'e1', name: '10m AIR RIFLE MEN' }]);
+    renderTab({ sessionKind: 'takmicenje' });
+    fireEvent.click(await screen.findByRole('button', { name: /GP/ }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Pokušaj ponovo' }));
+    expect(await screen.findByRole('button', { name: '10m AIR RIFLE MEN' })).toBeTruthy();
+  });
+});
+

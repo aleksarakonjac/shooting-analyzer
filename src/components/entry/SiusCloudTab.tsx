@@ -44,6 +44,15 @@ export interface CloudPick {
 
 type Exercise = SiusExercise & { importedTrainingId: string | null };
 const isState = (v: unknown): v is SiusState => !!v && typeof v === 'object' && 'state' in v;
+const UNAVAILABLE: SiusState = { state: 'unavailable' };
+/** A server action that rejects (network, deploy, server error) counts as SIUS being unavailable. */
+async function call<T>(fn: () => Promise<T | SiusState>): Promise<T | SiusState> {
+  try {
+    return await fn();
+  } catch {
+    return UNAVAILABLE;
+  }
+}
 
 function StateNote({ state, onRetry }: { state: SiusState; onRetry?: () => void }) {
   if (state.state === 'none')
@@ -128,7 +137,7 @@ function TrainingList({ shooterId, date, onApply }: { shooterId: string; date: s
   const load = useCallback(
     async (skip: number) => {
       setLoading(true);
-      const r = await siusExercises(shooterId, skip);
+      const r = await call(() => siusExercises(shooterId, skip));
       setLoading(false);
       if (isState(r)) {
         setState(r);
@@ -147,7 +156,7 @@ function TrainingList({ shooterId, date, onApply }: { shooterId: string; date: s
 
   async function pick(ex: Exercise) {
     setPickState(null);
-    const r = await siusExerciseResult(shooterId, ex.exerciseId, ex.exerciseName);
+    const r = await call(() => siusExerciseResult(shooterId, ex.exerciseId, ex.exerciseName));
     if (isState(r)) setPickState(r);
     else setPicked({ ex, result: r });
   }
@@ -204,7 +213,7 @@ function CompetitionPicker({ shooterId, onApply }: { shooterId: string; onApply:
   const [comps, setComps] = useState<SiusCompetition[]>([]);
   const [page, setPage] = useState(1);
   const [more, setMore] = useState(false);
-  const [state, setState] = useState<SiusState | null>(null);
+  const [failure, setFailure] = useState<{ state: SiusState; retry: () => void } | null>(null);
   const [step, setStep] = useState<Step>({});
   const [events, setEvents] = useState<SiusEvent[] | null>(null);
   const [parts, setParts] = useState<SiusPart[] | null>(null);
@@ -213,34 +222,37 @@ function CompetitionPicker({ shooterId, onApply }: { shooterId: string; onApply:
   const [filter, setFilter] = useState('');
   const [checking, setChecking] = useState<(PickedResult & { row: RankingRow }) | null>(null);
 
-  const loadComps = useCallback(async (p: number, name: string) => {
-    const r = await siusCompetitions(p, name);
+  // A failed step keeps its place in the flow; "Pokušaj ponovo" runs that same step again.
+  const fail = (state: SiusState, retry: () => void) => setFailure({ state, retry: () => { setFailure(null); retry(); } });
+
+  const loadComps = useCallback(async function load(p: number, name: string): Promise<void> {
+    const r = await call(() => siusCompetitions(p, name));
     if (isState(r)) {
-      setState(r);
+      setFailure({ state: r, retry: () => { setFailure(null); void load(p, name); } });
       return;
     }
-    setState(null);
+    setFailure(null);
     setComps((cur) => (p === 1 ? r.items : [...cur, ...r.items]));
     setMore(r.more);
     setPage(p);
   }, []);
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- loads the newest competitions once
     void loadComps(1, '');
   }, [loadComps]);
 
   async function pickComp(comp: SiusCompetition) {
     setStep({ comp });
     setEvents(null);
-    const r = await siusEvents(comp.id);
-    if (isState(r)) setState(r);
+    const r = await call(() => siusEvents(comp.id));
+    if (isState(r)) fail(r, () => void pickComp(comp));
     else setEvents(r);
   }
   async function pickEvent(event: SiusEvent) {
     setStep((s) => ({ comp: s.comp, event }));
     setParts(null);
-    const r = await siusParts(step.comp!.id, event.id);
-    if (isState(r)) setState(r);
+    const comp = step.comp!;
+    const r = await call(() => siusParts(comp.id, event.id));
+    if (isState(r)) fail(r, () => void pickEvent(event));
     else setParts(r);
   }
   const selection = (s: Required<Step>) => ({ compId: s.comp.id, eventId: s.event.id, partId: s.part.id, eventName: s.event.name, partName: s.part.name });
@@ -249,14 +261,14 @@ function CompetitionPicker({ shooterId, onApply }: { shooterId: string; onApply:
     setStep(s);
     setFound(null);
     setRanking(null);
-    const r = await siusMyPerformance(shooterId, selection(s));
-    if (isState(r)) setState(r);
+    const r = await call(() => siusMyPerformance(shooterId, selection(s)));
+    if (isState(r)) fail(r, () => void pickPart(part));
     else if ('found' in r) setFound(r.found);
     else setRanking(r.pick);
   }
   async function checkAthlete(row: RankingRow) {
-    const r = await siusAthletePerformance(shooterId, selection(step as Required<Step>), row.athleteRunningId);
-    if (isState(r)) setState(r);
+    const r = await call(() => siusAthletePerformance(shooterId, selection(step as Required<Step>), row.athleteRunningId));
+    if (isState(r)) fail(r, () => void checkAthlete(row));
     else setChecking({ ...r, row });
   }
 
@@ -269,7 +281,7 @@ function CompetitionPicker({ shooterId, onApply }: { shooterId: string; onApply:
   });
   const rowLine = (r: RankingRow) => `${r.rank ? `${r.rank}. ` : ''}${r.displayName} (${r.nation}) ${r.total}`;
 
-  if (state) return <StateNote state={state} onRetry={() => { setState(null); void loadComps(1, query); }} />;
+  if (failure) return <StateNote state={failure.state} onRetry={failure.retry} />;
 
   if (!step.comp) {
     return (
@@ -356,7 +368,11 @@ function CompetitionPicker({ shooterId, onApply }: { shooterId: string; onApply:
             type="button"
             onClick={async () => {
               // Confirming is the double check: it remembers the athlete id and imports the result.
-              await siusConfirmAthlete(shooterId, checking.row.identifier);
+              const saved = await call(() => siusConfirmAthlete(shooterId, checking.row.identifier));
+              if (isState(saved)) {
+                fail(saved, () => undefined);
+                return;
+              }
               onApply(toPick(checking.parsed, checking, session(full)));
             }}
           >

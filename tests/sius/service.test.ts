@@ -198,3 +198,13 @@ describe('competition performance', () => {
     await expect(myPerformance(d, ME, sel)).resolves.toEqual({ state: 'unavailable' });
   });
 });
+
+describe('unexpected errors', () => {
+  it('a database or decrypt failure becomes unavailable instead of escaping', async () => {
+    const d = deps({ token: vi.fn(async () => { throw new Error('sius_links read failed (42P01)'); }) });
+    await expect(exercises(d, ME, 0)).resolves.toEqual({ state: 'unavailable' });
+    const c = deps({ connect: vi.fn(async () => { throw new Error('sius_links write failed (42P01)'); }) });
+    await expect(connectSius(c, 'a@b', 'pw')).resolves.toEqual({ ok: false, error: 'unavailable' });
+  });
+});
+

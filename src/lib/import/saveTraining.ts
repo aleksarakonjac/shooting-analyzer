@@ -153,8 +153,10 @@ export function buildSavePayload(draft: TrainingDraft, userId: string): SavePayl
       return {
         idx: s.index,
         position: s.position ?? null,
-        total: cfg.decimal ? wholeRings : s.total,
-        total_decimal: cfg.decimal ? (s.totalDecimal ?? s.total) : (s.totalDecimal ?? null),
+        // A whole-ring discipline can still receive decimal values (a SIUS Cloud final or unknown exercise): the
+        // stored total is then the whole-ring sum and the decimal one goes beside it (series.total is an integer).
+        total: cfg.decimal || !Number.isInteger(s.total) ? wholeRings : s.total,
+        total_decimal: cfg.decimal ? (s.totalDecimal ?? s.total) : (s.totalDecimal ?? (Number.isInteger(s.total) ? null : s.total)),
         mpi_x: s.mpi?.x ?? null,
         mpi_y: s.mpi?.y ?? null,
         group_mm: s.groupMm ?? null,

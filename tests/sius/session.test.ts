@@ -249,3 +249,15 @@ describe('dropAccessToken', () => {
     await expect(getAccessToken(U, d)).resolves.toBe('AT-refreshed');
   });
 });
+
+describe('a sealed value that no longer opens (key changed)', () => {
+  it('marks the link broken instead of throwing a crypto error', async () => {
+    const other = Buffer.alloc(32, 9).toString('base64');
+    const m = memStore({ password_enc: seal('pw', other), refresh_token_enc: seal('RT', other) });
+    const err = await getAccessToken(U, deps(m.store)).catch((e) => e);
+    expect(err).toBeInstanceOf(SiusReconnectNeeded);
+    expect(err.reason).toBe('blocked');
+    expect(m.rows.get(U)!.broken_reason).toBe('blocked');
+  });
+});
+

@@ -70,7 +70,10 @@ function asState(e: unknown): SiusState {
   if (e instanceof SiusNotConfigured) return { state: 'not_configured' };
   if (e instanceof SiusUnavailable) return e.limit ? { state: 'unavailable', reason: 'limit' } : { state: 'unavailable' };
   if (e instanceof SiusAuthFailure) return { state: 'unavailable' };
-  throw e;
+  // Anything else (a database error, a value that no longer decrypts) must not escape to the page; only the
+  // error's name is logged, never its message, which could carry SIUS output.
+  console.error('SIUS action failed', e instanceof Error ? e.name : typeof e);
+  return { state: 'unavailable' };
 }
 
 async function mayRead(d: SiusDeps, shooterId: string): Promise<boolean> {
@@ -108,7 +111,8 @@ export async function connectSius(d: SiusDeps, email: string, password: string):
     if (e instanceof SiusAuthFailure) return { ok: false, error: e.kind };
     if (e instanceof SiusUnavailable) return { ok: false, error: e.limit ? 'limit' : 'unavailable' };
     if (e instanceof SiusNotConfigured) return { ok: false, error: 'not_configured' };
-    throw e;
+    console.error('SIUS connect failed', e instanceof Error ? e.name : typeof e);
+    return { ok: false, error: 'unavailable' };
   }
 }
 

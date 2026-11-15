@@ -94,4 +94,13 @@ describe('SiusPanel', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Sačuvaj ID' }));
     await waitFor(() => expect(siusConfirmAthlete).toHaveBeenCalledWith(UID, 'SHSRBM02'));
   });
+
+  it('a failing connect shows an error instead of crashing', async () => {
+    connectSius.mockRejectedValue(new Error('boom'));
+    render(<SiusPanel userId={UID} status={{ state: 'none', reason: null, email: null }} athleteId={null} />);
+    fill('a@b', 'x');
+    fireEvent.click(screen.getByRole('button', { name: 'Poveži SIUS' }));
+    expect((await screen.findByRole('alert')).textContent).toBe('SIUS trenutno nije dostupan. Pokušaj kasnije.');
+  });
 });
+

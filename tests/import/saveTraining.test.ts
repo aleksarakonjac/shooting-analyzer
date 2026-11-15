@@ -253,3 +253,18 @@ describe('buildSavePayload with SIUS Cloud decimals and sighters', async () => {
     expect(csv.match!.sighters).toEqual([]);
   });
 });
+
+describe('buildSavePayload: decimal values in a whole-ring discipline', () => {
+  it('stores whole-ring series totals as integers (a SIUS "Final" exercise saved as 3x20)', async () => {
+    const { mapSiusShots } = await import('../../src/lib/sius/map');
+    const raw = JSON.parse(readFileSync(join(__dirname, '../fixtures/sius/rifle-3x20.json'), 'utf8'));
+    const final = mapSiusShots(raw, { name: '50m Rifle 3x20', final: true });
+    expect(Number.isInteger(final.series[0].total)).toBe(false);
+    const p = buildSavePayload({ disciplineId: 'smallbore_3p', trainedOn: '2026-09-10', sius: final, ignoredScattIds: [], hrOffsetMs: 0, confirmed: false }, 'u');
+    for (const s of p.match!.series) {
+      expect(Number.isInteger(s.total)).toBe(true);
+      expect(s.total).toBe(s.shots.reduce((a, x) => a + Math.floor(x.value), 0));
+      expect(s.total_decimal).toBe(final.series[s.idx - 1].total);
+    }
+  });
+});
