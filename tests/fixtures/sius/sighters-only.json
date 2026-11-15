@@ -1,0 +1,100 @@
+{
+ "type": "SingleStage",
+ "sightingShots": [
+  {
+   "shots": [
+    {
+     "shotNumber": 1,
+     "coordinates": "0/0.2",
+     "timeStamp": "2026-10-06T09:00:30.000+00:00",
+     "score": "9.7",
+     "scores": [
+      "9.7"
+     ],
+     "demo": false,
+     "inTime": true,
+     "frameHit": false,
+     "innerTen": false,
+     "miss": false,
+     "ricochet": false,
+     "fireKind": 0,
+     "elapsedTime": "00:00:10",
+     "overTime": false
+    },
+    {
+     "shotNumber": 2,
+     "coordinates": "0.4/0",
+     "timeStamp": "2026-10-06T09:01:00.000+00:00",
+     "score": "10.4",
+     "scores": [
+      "10.4"
+     ],
+     "demo": false,
+     "inTime": true,
+     "frameHit": false,
+     "innerTen": true,
+     "miss": false,
+     "ricochet": false,
+     "fireKind": 0,
+     "elapsedTime": "00:00:10",
+     "overTime": false
+    },
+    {
+     "shotNumber": 3,
+     "coordinates": "-0.1/-0.2",
+     "timeStamp": "2026-10-06T09:01:30.000+00:00",
+     "score": "9.1",
+     "scores": [
+      "9.1"
+     ],
+     "demo": false,
+     "inTime": true,
+     "frameHit": false,
+     "innerTen": false,
+     "miss": false,
+     "ricochet": false,
+     "fireKind": 0,
+     "elapsedTime": "00:00:10",
+     "overTime": false
+    },
+    {
+     "shotNumber": 4,
+     "coordinates": "0.3/0.3",
+     "timeStamp": "2026-10-06T09:02:00.000+00:00",
+     "score": "9.8",
+     "scores": [
+      "9.8"
+     ],
+     "demo": false,
+     "inTime": true,
+     "frameHit": false,
+     "innerTen": false,
+     "miss": false,
+     "ricochet": false,
+     "fireKind": 0,
+     "elapsedTime": "00:00:10",
+     "overTime": false
+    },
+    {
+     "shotNumber": 5,
+     "coordinates": "-0.2/0.1",
+     "timeStamp": "2026-10-06T09:02:30.000+00:00",
+     "score": "10.5",
+     "scores": [
+      "10.5"
+     ],
+     "demo": false,
+     "inTime": true,
+     "frameHit": false,
+     "innerTen": true,
+     "miss": false,
+     "ricochet": false,
+     "fireKind": 0,
+     "elapsedTime": "00:00:10",
+     "overTime": false
+    }
+   ]
+  }
+ ],
+ "competitionGroups": []
+}

@@ -47,6 +47,8 @@ export function disciplineFromSiusName(name: string): DisciplineId | undefined {
   if (n.includes('air rifle')) return 'air_rifle';
   if (n.includes('air pistol')) return 'air_pistol';
   if (/\b(50m|50 m) rifle\b/.test(n) && /3x(20|40)/.test(n)) return 'smallbore_3p';
+  // SIUS "50m Rifle Prone" exercises are free three-position trainings split by hand (owner, 2026-11-15).
+  if (/\b(50m|50 m) rifle prone\b/.test(n)) return 'smallbore_3p';
   // Other pistol events (25 m precision / rapid fire, 50 m free) are not supported yet.
   return undefined;
 }

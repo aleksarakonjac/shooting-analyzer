@@ -1,0 +1,1187 @@
+{
+ "type": "SingleStage",
+ "sightingShots": [
+  {
+   "shots": [
+    {
+     "shotNumber": 1,
+     "coordinates": "0/0.2",
+     "timeStamp": "2026-08-19T08:30:00.000+00:00",
+     "score": "9.0",
+     "scores": [
+      "9.0"
+     ],
+     "demo": false,
+     "inTime": true,
+     "frameHit": false,
+     "innerTen": false,
+     "miss": false,
+     "ricochet": false,
+     "fireKind": 0,
+     "elapsedTime": "00:00:10",
+     "overTime": false
+    },
+    {
+     "shotNumber": 2,
+     "coordinates": "0.4/0",
+     "timeStamp": "2026-08-19T08:30:30.000+00:00",
+     "score": "9.7",
+     "scores": [
+      "9.7"
+     ],
+     "demo": false,
+     "inTime": true,
+     "frameHit": false,
+     "innerTen": false,
+     "miss": false,
+     "ricochet": false,
+     "fireKind": 0,
+     "elapsedTime": "00:00:10",
+     "overTime": false
+    },
+    {
+     "shotNumber": 3,
+     "coordinates": "-0.1/-0.2",
+     "timeStamp": "2026-08-19T08:31:00.000+00:00",
+     "score": "10.4",
+     "scores": [
+      "10.4"
+     ],
+     "demo": false,
+     "inTime": true,
+     "frameHit": false,
+     "innerTen": true,
+     "miss": false,
+     "ricochet": false,
+     "fireKind": 0,
+     "elapsedTime": "00:00:10",
+     "overTime": false
+    },
+    {
+     "shotNumber": 4,
+     "coordinates": "0.3/0.3",
+     "timeStamp": "2026-08-19T08:31:30.000+00:00",
+     "score": "9.1",
+     "scores": [
+      "9.1"
+     ],
+     "demo": false,
+     "inTime": true,
+     "frameHit": false,
+     "innerTen": false,
+     "miss": false,
+     "ricochet": false,
+     "fireKind": 0,
+     "elapsedTime": "00:00:10",
+     "overTime": false
+    }
+   ]
+  }
+ ],
+ "competitionGroups": [
+  {
+   "shots": [
+    {
+     "shotNumber": 1,
+     "coordinates": "-0.08/0.63",
+     "timeStamp": "2026-08-19T08:36:52.590+00:00",
+     "score": "10.7",
+     "scores": [
+      "10.7"
+     ],
+     "demo": false,
+     "inTime": true,
+     "frameHit": false,
+     "innerTen": true,
+     "miss": false,
+     "ricochet": false,
+     "fireKind": 0,
+     "elapsedTime": "00:00:10",
+     "overTime": false
+    },
+    {
+     "shotNumber": 2,
+     "coordinates": "0.4/0",
+     "timeStamp": "2026-08-19T08:37:32.590+00:00",
+     "score": "9.7",
+     "scores": [
+      "9.7"
+     ],
+     "demo": false,
+     "inTime": true,
+     "frameHit": false,
+     "innerTen": false,
+     "miss": false,
+     "ricochet": false,
+     "fireKind": 0,
+     "elapsedTime": "00:00:10",
+     "overTime": false
+    },
+    {
+     "shotNumber": 3,
+     "coordinates": "-0.1/-0.2",
+     "timeStamp": "2026-08-19T08:38:12.590+00:00",
+     "score": "10.4",
+     "scores": [
+      "10.4"
+     ],
+     "demo": false,
+     "inTime": true,
+     "frameHit": false,
+     "innerTen": true,
+     "miss": false,
+     "ricochet": false,
+     "fireKind": 0,
+     "elapsedTime": "00:00:10",
+     "overTime": false
+    },
+    {
+     "shotNumber": 4,
+     "coordinates": "0.3/0.3",
+     "timeStamp": "2026-08-19T08:38:52.590+00:00",
+     "score": "9.1",
+     "scores": [
+      "9.1"
+     ],
+     "demo": false,
+     "inTime": true,
+     "frameHit": false,
+     "innerTen": false,
+     "miss": false,
+     "ricochet": false,
+     "fireKind": 0,
+     "elapsedTime": "00:00:10",
+     "overTime": false
+    },
+    {
+     "shotNumber": 5,
+     "coordinates": "-0.2/0.1",
+     "timeStamp": "2026-08-19T08:39:32.590+00:00",
+     "score": "9.8",
+     "scores": [
+      "9.8"
+     ],
+     "demo": false,
+     "inTime": true,
+     "frameHit": false,
+     "innerTen": false,
+     "miss": false,
+     "ricochet": false,
+     "fireKind": 0,
+     "elapsedTime": "00:00:10",
+     "overTime": false
+    },
+    {
+     "shotNumber": 6,
+     "coordinates": "0.2/-0.1",
+     "timeStamp": "2026-08-19T08:40:12.590+00:00",
+     "score": "10.5",
+     "scores": [
+      "10.5"
+     ],
+     "demo": false,
+     "inTime": true,
+     "frameHit": false,
+     "innerTen": true,
+     "miss": false,
+     "ricochet": false,
+     "fireKind": 0,
+     "elapsedTime": "00:00:10",
+     "overTime": false
+    },
+    {
+     "shotNumber": 7,
+     "coordinates": "-0.3/-0.3",
+     "timeStamp": "2026-08-19T08:40:52.590+00:00",
+     "score": "9.2",
+     "scores": [
+      "9.2"
+     ],
+     "demo": false,
+     "inTime": true,
+     "frameHit": false,
+     "innerTen": false,
+     "miss": false,
+     "ricochet": false,
+     "fireKind": 0,
+     "elapsedTime": "00:00:10",
+     "overTime": false
+    },
+    {
+     "shotNumber": 8,
+     "coordinates": "0.1/0.2",
+     "timeStamp": "2026-08-19T08:41:32.590+00:00",
+     "score": "9.9",
+     "scores": [
+      "9.9"
+     ],
+     "demo": false,
+     "inTime": true,
+     "frameHit": false,
+     "innerTen": false,
+     "miss": false,
+     "ricochet": false,
+     "fireKind": 0,
+     "elapsedTime": "00:00:10",
+     "overTime": false
+    },
+    {
+     "shotNumber": 9,
+     "coordinates": "-0.4/0",
+     "timeStamp": "2026-08-19T08:42:12.590+00:00",
+     "score": "10.6",
+     "scores": [
+      "10.6"
+     ],
+     "demo": false,
+     "inTime": true,
+     "frameHit": false,
+     "innerTen": true,
+     "miss": false,
+     "ricochet": false,
+     "fireKind": 0,
+     "elapsedTime": "00:00:10",
+     "overTime": false
+    },
+    {
+     "shotNumber": 10,
+     "coordinates": "0/-0.2",
+     "timeStamp": "2026-08-19T08:42:52.590+00:00",
+     "score": "9.3",
+     "scores": [
+      "9.3"
+     ],
+     "demo": false,
+     "inTime": true,
+     "frameHit": false,
+     "innerTen": false,
+     "miss": false,
+     "ricochet": false,
+     "fireKind": 0,
+     "elapsedTime": "00:00:10",
+     "overTime": false
+    }
+   ]
+  },
+  {
+   "shots": [
+    {
+     "shotNumber": 11,
+     "coordinates": "0.4/0.3",
+     "timeStamp": "2026-08-19T08:43:32.590+00:00",
+     "score": "10.0",
+     "scores": [
+      "10.0"
+     ],
+     "demo": false,
+     "inTime": true,
+     "frameHit": false,
+     "innerTen": false,
+     "miss": false,
+     "ricochet": false,
+     "fireKind": 0,
+     "elapsedTime": "00:00:10",
+     "overTime": false
+    },
+    {
+     "shotNumber": 12,
+     "coordinates": "-0.1/0.1",
+     "timeStamp": "2026-08-19T08:44:12.590+00:00",
+     "score": "10.7",
+     "scores": [
+      "10.7"
+     ],
+     "demo": false,
+     "inTime": true,
+     "frameHit": false,
+     "innerTen": true,
+     "miss": false,
+     "ricochet": false,
+     "fireKind": 0,
+     "elapsedTime": "00:00:10",
+     "overTime": false
+    },
+    {
+     "shotNumber": 13,
+     "coordinates": "0.3/-0.1",
+     "timeStamp": "2026-08-19T08:44:52.590+00:00",
+     "score": "9.4",
+     "scores": [
+      "9.4"
+     ],
+     "demo": false,
+     "inTime": true,
+     "frameHit": false,
+     "innerTen": false,
+     "miss": false,
+     "ricochet": false,
+     "fireKind": 0,
+     "elapsedTime": "00:00:10",
+     "overTime": false
+    },
+    {
+     "shotNumber": 14,
+     "coordinates": "-0.2/-0.3",
+     "timeStamp": "2026-08-19T08:45:32.590+00:00",
+     "score": "10.1",
+     "scores": [
+      "10.1"
+     ],
+     "demo": false,
+     "inTime": true,
+     "frameHit": false,
+     "innerTen": false,
+     "miss": false,
+     "ricochet": false,
+     "fireKind": 0,
+     "elapsedTime": "00:00:10",
+     "overTime": false
+    },
+    {
+     "shotNumber": 15,
+     "coordinates": "0.2/0.2",
+     "timeStamp": "2026-08-19T08:46:12.590+00:00",
+     "score": "10.8",
+     "scores": [
+      "10.8"
+     ],
+     "demo": false,
+     "inTime": true,
+     "frameHit": false,
+     "innerTen": true,
+     "miss": false,
+     "ricochet": false,
+     "fireKind": 0,
+     "elapsedTime": "00:00:10",
+     "overTime": false
+    },
+    {
+     "shotNumber": 16,
+     "coordinates": "-0.3/0",
+     "timeStamp": "2026-08-19T08:46:52.590+00:00",
+     "score": "9.5",
+     "scores": [
+      "9.5"
+     ],
+     "demo": false,
+     "inTime": true,
+     "frameHit": false,
+     "innerTen": false,
+     "miss": false,
+     "ricochet": false,
+     "fireKind": 0,
+     "elapsedTime": "00:00:10",
+     "overTime": false
+    },
+    {
+     "shotNumber": 17,
+     "coordinates": "0.1/-0.2",
+     "timeStamp": "2026-08-19T08:47:32.590+00:00",
+     "score": "10.2",
+     "scores": [
+      "10.2"
+     ],
+     "demo": false,
+     "inTime": true,
+     "frameHit": false,
+     "innerTen": false,
+     "miss": false,
+     "ricochet": false,
+     "fireKind": 0,
+     "elapsedTime": "00:00:10",
+     "overTime": false
+    },
+    {
+     "shotNumber": 18,
+     "coordinates": "-0.4/0.3",
+     "timeStamp": "2026-08-19T08:48:12.590+00:00",
+     "score": "10.9",
+     "scores": [
+      "10.9"
+     ],
+     "demo": false,
+     "inTime": true,
+     "frameHit": false,
+     "innerTen": true,
+     "miss": false,
+     "ricochet": false,
+     "fireKind": 0,
+     "elapsedTime": "00:00:10",
+     "overTime": false
+    },
+    {
+     "shotNumber": 19,
+     "coordinates": "0/0.1",
+     "timeStamp": "2026-08-19T08:48:52.590+00:00",
+     "score": "9.6",
+     "scores": [
+      "9.6"
+     ],
+     "demo": false,
+     "inTime": true,
+     "frameHit": false,
+     "innerTen": false,
+     "miss": false,
+     "ricochet": false,
+     "fireKind": 0,
+     "elapsedTime": "00:00:10",
+     "overTime": false
+    },
+    {
+     "shotNumber": 20,
+     "coordinates": "0.4/-0.1",
+     "timeStamp": "2026-08-19T08:49:32.590+00:00",
+     "score": "10.3",
+     "scores": [
+      "10.3"
+     ],
+     "demo": false,
+     "inTime": true,
+     "frameHit": false,
+     "innerTen": true,
+     "miss": false,
+     "ricochet": false,
+     "fireKind": 0,
+     "elapsedTime": "00:00:10",
+     "overTime": false
+    }
+   ]
+  },
+  {
+   "shots": [
+    {
+     "shotNumber": 21,
+     "coordinates": "-0.1/-0.3",
+     "timeStamp": "2026-08-19T08:50:12.590+00:00",
+     "score": "9.0",
+     "scores": [
+      "9.0"
+     ],
+     "demo": false,
+     "inTime": true,
+     "frameHit": false,
+     "innerTen": false,
+     "miss": false,
+     "ricochet": false,
+     "fireKind": 0,
+     "elapsedTime": "00:00:10",
+     "overTime": false
+    },
+    {
+     "shotNumber": 22,
+     "coordinates": "0.3/0.2",
+     "timeStamp": "2026-08-19T08:50:52.590+00:00",
+     "score": "9.7",
+     "scores": [
+      "9.7"
+     ],
+     "demo": false,
+     "inTime": true,
+     "frameHit": false,
+     "innerTen": false,
+     "miss": false,
+     "ricochet": false,
+     "fireKind": 0,
+     "elapsedTime": "00:00:10",
+     "overTime": false
+    },
+    {
+     "shotNumber": 23,
+     "coordinates": "-0.2/0",
+     "timeStamp": "2026-08-19T08:51:32.590+00:00",
+     "score": "10.4",
+     "scores": [
+      "10.4"
+     ],
+     "demo": false,
+     "inTime": true,
+     "frameHit": false,
+     "innerTen": true,
+     "miss": false,
+     "ricochet": false,
+     "fireKind": 0,
+     "elapsedTime": "00:00:10",
+     "overTime": false
+    },
+    {
+     "shotNumber": 24,
+     "coordinates": "0.2/-0.2",
+     "timeStamp": "2026-08-19T08:52:12.590+00:00",
+     "score": "9.1",
+     "scores": [
+      "9.1"
+     ],
+     "demo": false,
+     "inTime": true,
+     "frameHit": false,
+     "innerTen": false,
+     "miss": false,
+     "ricochet": false,
+     "fireKind": 0,
+     "elapsedTime": "00:00:10",
+     "overTime": false
+    },
+    {
+     "shotNumber": 25,
+     "coordinates": "-0.3/0.3",
+     "timeStamp": "2026-08-19T08:52:52.590+00:00",
+     "score": "9.8",
+     "scores": [
+      "9.8"
+     ],
+     "demo": false,
+     "inTime": true,
+     "frameHit": false,
+     "innerTen": false,
+     "miss": false,
+     "ricochet": false,
+     "fireKind": 0,
+     "elapsedTime": "00:00:10",
+     "overTime": false
+    },
+    {
+     "shotNumber": 26,
+     "coordinates": "0.1/0.1",
+     "timeStamp": "2026-08-19T08:53:32.590+00:00",
+     "score": "10.5",
+     "scores": [
+      "10.5"
+     ],
+     "demo": false,
+     "inTime": true,
+     "frameHit": false,
+     "innerTen": true,
+     "miss": false,
+     "ricochet": false,
+     "fireKind": 0,
+     "elapsedTime": "00:00:10",
+     "overTime": false
+    },
+    {
+     "shotNumber": 27,
+     "coordinates": "-0.4/-0.1",
+     "timeStamp": "2026-08-19T08:54:12.590+00:00",
+     "score": "9.2",
+     "scores": [
+      "9.2"
+     ],
+     "demo": false,
+     "inTime": true,
+     "frameHit": false,
+     "innerTen": false,
+     "miss": false,
+     "ricochet": false,
+     "fireKind": 0,
+     "elapsedTime": "00:00:10",
+     "overTime": false
+    },
+    {
+     "shotNumber": 28,
+     "coordinates": "0/-0.3",
+     "timeStamp": "2026-08-19T08:54:52.590+00:00",
+     "score": "9.9",
+     "scores": [
+      "9.9"
+     ],
+     "demo": false,
+     "inTime": true,
+     "frameHit": false,
+     "innerTen": false,
+     "miss": false,
+     "ricochet": false,
+     "fireKind": 0,
+     "elapsedTime": "00:00:10",
+     "overTime": false
+    },
+    {
+     "shotNumber": 29,
+     "coordinates": "0.4/0.2",
+     "timeStamp": "2026-08-19T08:55:32.590+00:00",
+     "score": "10.6",
+     "scores": [
+      "10.6"
+     ],
+     "demo": false,
+     "inTime": true,
+     "frameHit": false,
+     "innerTen": true,
+     "miss": false,
+     "ricochet": false,
+     "fireKind": 0,
+     "elapsedTime": "00:00:10",
+     "overTime": false
+    },
+    {
+     "shotNumber": 30,
+     "coordinates": "-0.1/0",
+     "timeStamp": "2026-08-19T08:56:12.590+00:00",
+     "score": "9.3",
+     "scores": [
+      "9.3"
+     ],
+     "demo": false,
+     "inTime": true,
+     "frameHit": false,
+     "innerTen": false,
+     "miss": false,
+     "ricochet": false,
+     "fireKind": 0,
+     "elapsedTime": "00:00:10",
+     "overTime": false
+    }
+   ]
+  },
+  {
+   "shots": [
+    {
+     "shotNumber": 31,
+     "coordinates": "0.3/-0.2",
+     "timeStamp": "2026-08-19T08:56:52.590+00:00",
+     "score": "10.0",
+     "scores": [
+      "10.0"
+     ],
+     "demo": false,
+     "inTime": true,
+     "frameHit": false,
+     "innerTen": false,
+     "miss": false,
+     "ricochet": false,
+     "fireKind": 0,
+     "elapsedTime": "00:00:10",
+     "overTime": false
+    },
+    {
+     "shotNumber": 32,
+     "coordinates": "-0.2/0.3",
+     "timeStamp": "2026-08-19T08:57:32.590+00:00",
+     "score": "10.7",
+     "scores": [
+      "10.7"
+     ],
+     "demo": false,
+     "inTime": true,
+     "frameHit": false,
+     "innerTen": true,
+     "miss": false,
+     "ricochet": false,
+     "fireKind": 0,
+     "elapsedTime": "00:00:10",
+     "overTime": false
+    },
+    {
+     "shotNumber": 33,
+     "coordinates": "0.2/0.1",
+     "timeStamp": "2026-08-19T08:58:12.590+00:00",
+     "score": "9.4",
+     "scores": [
+      "9.4"
+     ],
+     "demo": false,
+     "inTime": true,
+     "frameHit": false,
+     "innerTen": false,
+     "miss": false,
+     "ricochet": false,
+     "fireKind": 0,
+     "elapsedTime": "00:00:10",
+     "overTime": false
+    },
+    {
+     "shotNumber": 34,
+     "coordinates": "-0.3/-0.1",
+     "timeStamp": "2026-08-19T08:58:52.590+00:00",
+     "score": "10.1",
+     "scores": [
+      "10.1"
+     ],
+     "demo": false,
+     "inTime": true,
+     "frameHit": false,
+     "innerTen": false,
+     "miss": false,
+     "ricochet": false,
+     "fireKind": 0,
+     "elapsedTime": "00:00:10",
+     "overTime": false
+    },
+    {
+     "shotNumber": 35,
+     "coordinates": "0.1/-0.3",
+     "timeStamp": "2026-08-19T08:59:32.590+00:00",
+     "score": "10.8",
+     "scores": [
+      "10.8"
+     ],
+     "demo": false,
+     "inTime": true,
+     "frameHit": false,
+     "innerTen": true,
+     "miss": false,
+     "ricochet": false,
+     "fireKind": 0,
+     "elapsedTime": "00:00:10",
+     "overTime": false
+    },
+    {
+     "shotNumber": 36,
+     "coordinates": "-0.4/0.2",
+     "timeStamp": "2026-08-19T09:00:12.590+00:00",
+     "score": "9.5",
+     "scores": [
+      "9.5"
+     ],
+     "demo": false,
+     "inTime": true,
+     "frameHit": false,
+     "innerTen": false,
+     "miss": false,
+     "ricochet": false,
+     "fireKind": 0,
+     "elapsedTime": "00:00:10",
+     "overTime": false
+    },
+    {
+     "shotNumber": 37,
+     "coordinates": "0/0",
+     "timeStamp": "2026-08-19T09:00:52.590+00:00",
+     "score": "10.2",
+     "scores": [
+      "10.2"
+     ],
+     "demo": false,
+     "inTime": true,
+     "frameHit": false,
+     "innerTen": false,
+     "miss": false,
+     "ricochet": false,
+     "fireKind": 0,
+     "elapsedTime": "00:00:10",
+     "overTime": false
+    },
+    {
+     "shotNumber": 38,
+     "coordinates": "0.4/-0.2",
+     "timeStamp": "2026-08-19T09:01:32.590+00:00",
+     "score": "10.9",
+     "scores": [
+      "10.9"
+     ],
+     "demo": false,
+     "inTime": true,
+     "frameHit": false,
+     "innerTen": true,
+     "miss": false,
+     "ricochet": false,
+     "fireKind": 0,
+     "elapsedTime": "00:00:10",
+     "overTime": false
+    },
+    {
+     "shotNumber": 39,
+     "coordinates": "-0.1/0.3",
+     "timeStamp": "2026-08-19T09:02:12.590+00:00",
+     "score": "9.6",
+     "scores": [
+      "9.6"
+     ],
+     "demo": false,
+     "inTime": true,
+     "frameHit": false,
+     "innerTen": false,
+     "miss": false,
+     "ricochet": false,
+     "fireKind": 0,
+     "elapsedTime": "00:00:10",
+     "overTime": false
+    },
+    {
+     "shotNumber": 40,
+     "coordinates": "0.3/0.1",
+     "timeStamp": "2026-08-19T09:02:52.590+00:00",
+     "score": "10.3",
+     "scores": [
+      "10.3"
+     ],
+     "demo": false,
+     "inTime": true,
+     "frameHit": false,
+     "innerTen": true,
+     "miss": false,
+     "ricochet": false,
+     "fireKind": 0,
+     "elapsedTime": "00:00:10",
+     "overTime": false
+    }
+   ]
+  },
+  {
+   "shots": [
+    {
+     "shotNumber": 41,
+     "coordinates": "-0.2/-0.1",
+     "timeStamp": "2026-08-19T09:03:32.590+00:00",
+     "score": "9.0",
+     "scores": [
+      "9.0"
+     ],
+     "demo": false,
+     "inTime": true,
+     "frameHit": false,
+     "innerTen": false,
+     "miss": false,
+     "ricochet": false,
+     "fireKind": 0,
+     "elapsedTime": "00:00:10",
+     "overTime": false
+    },
+    {
+     "shotNumber": 42,
+     "coordinates": "0.2/-0.3",
+     "timeStamp": "2026-08-19T09:04:12.590+00:00",
+     "score": "9.7",
+     "scores": [
+      "9.7"
+     ],
+     "demo": false,
+     "inTime": true,
+     "frameHit": false,
+     "innerTen": false,
+     "miss": false,
+     "ricochet": false,
+     "fireKind": 0,
+     "elapsedTime": "00:00:10",
+     "overTime": false
+    },
+    {
+     "shotNumber": 43,
+     "coordinates": "-0.3/0.2",
+     "timeStamp": "2026-08-19T09:04:52.590+00:00",
+     "score": "10.4",
+     "scores": [
+      "10.4"
+     ],
+     "demo": false,
+     "inTime": true,
+     "frameHit": false,
+     "innerTen": true,
+     "miss": false,
+     "ricochet": false,
+     "fireKind": 0,
+     "elapsedTime": "00:00:10",
+     "overTime": false
+    },
+    {
+     "shotNumber": 44,
+     "coordinates": "0.1/0",
+     "timeStamp": "2026-08-19T09:05:32.590+00:00",
+     "score": "9.1",
+     "scores": [
+      "9.1"
+     ],
+     "demo": false,
+     "inTime": true,
+     "frameHit": false,
+     "innerTen": false,
+     "miss": false,
+     "ricochet": false,
+     "fireKind": 0,
+     "elapsedTime": "00:00:10",
+     "overTime": false
+    },
+    {
+     "shotNumber": 45,
+     "coordinates": "-0.4/-0.2",
+     "timeStamp": "2026-08-19T09:06:12.590+00:00",
+     "score": "9.8",
+     "scores": [
+      "9.8"
+     ],
+     "demo": false,
+     "inTime": true,
+     "frameHit": false,
+     "innerTen": false,
+     "miss": false,
+     "ricochet": false,
+     "fireKind": 0,
+     "elapsedTime": "00:00:10",
+     "overTime": false
+    },
+    {
+     "shotNumber": 46,
+     "coordinates": "0/0.3",
+     "timeStamp": "2026-08-19T09:06:52.590+00:00",
+     "score": "10.5",
+     "scores": [
+      "10.5"
+     ],
+     "demo": false,
+     "inTime": true,
+     "frameHit": false,
+     "innerTen": true,
+     "miss": false,
+     "ricochet": false,
+     "fireKind": 0,
+     "elapsedTime": "00:00:10",
+     "overTime": false
+    },
+    {
+     "shotNumber": 47,
+     "coordinates": "0.4/0.1",
+     "timeStamp": "2026-08-19T09:07:32.590+00:00",
+     "score": "9.2",
+     "scores": [
+      "9.2"
+     ],
+     "demo": false,
+     "inTime": true,
+     "frameHit": false,
+     "innerTen": false,
+     "miss": false,
+     "ricochet": false,
+     "fireKind": 0,
+     "elapsedTime": "00:00:10",
+     "overTime": false
+    },
+    {
+     "shotNumber": 48,
+     "coordinates": "-0.1/-0.1",
+     "timeStamp": "2026-08-19T09:08:12.590+00:00",
+     "score": "9.9",
+     "scores": [
+      "9.9"
+     ],
+     "demo": false,
+     "inTime": true,
+     "frameHit": false,
+     "innerTen": false,
+     "miss": false,
+     "ricochet": false,
+     "fireKind": 0,
+     "elapsedTime": "00:00:10",
+     "overTime": false
+    },
+    {
+     "shotNumber": 49,
+     "coordinates": "0.3/-0.3",
+     "timeStamp": "2026-08-19T09:08:52.590+00:00",
+     "score": "10.6",
+     "scores": [
+      "10.6"
+     ],
+     "demo": false,
+     "inTime": true,
+     "frameHit": false,
+     "innerTen": true,
+     "miss": false,
+     "ricochet": false,
+     "fireKind": 0,
+     "elapsedTime": "00:00:10",
+     "overTime": false
+    },
+    {
+     "shotNumber": 50,
+     "coordinates": "-0.2/0.2",
+     "timeStamp": "2026-08-19T09:09:32.590+00:00",
+     "score": "9.3",
+     "scores": [
+      "9.3"
+     ],
+     "demo": false,
+     "inTime": true,
+     "frameHit": false,
+     "innerTen": false,
+     "miss": false,
+     "ricochet": false,
+     "fireKind": 0,
+     "elapsedTime": "00:00:10",
+     "overTime": false
+    }
+   ]
+  },
+  {
+   "shots": [
+    {
+     "shotNumber": 51,
+     "coordinates": "0.2/0",
+     "timeStamp": "2026-08-19T09:10:12.590+00:00",
+     "score": "10.0",
+     "scores": [
+      "10.0"
+     ],
+     "demo": false,
+     "inTime": true,
+     "frameHit": false,
+     "innerTen": false,
+     "miss": false,
+     "ricochet": false,
+     "fireKind": 0,
+     "elapsedTime": "00:00:10",
+     "overTime": false
+    },
+    {
+     "shotNumber": 52,
+     "coordinates": "-0.3/-0.2",
+     "timeStamp": "2026-08-19T09:10:52.590+00:00",
+     "score": "10.7",
+     "scores": [
+      "10.7"
+     ],
+     "demo": false,
+     "inTime": true,
+     "frameHit": false,
+     "innerTen": true,
+     "miss": false,
+     "ricochet": false,
+     "fireKind": 0,
+     "elapsedTime": "00:00:10",
+     "overTime": false
+    },
+    {
+     "shotNumber": 53,
+     "coordinates": "0.1/0.3",
+     "timeStamp": "2026-08-19T09:11:32.590+00:00",
+     "score": "9.4",
+     "scores": [
+      "9.4"
+     ],
+     "demo": false,
+     "inTime": true,
+     "frameHit": false,
+     "innerTen": false,
+     "miss": false,
+     "ricochet": false,
+     "fireKind": 0,
+     "elapsedTime": "00:00:10",
+     "overTime": false
+    },
+    {
+     "shotNumber": 54,
+     "coordinates": "-0.4/0.1",
+     "timeStamp": "2026-08-19T09:12:12.590+00:00",
+     "score": "10.1",
+     "scores": [
+      "10.1"
+     ],
+     "demo": false,
+     "inTime": true,
+     "frameHit": false,
+     "innerTen": false,
+     "miss": false,
+     "ricochet": false,
+     "fireKind": 0,
+     "elapsedTime": "00:00:10",
+     "overTime": false
+    },
+    {
+     "shotNumber": 55,
+     "coordinates": "0/-0.1",
+     "timeStamp": "2026-08-19T09:12:52.590+00:00",
+     "score": "10.8",
+     "scores": [
+      "10.8"
+     ],
+     "demo": false,
+     "inTime": true,
+     "frameHit": false,
+     "innerTen": true,
+     "miss": false,
+     "ricochet": false,
+     "fireKind": 0,
+     "elapsedTime": "00:00:10",
+     "overTime": false
+    },
+    {
+     "shotNumber": 56,
+     "coordinates": "0.4/-0.3",
+     "timeStamp": "2026-08-19T09:13:32.590+00:00",
+     "score": "9.5",
+     "scores": [
+      "9.5"
+     ],
+     "demo": false,
+     "inTime": true,
+     "frameHit": false,
+     "innerTen": false,
+     "miss": false,
+     "ricochet": false,
+     "fireKind": 0,
+     "elapsedTime": "00:00:10",
+     "overTime": false
+    },
+    {
+     "shotNumber": 57,
+     "coordinates": "-0.1/0.2",
+     "timeStamp": "2026-08-19T09:14:12.590+00:00",
+     "score": "10.2",
+     "scores": [
+      "10.2"
+     ],
+     "demo": false,
+     "inTime": true,
+     "frameHit": false,
+     "innerTen": false,
+     "miss": false,
+     "ricochet": false,
+     "fireKind": 0,
+     "elapsedTime": "00:00:10",
+     "overTime": false
+    },
+    {
+     "shotNumber": 58,
+     "coordinates": "0.3/0",
+     "timeStamp": "2026-08-19T09:14:52.590+00:00",
+     "score": "10.9",
+     "scores": [
+      "10.9"
+     ],
+     "demo": false,
+     "inTime": true,
+     "frameHit": false,
+     "innerTen": true,
+     "miss": false,
+     "ricochet": false,
+     "fireKind": 0,
+     "elapsedTime": "00:00:10",
+     "overTime": false
+    },
+    {
+     "shotNumber": 59,
+     "coordinates": "-0.2/-0.2",
+     "timeStamp": "2026-08-19T09:15:32.590+00:00",
+     "score": "9.6",
+     "scores": [
+      "9.6"
+     ],
+     "demo": false,
+     "inTime": true,
+     "frameHit": false,
+     "innerTen": false,
+     "miss": false,
+     "ricochet": false,
+     "fireKind": 0,
+     "elapsedTime": "00:00:10",
+     "overTime": false
+    },
+    {
+     "shotNumber": 60,
+     "coordinates": "0.2/0.3",
+     "timeStamp": "2026-08-19T09:16:12.590+00:00",
+     "score": "10.3",
+     "scores": [
+      "10.3"
+     ],
+     "demo": false,
+     "inTime": true,
+     "frameHit": false,
+     "innerTen": true,
+     "miss": false,
+     "ricochet": false,
+     "fireKind": 0,
+     "elapsedTime": "00:00:10",
+     "overTime": false
+    }
+   ]
+  }
+ ]
+}

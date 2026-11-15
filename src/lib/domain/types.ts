@@ -9,6 +9,15 @@ export interface ParsedShot {
   x?: number;
   y?: number;
   tMs?: number;
+  /** Decimal score next to a whole `value` (SIUS Cloud, whole-ring disciplines), for a secondary display. */
+  valueDecimal?: number;
+}
+
+/** Sighters fired before the match series `beforeSeries` (its `index`). Never part of totals or stats. */
+export interface ParsedSighterGroup {
+  beforeSeries: number;
+  position?: Position;
+  shots: ParsedShot[];
 }
 
 export interface ParsedSeries {
@@ -31,4 +40,6 @@ export interface ParsedSiusResult {
   totalDecimal?: number;
   innerTens?: number;
   series: ParsedSeries[];
+  /** Sighters, when the source has them (SIUS Cloud private exercises). */
+  sighters?: ParsedSighterGroup[];
 }
