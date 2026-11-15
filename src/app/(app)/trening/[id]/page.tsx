@@ -119,6 +119,11 @@ async function Body({ params, searchParams }: { params: Promise<{ id: string }>;
   // The part says enough when there is one (a qualification is a competition's); otherwise the kind of session.
   const sessionLabel = tr.stage !== 'slobodno' ? nt.stages[tr.stage] : tr.kind !== 'trening' ? nt.kinds[tr.kind] : '';
 
+  // The name the app gives when none is typed (day, month, discipline) only repeats the facts below it, so the
+  // header shows the facts alone; a name the shooter chose heads the page.
+  const [, autoMm, autoDd] = [...tr.trained_on.split('-')];
+  const hasOwnName = tr.name.trim() !== `${autoDd}.${autoMm}. ${cfg.nameSr}`;
+
   // Editing opens the full form at once: words, type, event, time, files and alignment.
   if (canEdit && izmena) redirect(`/trening/${tr.id}/podaci`);
 
@@ -160,7 +165,11 @@ async function Body({ params, searchParams }: { params: Promise<{ id: string }>;
       {/* The name, then one line of facts in groups: when, where, and the competition it belongs to. Whatever the
           name already says (the discipline, the event) is not repeated. */}
       <div className="ws__head ws__head--session">
-        <h1 className="ws__title ws__title--session">{tr.name}</h1>
+        {hasOwnName ? (
+          <h1 className="ws__title ws__title--session">{tr.name}</h1>
+        ) : (
+          <h1 className="sr-only">{tr.name}</h1>
+        )}
         <ul className="ws__facts">
           <li><CalendarIcon /><span className="num">{date}</span></li>
           {clock && (
@@ -170,14 +179,14 @@ async function Body({ params, searchParams }: { params: Promise<{ id: string }>;
               {tz !== viewerTz && <span className="ws__facts-muted">{tz.split('/').pop()?.replace(/_/g, ' ')}</span>}
             </li>
           )}
-          {!tr.name.includes(cfg.nameSr) && <li>{cfg.nameSr}</li>}
+          {(!hasOwnName || !tr.name.includes(cfg.nameSr)) && <li>{cfg.nameSr}</li>}
           {tr.place && <li><PinIcon />{tr.place}</li>}
           {(sessionLabel || tr.events) && (
             <li>
               <TrophyIcon />
               {sessionLabel && <span>{sessionLabel}</span>}
               {tr.events && (
-                <Link href={`/dogadjaj/${tr.events.id}`}>{tr.name.includes(tr.events.name) ? t.eventLink : tr.events.name}</Link>
+                <Link href={`/dogadjaj/${tr.events.id}`}>{hasOwnName && tr.name.includes(tr.events.name) ? t.eventLink : tr.events.name}</Link>
               )}
             </li>
           )}
