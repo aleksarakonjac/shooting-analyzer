@@ -3,6 +3,7 @@ import { open, seal } from '@/lib/crypto/secretBox';
 import { SiusAuthFailure, type SiusTokens } from '@/lib/sius/auth';
 import {
   connect,
+  dropAccessToken,
   getAccessToken,
   SiusNotConfigured,
   SiusNotConnected,
@@ -84,7 +85,7 @@ describe('getAccessToken', () => {
 
   it('replaces the refresh token when SIUS returns a new one', async () => {
     const m = memStore(base);
-    const d = deps(m.store, { refresh: vi.fn(async (_rt: string) => tokens('AT2', 'RT2')) });
+    const d = deps(m.store, { refresh: vi.fn<Refresh>(async () => tokens('AT2', 'RT2')) });
     await getAccessToken(U, d);
     expect(open(m.rows.get(U)!.refresh_token_enc!, KEY)).toBe('RT2');
   });
@@ -236,5 +237,15 @@ describe('connect', () => {
     const m = memStore(null);
     await expect(connect(U, 'a', 'b', { ...deps(m.store), key: null })).rejects.toBeInstanceOf(SiusNotConfigured);
     expect(m.store.save).not.toHaveBeenCalled();
+  });
+});
+
+describe('dropAccessToken', () => {
+  it('clears the cached token so the next call refreshes', async () => {
+    const m = memStore({ password_enc: seal('pw', KEY), refresh_token_enc: seal('RT', KEY), access_token_enc: seal('AT-cached', KEY), access_expires_at: new Date(NOW + 999_000).toISOString() });
+    const d = deps(m.store);
+    await dropAccessToken(U, d);
+    expect(m.rows.get(U)!.access_token_enc).toBeNull();
+    await expect(getAccessToken(U, d)).resolves.toBe('AT-refreshed');
   });
 });

@@ -140,6 +140,12 @@ export async function getAccessToken(userId: string, deps: SessionDeps = {}): Pr
   return passwordLogin(ctx, userId, row);
 }
 
+/** Forgets the cached access token (SIUS refused it), so the next getAccessToken refreshes. */
+export async function dropAccessToken(userId: string, deps: SessionDeps = {}): Promise<void> {
+  const ctx = resolve(deps);
+  await ctx.store.save(userId, { access_token_enc: null, access_expires_at: null });
+}
+
 /** Signs in once with the entered credentials and stores them; on any failure nothing is stored. */
 export async function connect(userId: string, email: string, password: string, deps: SessionDeps = {}): Promise<void> {
   const ctx = resolve(deps);

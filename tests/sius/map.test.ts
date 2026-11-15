@@ -161,5 +161,7 @@ describe('disciplineFromSiusName', () => {
     expect(disciplineFromSiusName('10m AIR RIFLE WOMEN')).toBe('air_rifle');
     expect(disciplineFromSiusName('10m Air Pistol')).toBe('air_pistol');
     expect(disciplineFromSiusName('50m Rifle 3x20')).toBe('smallbore_3p');
+    expect(disciplineFromSiusName('50m RIFLE 3 POSITIONS MEN')).toBe('smallbore_3p');
+    expect(disciplineFromSiusName('50m RIFLE 3 POSITIONS WOMEN')).toBe('smallbore_3p');
   });
 });

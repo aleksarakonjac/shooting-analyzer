@@ -31,7 +31,7 @@ describe('stageFromPartName', () => {
 describe('sessionNameFor', () => {
   it('competition, ZeroIn discipline label, ZeroIn stage label', () => {
     expect(sessionNameFor('ISSF World Championship Doha', '10m AIR RIFLE MEN', 'Qualification')).toBe('ISSF World Championship Doha Vazdušna puška Kvalifikacije');
-    expect(sessionNameFor('ISSF World Cup', '50m RIFLE 3 POSITIONS MEN', 'Final')).toBe('ISSF World Cup 50m RIFLE 3 POSITIONS MEN Finale');
+    expect(sessionNameFor('ISSF World Cup', '50m RIFLE 3 POSITIONS MEN', 'Final')).toBe('ISSF World Cup MK puška trostav Finale');
   });
   it('unknown event and part names pass through unchanged', () => {
     expect(sessionNameFor('GP', '25m RAPID FIRE PISTOL MEN', 'Stage 1')).toBe('GP 25m RAPID FIRE PISTOL MEN Stage 1');
