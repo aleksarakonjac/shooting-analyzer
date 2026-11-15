@@ -184,8 +184,8 @@ export function NewTrainingForm({
     setSelection(s && sc ? proposeSelection(s, sc) : undefined);
   };
 
-  const applySius = (s: ParsedSiusResult, file: File | null, sha = '') => {
-    setSiusFile(file ? { file, data: s, sha } : null);
+  const applySius = (s: ParsedSiusResult, file: File | null, sha = '', inboxId?: string) => {
+    setSiusFile(file ? { file, data: s, sha, inboxId } : null);
     setManual(file ? null : s);
     setErrors((e) => ({ ...e, sius: undefined }));
     if (!disciplineId && s.disciplineId) setDisciplineId(s.disciplineId);
@@ -237,16 +237,35 @@ export function NewTrainingForm({
     await addScatt([{ file }]);
   };
 
+  const addHr = async (file: File, inboxId?: string) => {
+    try {
+      const { data, sha } = await parseHrFile(file);
+      setHrLoaded({ file, data, sha, inboxId });
+      setHrZoneChosen(null);
+      setErrors((e) => ({ ...e, hr: undefined }));
+    } catch {
+      setErrors((e) => ({ ...e, hr: t.unreadable }));
+    }
+  };
+
+  const onHr = async (ev: ChangeEvent<HTMLInputElement>) => {
+    const file = ev.target.files?.[0];
+    if (!file || tooLarge(file, 'hr')) return;
+    await addHr(file);
+  };
+
   // Phone inbox: files still waiting (not discarded here), and loading them from storage.
   const [inboxLeft, setInboxLeft] = useState(inbox);
   const [inboxBusy, setInboxBusy] = useState<string | null>(null);
+  const usedInbox = new Set([...scattFiles.map((f) => f.inboxId), hrLoaded?.inboxId, siusFile?.inboxId].filter(Boolean));
   const downloadInbox = async (items: InboxItem[]) => {
     const storage = createClient().storage.from('inbox');
     return Promise.all(
       items.map(async (it) => {
         const { data, error } = await storage.download(it.path);
         if (error || !data) throw new Error(error?.message ?? 'missing');
-        return { file: new File([data], it.name, { type: 'application/octet-stream' }), inboxId: it.id };
+        const type = it.kind === 'tcx' ? 'application/xml' : it.kind === 'sius_pdf' ? 'application/pdf' : 'application/octet-stream';
+        return { file: new File([data], it.name, { type }), inboxId: it.id, kind: it.kind };
       }),
     );
   };
@@ -254,9 +273,25 @@ export function NewTrainingForm({
     if (!items.length) return;
     setInboxBusy(items[0].id);
     try {
-      await addScatt(await downloadInbox(items));
+      const loaded = await downloadInbox(items);
+      const scattIn = loaded.filter((x) => x.kind === 'scatt');
+      if (scattIn.length) await addScatt(scattIn);
+      // One pulse file per session: the newest one sent wins.
+      const hrIn = loaded.find((x) => x.kind === 'tcx');
+      if (hrIn) await addHr(hrIn.file, hrIn.inboxId);
+      // Likewise one SIUS result.
+      const siusIn = loaded.find((x) => x.kind === 'sius_pdf');
+      if (siusIn) {
+        try {
+          const { parsed, sha } = await parseSiusFile(siusIn.file, tz);
+          applySius(parsed, siusIn.file, sha, siusIn.inboxId);
+        } catch {
+          setErrors((e) => ({ ...e, sius: t.unreadable }));
+        }
+      }
     } catch {
-      setErrors((e) => ({ ...e, scatt: sr.inbox.loadFailed }));
+      const key = items[0].kind === 'tcx' ? 'hr' : items[0].kind === 'sius_pdf' ? 'sius' : 'scatt';
+      setErrors((e) => ({ ...e, [key]: sr.inbox.loadFailed }));
     } finally {
       setInboxBusy(null);
     }
@@ -265,27 +300,41 @@ export function NewTrainingForm({
     setInboxLeft((cur) => cur.filter((x) => x.id !== id));
     await discardInboxFiles([id]).catch(() => {});
   };
+  // The files the inbox page sent here load once; when editing, only after the stored files are back,
+  // so they add to the session instead of being overwritten by the restore.
   const autoLoaded = useRef(false);
   useEffect(() => {
-    if (autoLoaded.current || edit) return;
+    if (autoLoaded.current || restoring) return;
     autoLoaded.current = true;
     const wanted = inbox.filter((it) => autoInbox.includes(it.id));
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- loads the files the Shortcut just sent, once
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- loads the files the inbox page asked for, once
     if (wanted.length) void addFromInbox(wanted);
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- once on mount
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- once, when the form is ready
+  }, [restoring]);
 
-  const onHr = async (ev: ChangeEvent<HTMLInputElement>) => {
-    const file = ev.target.files?.[0];
-    if (!file || tooLarge(file, 'hr')) return;
-    try {
-      const { data, sha } = await parseHrFile(file);
-      setHrLoaded({ file, data, sha });
-      setHrZoneChosen(null);
-      setErrors((e) => ({ ...e, hr: undefined }));
-    } catch {
-      setErrors((e) => ({ ...e, hr: t.unreadable }));
-    }
+  /** Waiting phone files of one kind, each to add here or discard. */
+  const inboxTray = (kind: InboxItem['kind']) => {
+    const left = inboxLeft.filter((it) => it.kind === kind && !usedInbox.has(it.id));
+    if (!left.length) return null;
+    return (
+      <div className="inbox__tray" aria-label={sr.inbox.waitingTitle}>
+        <small>{sr.inbox.waitingHint}</small>
+        <ul className="rows">
+          {left.map((it) => (
+            <li key={it.id} className="rows__item">
+              <div className="rows__main">
+                <strong>{it.name}</strong>
+                <div className="rows__muted num">{new Date(it.createdAt).toLocaleString('sr-Latn-RS', { dateStyle: 'short', timeStyle: 'short' })}</div>
+              </div>
+              <div className="rows__actions">
+                <button type="button" onClick={() => addFromInbox([it])} disabled={inboxBusy !== null}>{sr.inbox.add}</button>
+                <button type="button" className="button--quiet" onClick={() => discardInbox(it.id)}>{sr.inbox.discard}</button>
+              </div>
+            </li>
+          ))}
+        </ul>
+      </div>
+    );
   };
 
   // Editing: load the stored files back once, then restore the saved alignment on top of the fresh proposal.
@@ -417,7 +466,7 @@ export function NewTrainingForm({
         }
       }
       // Entered: the phone copies are no longer needed.
-      const fromInbox = scattFiles.flatMap((f) => (f.inboxId ? [f.inboxId] : []));
+      const fromInbox = [...usedInbox] as string[];
       if (fromInbox.length) await discardInboxFiles(fromInbox).catch(() => {});
       if (edit) {
         await dropReplacedFiles(trainingId, [siusFile?.sha, ...scattFiles.map((f) => f.sha), hrLoaded?.sha]);
@@ -650,6 +699,7 @@ export function NewTrainingForm({
             content: (
               <SourceCard title={t.siusTitle} error={errors.sius}>
                 <FileField label={t.siusFile} accept=".csv,.pdf,.prnx,text/csv,application/pdf" onChange={onSius} fileName={siusFile?.file.name} />
+                {inboxTray('sius_pdf')}
               </SourceCard>
             ),
           },
@@ -716,30 +766,11 @@ export function NewTrainingForm({
           </p>
         ))}
         {scattFiles.length > 1 && scatt && <small>{t.scattMerged(scattFiles.length, scatt.shots.length)}</small>}
-        {inboxLeft.some((it) => !scattFiles.some((f) => f.inboxId === it.id)) && (
-          <div className="inbox__tray" aria-label={sr.inbox.waitingTitle}>
-            <small>{sr.inbox.waitingHint}</small>
-            <ul className="rows">
-              {inboxLeft
-                .filter((it) => !scattFiles.some((f) => f.inboxId === it.id))
-                .map((it) => (
-                  <li key={it.id} className="rows__item">
-                    <div className="rows__main">
-                      <strong>{it.name}</strong>
-                      <div className="rows__muted num">{new Date(it.createdAt).toLocaleString('sr-Latn-RS', { dateStyle: 'short', timeStyle: 'short' })}</div>
-                    </div>
-                    <div className="rows__actions">
-                      <button type="button" onClick={() => addFromInbox([it])} disabled={inboxBusy !== null}>{sr.inbox.add}</button>
-                      <button type="button" className="button--quiet" onClick={() => discardInbox(it.id)}>{sr.inbox.discard}</button>
-                    </div>
-                  </li>
-                ))}
-            </ul>
-          </div>
-        )}
+        {inboxTray('scatt')}
       </SourceCard>
       <SourceCard title={t.hrTitle} error={errors.hr}>
         <FileField label={t.hrFile} accept=".tcx,application/xml,text/xml" onChange={onHr} fileName={hrLoaded?.file.name} />
+        {inboxTray('tcx')}
         {hrLoaded && (
           <>
             <p className="source-card__loaded">

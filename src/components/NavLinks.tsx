@@ -10,6 +10,10 @@ export interface NavItem {
   href: string;
   label: string;
   icon: ReactNode;
+  /** A count shown over the icon (waiting items); hidden at 0. */
+  badge?: number;
+  /** Accessible name when it differs from the visible label (e.g. with the count). */
+  ariaLabel?: string;
 }
 
 export function NavLinks({ items }: { items: NavItem[] }) {
@@ -24,10 +28,18 @@ export function NavLinks({ items }: { items: NavItem[] }) {
             href={it.href}
             className="shell__link"
             aria-current={active ? 'page' : undefined}
+            aria-label={it.ariaLabel}
             // Pressing the item of the page you are on: the page may have sub-views to close (a panel opened over it).
             onClick={() => { if (active) window.dispatchEvent(new CustomEvent(NAV_RESELECT, { detail: it.href })); }}
           >
-            {it.icon}
+            {it.badge ? (
+              <span className="shell__icon">
+                {it.icon}
+                <span className="badge" aria-hidden="true">{it.badge > 99 ? '99+' : it.badge}</span>
+              </span>
+            ) : (
+              it.icon
+            )}
             <span>{it.label}</span>
           </Link>
         );

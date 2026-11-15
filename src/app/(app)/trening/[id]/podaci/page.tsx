@@ -12,6 +12,7 @@ import type { SourceKind } from '@/lib/import/uploadSource';
 import { sr } from '@/lib/i18n/sr';
 import { siusFromStored, type StoredSeries } from '@/lib/sessions/storedSius';
 import { createClient } from '@/lib/supabase/server';
+import { waitingInbox } from '@/lib/inbox/waiting';
 
 interface Row {
   id: string;
@@ -33,15 +34,15 @@ interface Row {
 }
 
 /** Files and alignment of a saved session: the import form, loaded with what was stored. */
-export default function SessionDataPage({ params }: { params: Promise<{ id: string }> }) {
+export default function SessionDataPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ inbox?: string | string[] }> }) {
   return (
     <Suspense fallback={null}>
-      <Body params={params} />
+      <Body params={params} searchParams={searchParams} />
     </Suspense>
   );
 }
 
-async function Body({ params }: { params: Promise<{ id: string }> }) {
+async function Body({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ inbox?: string | string[] }> }) {
   await connection();
   const { id } = await params;
   if (!/^[0-9a-f-]{36}$/i.test(id)) notFound();
@@ -89,7 +90,10 @@ async function Body({ params }: { params: Promise<{ id: string }> }) {
     hrZone: hrRef?.zone ?? null,
   };
   const today = new Intl.DateTimeFormat('en-CA', { timeZone: profile.tz }).format(new Date());
-  const [events, places] = await Promise.all([shooterEvents(tr.shooter_id), recentPlaces(tr.shooter_id)]);
+  // Phone files belong to the signed-in shooter: offered only on their own sessions. ?inbox=<id> loads one.
+  const own = profile.id === tr.shooter_id;
+  const [events, places, inbox] = await Promise.all([shooterEvents(tr.shooter_id), recentPlaces(tr.shooter_id), own ? waitingInbox() : []]);
+  const autoInbox = [(await searchParams).inbox ?? []].flat();
   return (
     <NewTrainingForm
       userId={tr.shooter_id}
@@ -99,6 +103,8 @@ async function Body({ params }: { params: Promise<{ id: string }> }) {
       events={events}
       title={`${sr.newTraining.editTitle}: ${tr.name}`}
       edit={edit}
+      inbox={inbox}
+      autoInbox={autoInbox}
     />
   );
 }

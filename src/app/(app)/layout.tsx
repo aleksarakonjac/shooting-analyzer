@@ -3,6 +3,7 @@ import { AppShell } from '@/components/AppShell';
 import { UiProvider } from '@/components/ui/UiProvider';
 import { logout } from '@/lib/auth/actions';
 import { getSessionProfile } from '@/lib/auth/session';
+import { waitingInbox } from '@/lib/inbox/waiting';
 
 export default function AppLayout({ children }: { children: ReactNode }) {
   return (
@@ -17,7 +18,7 @@ async function Shell({ children }: { children: ReactNode }) {
   // The proxy keeps non-active users out; this is only the fallback for a missing profile.
   if (!profile || profile.status !== 'active') return <>{children}</>;
   return (
-    <AppShell role={profile.role} signOutAction={logout}>
+    <AppShell role={profile.role} signOutAction={logout} inboxCount={profile.role === 'shooter' ? (await waitingInbox()).length : 0}>
       <UiProvider>{children}</UiProvider>
     </AppShell>
   );

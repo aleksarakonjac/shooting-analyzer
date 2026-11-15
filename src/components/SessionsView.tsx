@@ -10,7 +10,7 @@ import { DISCIPLINES } from '@/lib/domain/disciplines';
 import type { DisciplineId } from '@/lib/domain/types';
 import { sr } from '@/lib/i18n/sr';
 import { filtersHref, hasFilters, RECENT_LIMIT, type ChartKind, type SessionFilters } from '@/lib/stats/filters';
-import { ChevronLeft, ChevronRight, Close } from '@/components/ui/icons';
+import { ChevronLeft, ChevronRight, Close, InboxIcon } from '@/components/ui/icons';
 import { saveListUrl } from '@/lib/listReturn';
 import { NAV_RESELECT } from '@/components/NavLinks';
 import { sessionPoints, setStats, type TrainingSummary } from '@/lib/stats/periodStats';
@@ -36,9 +36,9 @@ export function SessionsView({
   newHref,
   back,
   choices,
-  inboxCount = 0,
+  inboxCount,
 }: {
-  /** SCATT files sent from the phone and waiting to be entered. */
+  /** Phone files waiting to be added (the shooter's own list only); in phone portrait its button replaces the plus. */
   inboxCount?: number;
   back?: { href: string; label: string };
   all: TrainingSummary[];
@@ -101,8 +101,11 @@ export function SessionsView({
           <span>{t.sideTitle}</span>
           {f.side ? <ChevronRight /> : <ChevronLeft />}
         </button>
-        {inboxCount > 0 && (
-          <Link className="button button--quiet dash__inbox" href={`${newHref}?inbox=all`}>{sr.inbox.waitingCount(inboxCount)}</Link>
+        {inboxCount !== undefined && (
+          <Link className="button button--quiet dash__inbox" href="/sa-telefona" aria-label={sr.nav.inboxCount(inboxCount)}>
+            <InboxIcon />
+            {inboxCount > 0 && <span className="badge" aria-hidden="true">{inboxCount > 99 ? '99+' : inboxCount}</span>}
+          </Link>
         )}
         <Link className="button dash__new" href={newHref} aria-label={t.addFirst}>
           {PLUS}

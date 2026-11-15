@@ -36,4 +36,11 @@ export async function discardInboxFiles(ids: string[]): Promise<void> {
   // A row without its object is useless, but an object without its row is invisible; keep the row on failure.
   if (error) return;
   await supabase.from('inbox_files').delete().in('id', rows.map((r) => r.id));
+  // The menu's waiting count lives in the layout.
+  revalidatePath('/', 'layout');
+}
+
+/** Form version of discardInboxFiles, for the phone inbox page. */
+export async function discardInboxFileForm(form: FormData): Promise<void> {
+  await discardInboxFiles([requireUuid(form.get('id'))]);
 }

@@ -17,6 +17,8 @@ export const sr = {
     trash: 'Korpa',
     audit: 'Logovi',
     account: 'Nalog',
+    inbox: 'Sa telefona',
+    inboxCount: (n: number) => (n ? `Sa telefona: ${n} na čekanju` : 'Sa telefona'),
     collapse: 'Skupi meni',
     expand: 'Raširi meni',
   },
@@ -631,10 +633,10 @@ export const sr = {
     trashHint: 'Obrisane sesije se čuvaju 30 dana.',
     audit: 'Logovi',
     auditHint: 'Ko je i kada menjao sesije.',
-    approvals: 'Odobrenja registracija',
-    signOut: 'Odjavi se',
     privacy: 'Politika privatnosti',
     privacyHint: 'Koje podatke čuvamo i zašto.',
+    approvals: 'Odobrenja registracija',
+    signOut: 'Odjavi se',
     display: 'Prikaz',
     pipIntro: 'Od koje vrednosti se pogodak crta kao puna tačka. Ispod nje, do desetke (kod celih krugova do devetke), crta se prsten.',
     pipFrom: (v: string) => `Puna od ${v}`,
@@ -644,7 +646,7 @@ export const sr = {
   },
   inbox: {
     title: 'Uvoz sa telefona',
-    hint: 'SCATT fajl šaljete iz SCATT aplikacije direktno ovde, preko iOS prečice (Shortcut) u meniju za deljenje. Fajl ne ostaje u aplikaciji Files.',
+    hint: 'SCATT fajl, puls (TCX) ili SIUS izveštaj (PDF) šaljete sa telefona direktno ovde, preko iOS prečice (Shortcut) u meniju za deljenje, pa ga dodate u novu ili već sačuvanu sesiju. Fajl ne ostaje u aplikaciji Files.',
     label: 'Naziv uređaja',
     labelPlaceholder: 'npr. iPhone',
     create: 'Napravi ključ',
@@ -664,7 +666,7 @@ export const sr = {
       'Dodajte radnju „Get Contents of URL”. URL: ',
       'Method: POST. Headers: Authorization = Bearer <vaš ključ>. Request Body: Form, polje „file” tipa File = Shortcut Input.',
       'Dodajte „Get Dictionary Value” (ključ „url”) iz rezultata, pa „Open URLs”.',
-      'Nazovite prečicu, npr. „ZeroIn”. U SCATT-u: Export → u meniju za deljenje izaberite tu prečicu.',
+      'Nazovite prečicu, npr. „ZeroIn”. U SCATT-u, aplikaciji sata (TCX) ili iz PDF-a sa SIUS-a: Export/Share → u meniju za deljenje izaberite tu prečicu.',
     ],
     waitingTitle: 'Sa telefona',
     waitingHint: 'Fajlovi poslati prečicom čekaju ovde dok ih ne dodate u sesiju.',
@@ -675,8 +677,17 @@ export const sr = {
     waitingCount: (n: number) => {
       const one = n % 10 === 1 && n % 100 !== 11;
       const few = [2, 3, 4].includes(n % 10) && ![12, 13, 14].includes(n % 100);
-      return one ? `${n} SCATT fajl sa telefona čeka unos` : few ? `${n} SCATT fajla sa telefona čekaju unos` : `${n} SCATT fajlova sa telefona čeka unos`;
+      return one ? `${n} fajl sa telefona čeka unos` : few ? `${n} fajla sa telefona čekaju unos` : `${n} fajlova sa telefona čeka unos`;
     },
+    filesTitle: 'Fajlovi',
+    emptyInbox: 'Nema fajlova sa telefona.',
+    kindLabel: { scatt: 'SCATT', tcx: 'Puls (TCX)', sius_pdf: 'SIUS (PDF)' },
+    received: (d: string) => `primljeno ${d}`,
+    newSession: 'Nova sesija',
+    addToExisting: 'Ili dodaj u sačuvanu sesiju:',
+    missing: { scatt: 'bez SCATT-a', tcx: 'bez pulsa', sius_pdf: 'bez rezultata' },
+    alreadyHas: { scatt: 'ima SCATT', tcx: 'ima puls', sius_pdf: 'ima rezultat' },
+    autoAdded: (name: string) => `Dodato sa telefona: ${name}`,
     open: 'Unesi',
   },
 } as const;

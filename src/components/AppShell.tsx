@@ -25,6 +25,7 @@ const ICON = {
   clock: icon('M12 7v5l3 2M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z'),
   user: icon('M20 21v-1a5 5 0 0 0-5-5H9a5 5 0 0 0-5 5v1M12 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8Z'),
   rail: icon('M4 4h16v16H4zM9 4v16'),
+  inbox: icon('M22 12h-6l-2 3h-4l-2-3H2M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11Z'),
   out: icon('M9 21H5a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h4M16 17l5-5-5-5M21 12H9'),
 };
 
@@ -35,6 +36,7 @@ const NAV: Record<Role, NavItem[]> = {
     { href: HOME, label: sr.nav.trainings, icon: ICON.list },
     { href: '/statistika', label: sr.nav.stats, icon: ICON.stats },
     { href: '/trening/novi', label: sr.newTraining.nav, icon: ICON.plus },
+    { href: '/sa-telefona', label: sr.nav.inbox, icon: ICON.inbox },
   ],
   coach: [
     { href: '/strelci', label: sr.nav.shooters, icon: ICON.people },
@@ -79,9 +81,12 @@ const setCollapsed = (value: boolean) => {
 export function AppShell({
   role,
   signOutAction,
+  inboxCount = 0,
   children,
 }: {
   role: Role;
+  /** Phone files waiting to be added to a session (shooters). */
+  inboxCount?: number;
   signOutAction?: () => Promise<void>;
   children: ReactNode;
 }) {
@@ -106,7 +111,7 @@ export function AppShell({
         </div>
         <nav className="shell__nav" aria-label={sr.nav.label}>
           <LastSessionLink icon={ICON.eye} />
-          <NavLinks items={NAV[role]} />
+          <NavLinks items={NAV[role].map((it) => (it.href === '/sa-telefona' ? { ...it, badge: inboxCount, ariaLabel: sr.nav.inboxCount(inboxCount) } : it))} />
         </nav>
         <nav className="shell__account" aria-label={sr.nav.account}>
           <NavLinks items={[ACCOUNT]} />
