@@ -47,8 +47,9 @@ const sr: Doc = {
       <h2>Ko može da ih vidi</h2>
       <p>
         Vi. Trener ili strelac vidi samo ono što ste im izričito podelili u delu „Veze i deljenje“, i to možete da
-        promenite ili opozovete u svakom trenutku. Administrator aplikacije odobrava nove naloge i prima obaveštenje o
-        registraciji (ime, e-pošta, tip naloga).
+        promenite ili opozovete u svakom trenutku. Izuzetak je puls iz Google Health: kada povežete Google Health, vaš
+        trener može da povuče puls za okvir treninga (opisano ispod) i bez posebnog deljenja. Administrator aplikacije
+        odobrava nove naloge i prima obaveštenje o registraciji (ime, e-pošta, tip naloga).
       </p>
 
       <h2>Servisi koje koristimo</h2>
@@ -66,29 +67,31 @@ const sr: Doc = {
       <h2>Google Health podaci (puls)</h2>
       <p>
         Povezivanje sa Google Health je potpuno opciono i uključuje se samo na vaš zahtev. Služi da se uz svaki hitac
-        prikaže puls, kako biste vi i vaš trener videli odnos pulsa, vremena hica i rezultata. Tražimo tri dozvole, sve
+        prikaže puls, kako biste vi i vaš trener videli odnos pulsa, vremena hica i rezultata. Tražimo dve dozvole, obe
         samo za čitanje:
       </p>
       <ul>
         <li>
           <strong>Zdravstvene metrike i merenja</strong> (<code>googlehealth.health_metrics_and_measurements.readonly</code>):
-          čitamo uzorke pulsa samo za vremenski prozor treninga koji izaberete. Koristimo ih da poravnamo puls sa hicima
-          i da izračunamo prosečan puls tokom meča.
+          čitamo uzorke pulsa samo za okvir jednog treninga. Koristimo ih da poravnamo puls sa hicima, da izračunamo
+          prosečan puls tokom meča i da prikažemo puls pre i posle meča.
         </li>
         <li>
           <strong>Aktivnost i kondicija</strong> (<code>googlehealth.activity_and_fitness.readonly</code>): izlistavamo
-          vaše vežbe da bismo pronašli onu koja se poklapa sa streljačkim treningom i preuzeli njen TCX fajl.
-        </li>
-        <li>
-          <strong>Lokacija</strong> (<code>googlehealth.location.readonly</code>): Google je zahteva za preuzimanje TCX
-          fajla. GPS podatke ne koristimo, ne prikazujemo i ne čuvamo; iz fajla čitamo samo tačke sa pulsom.
+          vežbe tipa „Shooting“ oko datuma treninga da bismo saznali kada je trening počeo i završio se.
         </li>
       </ul>
       <p>
-        Podaci iz Google Health se čitaju samo kada vi to zatražite, nikada se ne upisuju nazad u vaš Google nalog i ne
-        dele se ni sa kim. Sirovi uzorci pulsa se ne čuvaju; sačuva se samo izračunati prosečan puls po treningu. (Ako
-        sami otpremite TCX fajl, on se čuva kao i drugi fajlovi koje otpremite.) Pristup možete da opozovete u bilo kom
-        trenutku na stranici <a href={PERMISSIONS_URL} {...ext}>myaccount.google.com/permissions</a>.
+        Okvir treninga određuju vremena hitaca (SCATT ili vremena pogodaka), a ako ih nema, vežba „Shooting“ sa sata ili
+        vreme treninga koje ste upisali; uz to 20 minuta pre i posle, a najviše 6 sati ukupno. Puls za taj okvir mogu da
+        povuku samo vi i vaš trener (trener ne može da koristi upisano vreme, već samo hice ili vežbu sa sata).
+      </p>
+      <p>
+        Podaci iz Google Health se čitaju samo kada vi ili vaš trener to zatražite i nikada se ne upisuju nazad u vaš
+        Google nalog. Povučeni puls se čuva kao fajl uz taj trening, isto kao TCX fajl koji sami otpremite, i briše se
+        zajedno sa treningom. Kada prekinete vezu (na stranici Nalog), nova povlačenja više nisu moguća, a puls koji je
+        već sačuvan uz treninge ostaje dok ne obrišete trening. Pristup možete da opozovete i na stranici{' '}
+        <a href={PERMISSIONS_URL} {...ext}>myaccount.google.com/permissions</a>.
       </p>
       <p>
         Korišćenje i prenos informacija koje primimo od Google API-ja u bilo koju drugu aplikaciju poštovaće{' '}
@@ -153,8 +156,10 @@ const en: Doc = {
       <h2>Who can see it</h2>
       <p>
         You. A coach or shooter sees only what you have explicitly shared with them under &ldquo;Connections and
-        sharing&rdquo;, and you can change or revoke that at any time. The app administrator approves new accounts and
-        receives a notification about each registration (name, email, account type).
+        sharing&rdquo;, and you can change or revoke that at any time. The exception is Google Health heart rate: once
+        you connect Google Health, your coach can pull heart rate for a training&apos;s frame (described below) without a
+        separate share. The app administrator approves new accounts and receives a notification about each registration
+        (name, email, account type).
       </p>
 
       <h2>Services we use</h2>
@@ -173,28 +178,31 @@ const en: Doc = {
       <p>
         Connecting Google Health is entirely optional and happens only when you ask for it. It lets the app show your
         heart rate alongside each shot, so you and your coach can see how pulse relates to shot timing and score. We
-        request three permissions, all read-only:
+        request two permissions, both read-only:
       </p>
       <ul>
         <li>
           <strong>Health metrics and measurements</strong> (<code>googlehealth.health_metrics_and_measurements.readonly</code>):
-          we read heart-rate samples only for the time window of the training session you select. We use them to align
-          pulse with shots and to compute your average heart rate during the match.
+          we read heart-rate samples only for the frame of one training. We use them to align pulse with shots, to
+          compute your average heart rate during the match and to show heart rate before and after the match.
         </li>
         <li>
-          <strong>Activity and fitness</strong> (<code>googlehealth.activity_and_fitness.readonly</code>): we list your
-          exercise sessions to find the workout that overlaps your shooting training and to export its TCX file.
-        </li>
-        <li>
-          <strong>Location</strong> (<code>googlehealth.location.readonly</code>): required by Google for exporting the
-          TCX file. We do not use, display or store GPS data; we read only the heart-rate trackpoints from the file.
+          <strong>Activity and fitness</strong> (<code>googlehealth.activity_and_fitness.readonly</code>): we list
+          &ldquo;Shooting&rdquo; workouts around the training date to learn when the training started and ended.
         </li>
       </ul>
       <p>
-        Google Health data is read only when you request it, is never written back to your Google account, and is never
-        shared with anyone. Raw heart-rate samples are not stored; only the computed average heart rate per session is
-        kept. (If you upload a TCX file yourself, it is stored like any other file you upload.) You can revoke access at
-        any time at <a href={PERMISSIONS_URL} {...ext}>myaccount.google.com/permissions</a>.
+        A training&apos;s frame is set by the shot times (SCATT or shot timestamps), otherwise by the
+        &ldquo;Shooting&rdquo; workout from your watch or the training time you entered, plus 20 minutes before and
+        after, at most 6 hours in total. Only you and your coach can pull heart rate for that frame (a coach cannot use
+        the entered time, only shots or the watch workout).
+      </p>
+      <p>
+        Google Health data is read only when you or your coach request it and is never written back to your Google
+        account. The pulled heart rate is stored as a file with that training, like a TCX file you upload yourself,
+        and is deleted together with the training. When you disconnect (on the Account page), no new pulls are
+        possible, and heart rate already saved with trainings stays until you delete the training. You can also revoke
+        access at <a href={PERMISSIONS_URL} {...ext}>myaccount.google.com/permissions</a>.
       </p>
       <p>
         {APP}&apos;s use and transfer to any other app of information received from Google APIs will adhere to the{' '}

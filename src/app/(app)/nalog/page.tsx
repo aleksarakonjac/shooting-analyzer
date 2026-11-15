@@ -11,12 +11,15 @@ import { ProfileForm } from './ProfileForm';
 import { PipRuleForm } from './PipRuleForm';
 import { PasskeyPanel } from './PasskeyPanel';
 import { InboxTokenPanel, type TokenRow } from './InboxTokenPanel';
-import { siteUrl } from '@/lib/supabase/admin';
+import { GoogleHealthPanel, type HealthFlash } from './GoogleHealthPanel';
+import { createAdminClient, siteUrl } from '@/lib/supabase/admin';
 import { DISCIPLINES } from '@/lib/domain/disciplines';
 import type { DisciplineId } from '@/lib/domain/types';
 import { pipTopFor } from '@/lib/report/target';
 
-type Search = { sacuvano?: string; greska?: string; prikaz?: string };
+type Search = { sacuvano?: string; greska?: string; prikaz?: string; gh?: string };
+
+const HEALTH_FLASHES: readonly HealthFlash[] = ['ok', 'scopes', 'not_linked', 'state', 'error', 'off'];
 
 export default function AccountPage({ searchParams }: { searchParams: Promise<Search> }) {
   return (
@@ -28,7 +31,7 @@ export default function AccountPage({ searchParams }: { searchParams: Promise<Se
 
 async function Body({ searchParams }: { searchParams: Promise<Search> }) {
   await connection();
-  const { sacuvano, greska, prikaz } = await searchParams;
+  const { sacuvano, greska, prikaz, gh } = await searchParams;
   const profile = await getSessionProfile();
   if (!profile) redirect('/login');
   const supabase = await createClient();
@@ -42,6 +45,15 @@ async function Body({ searchParams }: { searchParams: Promise<Search> }) {
     const { data: rows } = await supabase.from('inbox_tokens').select('id, label, created_at, last_used_at').order('created_at');
     tokens = (rows ?? []) as TokenRow[];
   }
+  // Google Health connection: state through the database function (never the token), the date from the own row.
+  let health: { status: 'none' | 'ok' | 'broken'; connectedAt: string | null } | null = null;
+  if (profile.role === 'shooter') {
+    const { data: status, error } = await supabase.rpc('health_link_status', { sid: profile.id });
+    const s = !error && (status === 'ok' || status === 'broken') ? status : 'none';
+    const { data: row } = s === 'none' ? { data: null } : ((await createAdminClient()?.from('google_health_links').select('connected_at').eq('user_id', profile.id).maybeSingle()) ?? { data: null });
+    health = { status: s, connectedAt: (row?.connected_at as string | undefined) ?? null };
+  }
+  const healthFlash = HEALTH_FLASHES.find((f) => f === gh) ?? null;
 
   const profilePanel = (
     <div className="stack">
@@ -50,6 +62,7 @@ async function Body({ searchParams }: { searchParams: Promise<Search> }) {
       <ProfileForm name={(data?.display_name as string | undefined) ?? ''} tz={profile.tz} />
       <PasskeyPanel />
       {tokens && <InboxTokenPanel tokens={tokens} uploadUrl={`${siteUrl() ?? ''}/api/inbox`} />}
+      {health && <GoogleHealthPanel status={health.status} connectedAt={health.connectedAt} flash={healthFlash} />}
     </div>
   );
 

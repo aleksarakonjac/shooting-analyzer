@@ -644,6 +644,24 @@ export const sr = {
     pipSave: 'Sačuvaj prikaz',
     pipSaved: 'Prikaz je sačuvan.',
   },
+  googleHealth: {
+    title: 'Google Health (puls)',
+    connect: 'Poveži Google Health',
+    reconnect: 'Poveži ponovo',
+    disconnect: 'Prekini vezu',
+    hint:
+      'Pre povezivanja se prijavi u Google Health aplikaciju na telefonu. Dok aplikacija nije verifikovana, Google će prikazati upozorenje „unverified app“ — izaberi Advanced → Continue.',
+    connectedSince: (date: string) => `Povezano od ${date}`,
+    broken: 'Veza je istekla ili je opozvana.',
+    flash: {
+      ok: 'Google Health je povezan.',
+      scopes: 'Potrebno je odobriti oba pristupa (puls i aktivnosti).',
+      not_linked: 'Google nalog nije povezan sa Google Health aplikacijom. Prijavi se u aplikaciju na telefonu, pa pokušaj ponovo.',
+      state: 'Povezivanje nije uspelo. Pokušaj ponovo.',
+      error: 'Povezivanje nije uspelo. Pokušaj ponovo.',
+      off: 'Veza sa Google Health je prekinuta.',
+    },
+  },
   inbox: {
     title: 'Uvoz sa telefona',
     hint: 'SCATT fajl, puls (TCX) ili SIUS izveštaj (PDF) šaljete sa telefona direktno ovde, preko iOS prečice (Shortcut) u meniju za deljenje, pa ga dodate u novu ili već sačuvanu sesiju. Fajl ne ostaje u aplikaciji Files.',
