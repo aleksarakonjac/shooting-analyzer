@@ -101,3 +101,19 @@ describe('uploadSource', () => {
     expect((await uploadSource(edge, 't1', 'scatt', m.deps)).duplicate).toBe(false);
   });
 });
+
+describe('uploadSource with SIUS Cloud metadata', () => {
+  it('stores a sius_cloud JSON with external id, first shot time and shot count', async () => {
+    const m = memory();
+    const meta = { externalId: 'ex-1', firstShotAt: '2026-08-19T08:36:52.590Z', shotCount: 60 };
+    await uploadSource(file('{"type":"SingleStage"}', 'sius-ex-1.json'), 't1', 'sius_cloud', m.deps, meta);
+    expect(m.rows[0]).toMatchObject({ kind: 'sius_cloud', external_id: 'ex-1', first_shot_at: '2026-08-19T08:36:52.590Z', shot_count: 60 });
+    expect(m.rows[0].storage_path.endsWith('.json')).toBe(true);
+  });
+
+  it('writes no metadata columns for other kinds', async () => {
+    const m = memory();
+    await uploadSource(file('x'), 't1', 'sius_csv', m.deps);
+    expect(m.rows[0]).not.toHaveProperty('external_id');
+  });
+});

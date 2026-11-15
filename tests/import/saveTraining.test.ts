@@ -222,3 +222,34 @@ describe('replaceTrainingData', () => {
     expect(calls[0][1].payload.training.name).toBe('Preimenovana');
   });
 });
+
+describe('buildSavePayload with SIUS Cloud decimals and sighters', async () => {
+  const { mapSiusShots } = await import('../../src/lib/sius/map');
+  const raw = JSON.parse(readFileSync(join(__dirname, '../fixtures/sius/rifle-3x20.json'), 'utf8'));
+  const x320 = mapSiusShots(raw, { name: '50m Rifle 3x20' });
+  const draft: TrainingDraft = { disciplineId: 'smallbore_3p', trainedOn: '2026-09-10', sius: x320, ignoredScattIds: [], hrOffsetMs: 0, confirmed: false };
+  const p = buildSavePayload(draft, 'user-1');
+
+  it('carries value_decimal next to the whole value', () => {
+    expect(p.match!.series[0].shots[0]).toMatchObject({ value: 10, value_decimal: 10.6 });
+  });
+
+  it('keeps sighter groups with before_series and an idx running across the match', () => {
+    expect(p.match!.sighters.map((g) => [g.before_series, g.position])).toEqual([[1, 'kneeling'], [3, 'prone'], [5, 'standing']]);
+    const idx = p.match!.sighters.flatMap((g) => g.shots.map((s) => s.idx));
+    expect(idx).toEqual(Array.from({ length: 12 }, (_, i) => i + 1));
+    expect(p.match!.sighters[0].shots[0]).toMatchObject({ value: expect.any(Number), value_decimal: expect.any(Number), t_ms: expect.any(Number) });
+  });
+
+  it('sighters do not change series totals', () => {
+    const without = buildSavePayload({ ...draft, sius: { ...x320, sighters: [] } }, 'user-1');
+    expect(p.match!.series.map((s) => [s.total, s.total_decimal])).toEqual(without.match!.series.map((s) => [s.total, s.total_decimal]));
+    expect(without.match!.sighters).toEqual([]);
+  });
+
+  it('CSV shots have no decimal next to them', () => {
+    const csv = buildSavePayload(base, 'user-1');
+    expect(csv.match!.series[0].shots[0].value_decimal).toBeNull();
+    expect(csv.match!.sighters).toEqual([]);
+  });
+});

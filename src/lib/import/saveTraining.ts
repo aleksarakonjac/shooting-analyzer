@@ -40,6 +40,8 @@ export interface TrainingDraft {
 export interface PayloadShot {
   idx: number;
   value: number;
+  /** Decimal score next to a whole `value` (SIUS Cloud 3x20), null otherwise. */
+  value_decimal: number | null;
   inner: boolean;
   direction: string | null;
   x: number | null;
@@ -56,6 +58,22 @@ export interface PayloadSeries {
   mpi_y: number | null;
   group_mm: number | null;
   shots: PayloadShot[];
+}
+/** A sighter shot; never part of totals or stats. */
+export interface PayloadSighter {
+  idx: number;
+  value: number;
+  value_decimal: number | null;
+  inner: boolean;
+  x: number | null;
+  y: number | null;
+  t_ms: number | null;
+}
+export interface PayloadSighterGroup {
+  /** idx of the match series the sighters were fired before. */
+  before_series: number;
+  position: string | null;
+  shots: PayloadSighter[];
 }
 export interface SavePayload {
   training: {
@@ -77,6 +95,7 @@ export interface SavePayload {
     align_state: 'proposed' | 'confirmed';
     selection: (MatchSelection & { ignoredScattIds: number[] }) | null;
     series: PayloadSeries[];
+    sighters: PayloadSighterGroup[];
   } | null;
   loose_shots: { kind: 'warmup' | 'attempt'; t_ms: number; scatt_shot_id: number }[];
   hr_offset_ms: number | null;
@@ -119,6 +138,7 @@ export function buildSavePayload(draft: TrainingDraft, userId: string): SavePayl
         return {
           idx: i + 1,
           value: shot.value,
+          value_decimal: shot.valueDecimal ?? null,
           inner: shot.inner ?? false,
           direction: shot.direction ?? null,
           x: shot.x ?? null,
@@ -141,11 +161,27 @@ export function buildSavePayload(draft: TrainingDraft, userId: string): SavePayl
         shots,
       };
     });
+    // SIUS series are never cut here (the selection picks SCATT shots), so before_series stays as parsed.
+    let n = 0;
+    const sighters = (draft.sius.sighters ?? []).map<PayloadSighterGroup>((g) => ({
+      before_series: g.beforeSeries,
+      position: g.position ?? null,
+      shots: g.shots.map((shot) => ({
+        idx: ++n,
+        value: shot.value,
+        value_decimal: shot.valueDecimal ?? null,
+        inner: shot.inner ?? false,
+        x: shot.x ?? null,
+        y: shot.y ?? null,
+        t_ms: shot.tMs ?? null,
+      })),
+    }));
     match = {
       label: '',
       align_state: draft.confirmed ? 'confirmed' : 'proposed',
       selection: draft.selection ? { ...draft.selection, ignoredScattIds: draft.ignoredScattIds } : null,
       series,
+      sighters,
     };
   }
 

@@ -1,6 +1,6 @@
 import { createClient } from '@/lib/supabase/client';
 
-export type SourceKind = 'sius_csv' | 'sius_pdf' | 'sius_prnx' | 'scatt' | 'tcx';
+export type SourceKind = 'sius_csv' | 'sius_pdf' | 'sius_prnx' | 'sius_cloud' | 'scatt' | 'tcx';
 
 export const MAX_UPLOAD_BYTES = 25 * 1024 * 1024;
 
@@ -16,7 +16,7 @@ export async function sha256Hex(bytes: BufferSource): Promise<string> {
   return [...new Uint8Array(digest)].map((b) => b.toString(16).padStart(2, '0')).join('');
 }
 
-const EXT: Record<SourceKind, string> = { sius_csv: 'csv', sius_pdf: 'pdf', sius_prnx: 'prnx', scatt: 'scatt-expert', tcx: 'tcx' };
+const EXT: Record<SourceKind, string> = { sius_csv: 'csv', sius_pdf: 'pdf', sius_prnx: 'prnx', sius_cloud: 'json', scatt: 'scatt-expert', tcx: 'tcx' };
 
 /** Content-addressed path inside the training's folder (the storage policies key on the folder). */
 export const storagePath = (trainingId: string, sha: string, kind: SourceKind) => `${trainingId}/${sha}.${EXT[kind]}`;
@@ -27,6 +27,17 @@ export interface SourceRow {
   storage_path: string;
   sha256: string;
   bytes: number;
+  /** SIUS Cloud only: exercise id or comp:<partId>:<athleteRunningId>, for "already imported" and duplicates. */
+  external_id?: string;
+  first_shot_at?: string | null;
+  shot_count?: number;
+}
+
+/** What a SIUS Cloud source carries besides the file. */
+export interface SourceMeta {
+  externalId: string;
+  firstShotAt: string | null;
+  shotCount: number;
 }
 
 export interface UploadDeps {
@@ -68,6 +79,7 @@ export async function uploadSource(
   trainingId: string,
   kind: SourceKind,
   deps: UploadDeps = supabaseDeps(),
+  meta?: SourceMeta,
 ): Promise<{ id: string; duplicate: boolean }> {
   if (file.size > MAX_UPLOAD_BYTES) throw new UploadTooLargeError();
 
@@ -77,7 +89,14 @@ export async function uploadSource(
 
   const path = storagePath(trainingId, sha, kind);
   await deps.putObject(path, file);
-  const row = await deps.insertRow({ training_id: trainingId, kind, storage_path: path, sha256: sha, bytes: file.size });
+  const row = await deps.insertRow({
+    training_id: trainingId,
+    kind,
+    storage_path: path,
+    sha256: sha,
+    bytes: file.size,
+    ...(meta ? { external_id: meta.externalId, first_shot_at: meta.firstShotAt, shot_count: meta.shotCount } : {}),
+  });
   if (row) return { id: row.id, duplicate: false };
 
   // Lost a race with a concurrent upload of the same file: return the winner.
