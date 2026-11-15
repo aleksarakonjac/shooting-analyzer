@@ -50,8 +50,13 @@ async function Body({ searchParams }: { searchParams: Promise<Search> }) {
   if (profile.role === 'shooter') {
     const { data: status, error } = await supabase.rpc('health_link_status', { sid: profile.id });
     const s = !error && (status === 'ok' || status === 'broken') ? status : 'none';
-    const { data: row } = s === 'none' ? { data: null } : ((await createAdminClient()?.from('google_health_links').select('connected_at').eq('user_id', profile.id).maybeSingle()) ?? { data: null });
-    health = { status: s, connectedAt: (row?.connected_at as string | undefined) ?? null };
+    let connectedAt: string | null = null;
+    const admin = s === 'none' ? null : createAdminClient();
+    if (admin) {
+      const { data: row } = await admin.from('google_health_links').select('connected_at').eq('user_id', profile.id).maybeSingle();
+      connectedAt = (row?.connected_at as string | undefined) ?? null;
+    }
+    health = { status: s, connectedAt };
   }
   const healthFlash = HEALTH_FLASHES.find((f) => f === gh) ?? null;
 
