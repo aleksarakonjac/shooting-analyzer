@@ -69,6 +69,9 @@ grant execute on function sius_link_status(uuid) to authenticated;
 -- The shooter's Result Service athlete identifier (e.g. SHCHNM0412200401), remembered after the first pick.
 alter table profiles add column sius_athlete_id text;
 grant update (sius_athlete_id) on profiles to authenticated;
+-- The SIUS server actions read the shooter's name and athlete id and store the id with the service role, after
+-- checking that the caller is the shooter or their linked coach (a coach cannot update another profile).
+grant select (sius_athlete_id, display_name), update (sius_athlete_id) on profiles to service_role;
 
 -- SIUS Cloud JSON kept as a source file. Nothing in this file uses the new value (it cannot be used in the
 -- transaction that adds it).
@@ -98,6 +101,9 @@ create table sighter_shots (
 );
 
 alter table sighter_shots enable row level security;
+-- Nothing is granted by default (0002); save_training and replace_training_data run as the caller.
+revoke all on sighter_shots from anon;
+grant select, insert, update, delete on sighter_shots to authenticated;
 create policy sighter_shots_all on sighter_shots for all to authenticated
   using (can_see_match(match_id)) with check (can_see_match(match_id));
 
