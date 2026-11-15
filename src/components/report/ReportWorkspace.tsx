@@ -329,7 +329,6 @@ function ReportBoard({
     {
       id: 'series',
       title: t.list,
-      range: series ? `${t.seriesLabel(series.idx)} · pogoci ${series.firstShot}–${series.lastShot}` : `${view.series.length} serija · ${view.shotCount} pogodaka`,
       col: '1 / 5',
       row: '1 / 7',
       flush: true,
