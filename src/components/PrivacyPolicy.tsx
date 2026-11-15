@@ -48,7 +48,8 @@ const sr: Doc = {
       <p>
         Vi. Trener ili strelac vidi samo ono što ste im izričito podelili u delu „Veze i deljenje“, i to možete da
         promenite ili opozovete u svakom trenutku. Izuzetak je puls iz Google Health: kada povežete Google Health, vaš
-        trener može da povuče puls za okvir treninga (opisano ispod) i bez posebnog deljenja. Administrator aplikacije
+        trener može da povuče puls za okvir treninga (opisano ispod) i bez posebnog deljenja. Isto važi za SIUS Cloud: kada
+        povežete svoj SIUS nalog, vaš trener može da vidi listu vaših SIUS vežbi i da ih uveze. Administrator aplikacije
         odobrava nove naloge i prima obaveštenje o registraciji (ime, e-pošta, tip naloga).
       </p>
 
@@ -58,6 +59,7 @@ const sr: Doc = {
         <li>Vercel: hosting aplikacije.</li>
         <li>Google: prijava preko Google naloga (samo ime i e-pošta) i, ako to izričito dozvolite, uvoz pulsa iz Google Health (opisano ispod).</li>
         <li>Servis za slanje e-pošte: obaveštenja administratoru o novim nalozima.</li>
+        <li>SIUS Shooting Sports Cloud: ako to izričito zatražite, uvoz vaših treninga sa SIUS meta i javnih rezultata takmičenja (opisano ispod).</li>
       </ul>
       <p>
         Podatke koje dobijemo od Googlea za prijavu koristimo samo za prijavu i prikaz vašeg imena u aplikaciji. Ne
@@ -99,6 +101,17 @@ const sr: Doc = {
         upotrebe (Limited Use). Podatke iz Google Health koristimo isključivo da bismo vam prikazali puls u aplikaciji,
         ne prodajemo ih, ne koristimo za reklame ni za procenu kreditne sposobnosti, ne prenosimo trećim stranama, a
         ljudi ih ne čitaju osim uz vašu saglasnost, radi bezbednosti ili kada to zakon zahteva.
+      </p>
+
+      <h2>SIUS Cloud podaci</h2>
+      <p>
+        Povezivanje sa SIUS Shooting Sports Cloud je opciono. Kada ga uključite na stranici Nalog, čuvamo vašu SIUS
+        e-poštu, vašu SIUS lozinku i pristupne tokene, lozinku i tokene šifrovano. Koristimo ih isključivo da bismo se u
+        vaše ime prijavili na SIUS i pročitali vaše SIUS vežbe kada vi ili vaš trener to zatražite. Posle jedne lozinke
+        koju SIUS odbije, lozinka se briše i ne pokušava ponovo. Ništa ne upisujemo u vaš SIUS nalog. Vežba koju
+        uvezete čuva se kao izvorni fajl uz taj trening i briše se zajedno sa treningom. Kada prekinete vezu, ili
+        obrišete nalog, e-pošta, lozinka i tokeni se brišu. Javne rezultate takmičenja čitamo bez prijave; uz vaš nalog
+        pamtimo samo vaš SIUS ID strelca kako bismo vas sledeći put sami pronašli u rezultatima.
       </p>
 
       <h2>Čuvanje i brisanje</h2>
@@ -158,7 +171,8 @@ const en: Doc = {
         You. A coach or shooter sees only what you have explicitly shared with them under &ldquo;Connections and
         sharing&rdquo;, and you can change or revoke that at any time. The exception is Google Health heart rate: once
         you connect Google Health, your coach can pull heart rate for a training&apos;s frame (described below) without a
-        separate share. The app administrator approves new accounts and receives a notification about each registration
+        separate share. The same applies to SIUS Cloud: once you connect your SIUS account, your coach can list your SIUS
+        exercises and import them. The app administrator approves new accounts and receives a notification about each registration
         (name, email, account type).
       </p>
 
@@ -168,6 +182,7 @@ const en: Doc = {
         <li>Vercel: hosting.</li>
         <li>Google: sign-in with a Google account (name and email only) and, if you explicitly allow it, heart-rate import from Google Health (described below).</li>
         <li>An email delivery service: notifications to the administrator about new accounts.</li>
+        <li>SIUS Shooting Sports Cloud: if you explicitly ask for it, import of your trainings on SIUS targets and of public competition results (described below).</li>
       </ul>
       <p>
         Data we receive from Google for sign-in is used only to sign you in and to show your name in the app. We do not
@@ -210,6 +225,17 @@ const en: Doc = {
         requirements. We use Google Health data solely to show you your heart rate in the app. We do not sell it, use
         it for advertising or to determine creditworthiness, or transfer it to third parties, and humans do not read it
         unless you give consent, it is needed for security purposes, or the law requires it.
+      </p>
+
+      <h2>SIUS Cloud data</h2>
+      <p>
+        Connecting SIUS Shooting Sports Cloud is optional. When you turn it on on the Account page, we keep your SIUS
+        email, your SIUS password and access tokens, the password and tokens encrypted. We use them only to sign in to
+        SIUS on your behalf and read your SIUS exercises when you or your coach ask for them. After SIUS rejects the
+        password once, it is deleted and never tried again. We never write to your SIUS account. An exercise you import
+        is kept as a source file with that training and is deleted with it. When you disconnect, or delete your
+        account, the email, password and tokens are deleted. Public competition results are read without signing in;
+        with your account we keep only your SIUS athlete ID, so we can find you in results next time.
       </p>
 
       <h2>Retention and deletion</h2>

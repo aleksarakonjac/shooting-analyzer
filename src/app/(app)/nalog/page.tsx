@@ -12,6 +12,7 @@ import { PipRuleForm } from './PipRuleForm';
 import { PasskeyPanel } from './PasskeyPanel';
 import { InboxTokenPanel, type TokenRow } from './InboxTokenPanel';
 import { GoogleHealthPanel, type HealthFlash } from './GoogleHealthPanel';
+import { SiusPanel } from './SiusPanel';
 import { createAdminClient, siteUrl } from '@/lib/supabase/admin';
 import { DISCIPLINES } from '@/lib/domain/disciplines';
 import type { DisciplineId } from '@/lib/domain/types';
@@ -35,7 +36,7 @@ async function Body({ searchParams }: { searchParams: Promise<Search> }) {
   const profile = await getSessionProfile();
   if (!profile) redirect('/login');
   const supabase = await createClient();
-  const { data } = await supabase.from('profiles').select('display_name, pip_top').eq('id', profile.id).maybeSingle();
+  const { data } = await supabase.from('profiles').select('display_name, pip_top, sius_athlete_id').eq('id', profile.id).maybeSingle();
   const pipPrefs = (data?.pip_top ?? {}) as Record<string, unknown>;
   const pipCurrent = Object.fromEntries((Object.keys(DISCIPLINES) as DisciplineId[]).map((d) => [d, pipTopFor(pipPrefs, d)])) as Record<DisciplineId, number>;
   const t = sr.account;
@@ -58,6 +59,13 @@ async function Body({ searchParams }: { searchParams: Promise<Search> }) {
     }
     health = { status: s, connectedAt };
   }
+  // SIUS Cloud connection: state and own email through the database function, never a secret.
+  let sius: { state: 'none' | 'ok' | 'broken'; reason: string | null; email: string | null } | null = null;
+  if (profile.role === 'shooter') {
+    const { data: st, error } = await supabase.rpc('sius_link_status', { sid: profile.id });
+    const v = (!error && st ? st : {}) as { state?: string; reason?: string | null; email?: string | null };
+    sius = { state: v.state === 'ok' || v.state === 'broken' ? v.state : 'none', reason: v.reason ?? null, email: v.email ?? null };
+  }
   const healthFlash = HEALTH_FLASHES.find((f) => f === gh) ?? null;
 
   const profilePanel = (
@@ -68,6 +76,7 @@ async function Body({ searchParams }: { searchParams: Promise<Search> }) {
       <PasskeyPanel />
       {tokens && <InboxTokenPanel tokens={tokens} uploadUrl={`${siteUrl() ?? ''}/api/inbox`} />}
       {health && <GoogleHealthPanel status={health.status} connectedAt={health.connectedAt} flash={healthFlash} />}
+      {sius && <SiusPanel userId={profile.id} status={sius} athleteId={(data?.sius_athlete_id as string | null | undefined) ?? null} />}
     </div>
   );
 
