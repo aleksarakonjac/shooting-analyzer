@@ -85,3 +85,9 @@ form: `grant_type=refresh_token&client_id=0b659819-8568-4a56-b800-0e5981130a0c&r
 - Reference implementation: `scripts/sius-spike/login-test.mjs` (saw 121 trainings; 3x20 had 73 sighters + 60 shots).
 
 Caveat: this is SIUS's own client_id, not a partner integration. For production ask SIUS for API access.
+
+## Implementation
+
+Built in `src/lib/sius/` (login, session, API clients, mapping, server actions), the SIUS Cloud tab in
+`src/components/entry/SiusCloudTab.tsx` and the account panel `src/app/(app)/nalog/SiusPanel.tsx`; schema in
+`supabase/migrations/0030_sius_cloud.sql`.
