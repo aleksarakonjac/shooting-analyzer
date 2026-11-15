@@ -150,7 +150,7 @@ export function ShotsViewer({
       g.setLineDash([]);
       if (label) {
         // The number follows the zoom only between limits: never smaller than readable, never filling the hit.
-        g.font = `800 ${Math.max(LABEL_MIN_PX, Math.min(LABEL_MAX_PX, rad * 0.95)).toFixed(1)}px ${font}`;
+        g.font = `800 ${Math.max(LABEL_MIN_PX, Math.min(LABEL_MAX_PX, rad * 0.8)).toFixed(1)}px ${font}`;
         g.textAlign = 'center';
         g.textBaseline = 'middle';
         g.fillStyle = text;
