@@ -35,3 +35,9 @@ export const InboxIcon = () => (
 export const ClockIcon = () => (
   <svg {...base} width="16" height="16"><path d="M12 7v5l3 2M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" /></svg>
 );
+export const PinIcon = () => (
+  <svg {...base} width="16" height="16"><path d="M12 21s-6-5.5-6-11a6 6 0 0 1 12 0c0 5.5-6 11-6 11Z" /><circle cx="12" cy="10" r="2.2" /></svg>
+);
+export const TrophyIcon = () => (
+  <svg {...base} width="16" height="16"><path d="M8 4h8v5a4 4 0 0 1-8 0V4ZM8 6H5v1.5A3.5 3.5 0 0 0 8.5 11M16 6h3v1.5a3.5 3.5 0 0 1-3.5 3.5M12 13v4M9 20h6M10 17h4" /></svg>
+);

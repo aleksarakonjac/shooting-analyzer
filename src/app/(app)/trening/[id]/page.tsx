@@ -6,7 +6,8 @@ import { FinalEntry } from '@/components/FinalEntry';
 import { CloseReport } from '@/components/report/CloseReport';
 import { FinalsList, type FinalRow } from '@/components/FinalsList';
 import { ReplaySettingsSection } from '@/components/report/replaySettings';
-import { FlagBadge } from '@/components/FlagBadge';
+import { AlignFlag, type AlignFacts } from '@/components/report/AlignFlag';
+import { CalendarIcon, PinIcon, TrophyIcon } from '@/components/ui/icons';
 import { LanePlate } from '@/components/LanePlate';
 import { ReportWorkspace } from '@/components/report/ReportWorkspace';
 import { MoreMenu } from '@/components/report/MoreMenu';
@@ -19,9 +20,7 @@ import { hrWindows } from '@/lib/report/derive';
 import { pipTopFor } from '@/lib/report/target';
 import { buildReportView, type RawSeries, type RawSighter } from '@/lib/report/viewModel';
 import { createClient } from '@/lib/supabase/server';
-import { confirmAlignmentForm } from '@/lib/trainings';
 import { storedMismatch, type StoredSelection } from '@/lib/alignment/align';
-import { MismatchNotice } from '@/components/MismatchNotice';
 import { Workspace } from '@/components/Workspace';
 
 interface TrainingRow {
@@ -124,6 +123,15 @@ async function Body({ params, searchParams }: { params: Promise<{ id: string }>;
   // Editing opens the full form at once: words, type, event, time, files and alignment.
   if (canEdit && izmena) redirect(`/trening/${tr.id}/podaci`);
 
+  const shotsAll = match ? match.series.flatMap((se) => se.shots) : [];
+  const alignFacts: AlignFacts = {
+    siusShots: shotsAll.length,
+    pairedShots: shotsAll.filter((sh) => sh.scatt_shot_id != null).length,
+    selection: match?.selection ? t.alignFlag.selection(match.selection.kind, match.selection.n) : null,
+    mismatch,
+    hr: hrRef ? { offsetS: Math.round(Number(hrRef.offset_ms ?? 0) / 1000), zone: hrRef.zone ?? null } : null,
+  };
+
   const menu = (
     <MoreMenu>
       <section aria-labelledby="info-title" className="more__section">
@@ -150,32 +158,34 @@ async function Body({ params, searchParams }: { params: Promise<{ id: string }>;
 
   const strip = (
     <>
-      <div className="ws__head ws__head--inline">
+      {/* The name, then one line of facts in groups: when, where, and the competition it belongs to. Whatever the
+          name already says (the discipline, the event) is not repeated. */}
+      <div className="ws__head ws__head--session">
         <h1 className="ws__title ws__title--session">{tr.name}</h1>
-        <p className="ws__meta">
-          {!tr.name.includes(cfg.nameSr) && <>{cfg.nameSr} · </>}
-          <span className="num">{date}</span>
-          {clock && <> · <span className="num">{clock}</span></>}
-          {clock && tz !== viewerTz && <span className="rows__muted"> ({tz})</span>}
-          {tr.place && ` · ${tr.place}`}
-          {sessionLabel && ` · ${sessionLabel}`}
-          {tr.events && <> · <Link href={`/dogadjaj/${tr.events.id}`}>{tr.events.name}</Link></>}
-        </p>
+        <ul className="ws__facts">
+          <li>
+            <CalendarIcon />
+            <span className="num">{date}</span>
+            {clock && <span className="num">{clock}</span>}
+            {clock && tz !== viewerTz && <span className="ws__facts-muted">{tz.split('/').pop()?.replace(/_/g, ' ')}</span>}
+          </li>
+          {!tr.name.includes(cfg.nameSr) && <li>{cfg.nameSr}</li>}
+          {tr.place && <li><PinIcon />{tr.place}</li>}
+          {(sessionLabel || tr.events) && (
+            <li>
+              <TrophyIcon />
+              {sessionLabel && <span>{sessionLabel}</span>}
+              {tr.events && (
+                <Link href={`/dogadjaj/${tr.events.id}`}>{tr.name.includes(tr.events.name) ? t.eventLink : tr.events.name}</Link>
+              )}
+            </li>
+          )}
+        </ul>
       </div>
       {greska === 'puls' && <p role="alert">{t.hrInvalid}</p>}
       {match?.align_state === 'proposed' && (
         <div className="align-state">
-          <FlagBadge state="proposed" />
-          {canEdit && mismatch !== null && mismatch !== 0 && <MismatchNotice mismatch={mismatch} />}
-          {canEdit && (mismatch === null || mismatch === 0) && (
-            <form action={confirmAlignmentForm}>
-              <input type="hidden" name="match_id" value={match.id} />
-              <input type="hidden" name="training_id" value={tr.id} />
-              <button type="submit">
-                {t.confirmShort}<span className="hide-phone">&nbsp;{t.confirmRest}</span>
-              </button>
-            </form>
-          )}
+          <AlignFlag matchId={match.id} trainingId={tr.id} canEdit={canEdit} facts={alignFacts} />
         </div>
       )}
       <div className="ws__strip-end ws__strip-end--row">
