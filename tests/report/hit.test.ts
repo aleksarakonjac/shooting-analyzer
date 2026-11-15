@@ -94,3 +94,26 @@ describe('correctHit', () => {
     expect(correctHit({ x: 1.0, y: 0 }, 10.6, true, ar, '↙').confidence).toBe('arrow-only');
   });
 });
+
+describe('siusHitPoint', async () => {
+  const { siusHitPoint } = await import('../../src/lib/report/hit');
+  const { scattTargetFor } = await import('../../src/lib/scatt/targets');
+  const tg = scattTargetFor('air_rifle');
+
+  it('uses the SIUS coordinates when the shot has them', () => {
+    expect(siusHitPoint({ value: 10.1, x: -2.23, y: -0.18, direction: null }, true, tg)).toEqual({ x: -2.23, y: -0.18, confidence: 'sius' });
+  });
+
+  it('without coordinates: the middle of the score band, in the direction of the SIUS arrow', () => {
+    const p = siusHitPoint({ value: 9.5, x: null, y: null, direction: '↑' }, true, tg)!;
+    const band = radiusBand(9.5, true, tg)!;
+    expect(p.confidence).toBe('arrow-only');
+    expect(p.x).toBeCloseTo(0, 6);
+    expect(p.y).toBeCloseTo((band.lo + band.hi) / 2, 6);
+  });
+
+  it('nothing to place: no coordinates and no arrow, or a miss', () => {
+    expect(siusHitPoint({ value: 9.5, x: null, y: null, direction: null }, true, tg)).toBeNull();
+    expect(siusHitPoint({ value: 0, x: null, y: null, direction: '↑' }, true, tg)).toBeNull();
+  });
+});

@@ -842,6 +842,13 @@ a.audit__pager-link:hover { color: var(--ink); }
 @media (max-width: 720px) { .shell__top { display: none; } }
 
 /* ---------- account and sharing ---------- */
+/* One readable column under the tab bar, sections divided by steel rules (no cards). */
+.account { max-width: 46rem; padding: var(--space-4) var(--gutter) var(--space-12); }
+.account .ui-tabs { gap: var(--space-6); }
+.account__pane { display: grid; gap: 0; }
+.account__sec { padding: var(--space-6) 0; border-top: 1px solid var(--rule); }
+.account__sec:first-child { padding-top: 0; border-top: 0; }
+.account__sec > .stack > h2, .account__sec > h2 { margin: 0 0 var(--space-2); font-size: var(--fs-lg); }
 .account__links a { min-height: 3.5rem; }
 .account__hint { display: block; color: var(--ink-faint); font-size: var(--fs-sm); font-weight: 400; white-space: normal; }
 .account__out { padding: var(--space-4); }
@@ -1452,6 +1459,14 @@ a.audit__pager-link:hover { color: var(--ink); }
 .chart-panel__meta .chart-panel__stat { margin-left: 0; }
 
 /* Three small dots beside the pulse title open the (rarely used) alignment form */
+/* Pulse title tools: a small "Pre/posle" switch and the three dots, quiet until used. */
+.hr-tools { display: inline-flex; align-items: center; gap: var(--space-1); margin-left: auto; }
+button.hr-around__toggle {
+  min-height: 1.25rem; padding: 0 var(--space-2); border: 1px solid var(--rule-strong); border-radius: var(--radius);
+  background: transparent; color: var(--ink-faint); font-size: var(--fs-xs); font-weight: 700; letter-spacing: 0.04em; text-transform: none;
+}
+button.hr-around__toggle:hover:not(:disabled) { color: var(--ink); background: var(--panel-raised); }
+button.hr-around__toggle[aria-checked='true'] { background: var(--select-bg); border-color: var(--select-bg); color: var(--select-fg); }
 button.hr-align__toggle { min-height: 1.25rem; padding: 0 var(--space-1); border: 0; color: var(--ink-faint); background: transparent; align-self: center; }
 button.hr-align__toggle:hover:not(:disabled) { color: var(--ink); background: var(--panel-raised); border: 0; }
 .hr-align__toggle[aria-expanded='true'] { color: var(--ink); }

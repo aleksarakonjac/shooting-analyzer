@@ -128,8 +128,8 @@ export function ShotsViewer({
       const dimmed = scope === 'match' && s.series !== series;
       g.globalAlpha = dimmed ? 0.4 : 1;
       // Position confidence: solid = the SIUS arrow confirms the direction; dashed = direction from SCATT alone;
-      // dashed and light = direction from the arrow alone (SCATT disagreed).
-      const sure = s.confidence === 'verified';
+      // dashed and light = direction from the arrow alone; solid too where SIUS measured the position itself.
+      const sure = s.confidence === 'verified' || s.confidence === 'sius';
       g.beginPath();
       g.arc(X(s.x), Y(s.y), rad, 0, 2 * Math.PI);
       if (s.confidence === 'arrow-only') g.globalAlpha = dimmed ? 0.2 : 0.55;
@@ -213,9 +213,11 @@ export function ShotsViewer({
         </div>
       </div>
       <p className="trace__legend trace__legend--conf">
-        <span><i className="conf conf--verified" aria-hidden="true" /> {t.confVerified} {count('verified')}</span>
-        <span><i className="conf conf--scatt" aria-hidden="true" /> {t.confScatt} {count('scatt-only')}</span>
-        <span><i className="conf conf--arrow" aria-hidden="true" /> {t.confArrow} {count('arrow-only')}</span>
+        {/* Only the kinds this view has: a competition session (SIUS alone) shows one line, not three zeros. */}
+        {count('sius') > 0 && <span><i className="conf conf--verified" aria-hidden="true" /> {t.confSius} {count('sius')}</span>}
+        {count('verified') > 0 && <span><i className="conf conf--verified" aria-hidden="true" /> {t.confVerified} {count('verified')}</span>}
+        {count('scatt-only') > 0 && <span><i className="conf conf--scatt" aria-hidden="true" /> {t.confScatt} {count('scatt-only')}</span>}
+        {count('arrow-only') > 0 && <span><i className="conf conf--arrow" aria-hidden="true" /> {t.confArrow} {count('arrow-only')}</span>}
         {missing > 0 && <span>{t.confMissing} {missing}</span>}
       </p>
     </figure>

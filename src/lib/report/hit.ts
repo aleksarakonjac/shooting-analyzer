@@ -39,7 +39,7 @@ export const ARROW_HALF_STEP = 22.5;
  * what varies is the direction: confirmed by the SIUS arrow, only SCATT's (no arrow to check it), or the arrow's alone
  * because SCATT disagreed (good to about 22 degrees).
  */
-export type HitConfidence = 'verified' | 'scatt-only' | 'arrow-only';
+export type HitConfidence = 'verified' | 'scatt-only' | 'arrow-only' | 'sius';
 
 export interface CorrectedHit {
   confidence: HitConfidence;
@@ -80,4 +80,22 @@ export function correctHit(
   const y = radius * Math.sin((angle * Math.PI) / 180);
   const confidence: HitConfidence = turned ? 'arrow-only' : arrow !== null ? 'verified' : 'scatt-only';
   return { x, y, movedMm: Math.hypot(x - scatt.x, y - scatt.y), turned, confidence };
+}
+
+/**
+ * Where to draw a hit from SIUS alone (no SCATT trace): its coordinates when SIUS measured them (SIUS Cloud),
+ * otherwise the middle of its score band in the direction of the SIUS arrow (PDF reports; about ±22°).
+ * Null when there is neither, or for a miss.
+ */
+export function siusHitPoint(
+  shot: { value: number; x: number | null; y: number | null; direction: string | null },
+  decimal: boolean,
+  tg: ScattTarget,
+): { x: number; y: number; confidence: HitConfidence } | null {
+  if (shot.x !== null && shot.y !== null) return { x: shot.x, y: shot.y, confidence: 'sius' };
+  const angle = arrowAngle(shot.direction);
+  const band = radiusBand(shot.value, decimal, tg);
+  if (angle === null || !band) return null;
+  const r = (band.lo + band.hi) / 2;
+  return { x: r * Math.cos((angle * Math.PI) / 180), y: r * Math.sin((angle * Math.PI) / 180), confidence: 'arrow-only' };
 }

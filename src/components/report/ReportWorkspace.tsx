@@ -9,13 +9,13 @@ import { Segmented } from '@/components/ui/Segmented';
 import type { ReportView } from '@/lib/report/viewModel';
 import { Workspace, type WorkspacePanel } from '@/components/Workspace';
 import { EChart } from './EChart';
-import { HrPanel } from './HrPanel';
+import { HrAroundToggle, HrPanel } from './HrPanel';
 import { HrAlign, HrAlignToggle } from './HrAlign';
 import { hrAvgOverShots } from '@/lib/report/derive';
 import { useHrSamples } from './useHrSamples';
 import { SeriesBoard } from './SeriesBoard';
 import { TargetNotes, TargetPlot, type ShotHole } from './TargetPlot';
-import { correctHit } from '@/lib/report/hit';
+import { correctHit, siusHitPoint } from '@/lib/report/hit';
 import { hrAt } from '@/lib/report/hrAt';
 import { readLastSession, writeLastSession } from '@/lib/report/lastSession';
 import { ShotNav } from './ShotNav';
@@ -116,6 +116,7 @@ function ReportBoard({
   const [comments, setComments] = useState<Record<string, string>>({});
   // Offset and zone are previewed live; the stored values change only on save.
   const [alignOpen, setAlignOpen] = useState(false);
+  const [hrAround, setHrAround] = useState(false);
   // The slot in the page header (rendered by the server page) that takes the expand / collapse all button on a phone.
   const [toggleSlot, setToggleSlot] = useState<HTMLElement | null>(null);
   // Phone on its side: the target pinned on the left, or hidden so the list and charts get the full width.
@@ -279,21 +280,23 @@ function ReportBoard({
   const times = view.series.flatMap((s) => s.shots).map((s) => s.tMs).filter((x): x is number => x !== null);
   const span = times.length ? `${fmtClock(Math.min(...times))}–${fmtClock(Math.max(...times))}` : undefined;
 
-  // Every hit with a SCATT position, for the overview on the same target as the replay.
+  // Every hit with a position, for the overview on the same target as the replay: SCATT's point set against the
+  // SIUS score, else where SIUS put it (its coordinates, or its arrow and score). Competition sessions have only SIUS.
   const [overview, setOverview] = useState<OverviewScope>('series');
   const overviewShots = useMemo<OverviewShot[]>(
     () =>
-      byShot
-        ? view.series.flatMap((se) =>
-            se.shots.flatMap((sh) => {
-              const a = sh.scattId !== null ? byShot.get(sh.scattId) : undefined;
-              if (!a || a.missed) return [];
-              // SCATT's point set against what SIUS measured; the SCATT point itself is kept for comparison.
-              const c = correctHit({ x: a.x, y: a.y }, sh.value, view.decimal, scattTarget, sh.direction);
-              return [{ n: sh.n, idx: sh.idx, series: se.idx, x: c.x, y: c.y, sx: a.x, sy: a.y, movedMm: c.movedMm, confidence: c.confidence }];
-            }),
-          )
-        : [],
+      view.series.flatMap((se) =>
+        se.shots.flatMap((sh) => {
+          const a = sh.scattId !== null ? byShot?.get(sh.scattId) : undefined;
+          if (a && !a.missed) {
+            // SCATT's point set against what SIUS measured; the SCATT point itself is kept for comparison.
+            const c = correctHit({ x: a.x, y: a.y }, sh.value, view.decimal, scattTarget, sh.direction);
+            return [{ n: sh.n, idx: sh.idx, series: se.idx, x: c.x, y: c.y, sx: a.x, sy: a.y, movedMm: c.movedMm, confidence: c.confidence }];
+          }
+          const p = siusHitPoint(sh, view.decimal, scattTarget);
+          return p ? [{ n: sh.n, idx: sh.idx, series: se.idx, x: p.x, y: p.y, sx: p.x, sy: p.y, movedMm: 0, confidence: p.confidence }] : [];
+        }),
+      ),
     [byShot, view, scattTarget],
   );
   // Hits of the series and of the match that have no SCATT position, so cannot be drawn.
@@ -422,8 +425,14 @@ function ReportBoard({
     {
       id: 'hr',
       title: t.hr,
-      // Three dots beside the title open the alignment form.
-      actions: canEdit && hr.tcxPath !== null ? <HrAlignToggle open={alignOpen} onToggle={() => setAlignOpen((o) => !o)} /> : undefined,
+      // Beside the title: a small "before and after" switch, and three dots that open the alignment form.
+      actions:
+        (hrState.status === 'ready' && hrState.fullAvailable) || (canEdit && hr.tcxPath !== null) ? (
+          <span className="hr-tools">
+            {hrState.status === 'ready' && hrState.fullAvailable && <HrAroundToggle on={hrAround} onToggle={() => setHrAround((v) => !v)} />}
+            {canEdit && hr.tcxPath !== null && <HrAlignToggle open={alignOpen} onToggle={() => setAlignOpen((o) => !o)} />}
+          </span>
+        ) : undefined,
       col: '9 / 13',
       row: '5 / 7',
       children: (
@@ -440,7 +449,7 @@ function ReportBoard({
               onZone={setHrZone}
             />
           )}
-          <HrPanel hr={hrState} hasFile={hr.tcxPath !== null} view={view} selection={sel} onSelect={setSel} tz={tz} group={group} />
+          <HrPanel hr={hrState} hasFile={hr.tcxPath !== null} view={view} selection={sel} onSelect={setSel} tz={tz} group={group} around={hrAround} />
         </div>
       ),
     },

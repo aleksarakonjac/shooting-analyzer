@@ -64,7 +64,7 @@ async function Body({ params, searchParams }: { params: Promise<{ id: string }>;
     .from('trainings')
     .select(
       'id,shooter_id,name,discipline,trained_on,place,notes,started_at,ended_at,kind,stage,tz,events(id,name),' +
-        'matches(id,label,align_state,selection,series(id,idx,position,total,total_decimal,mpi_x,mpi_y,group_mm,shots(id,idx,value,inner,direction,t_ms,scatt_shot_id))),' +
+        'matches(id,label,align_state,selection,series(id,idx,position,total,total_decimal,mpi_x,mpi_y,group_mm,shots(id,idx,value,inner,direction,x,y,t_ms,scatt_shot_id))),' +
         'hr_samples_ref(offset_ms,zone),source_files(kind,storage_path),' +
         'finals(id,placement,eliminated_after_shot,created_at,final_shots(idx,stage_idx,value))',
     )

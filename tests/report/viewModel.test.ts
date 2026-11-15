@@ -125,3 +125,32 @@ describe('rolling', () => {
     expect(rolling(s, 15000)).toEqual([[0, 90], [1000, 95], [2000, 100], [20000, 80]]);
   });
 });
+
+describe('buildReportView: group and mean point from SIUS coordinates', () => {
+  const shot = (idx: number, x: number | null, y: number | null) => ({ idx, value: 10, inner: false, t_ms: null, x, y });
+  const raw = (shots: ReturnType<typeof shot>[], extra: object = {}) =>
+    [{ id: 'a', idx: 1, position: null, total: 30, total_decimal: 30.6, mpi_x: null, mpi_y: null, group_mm: null, shots, ...extra }];
+
+  it('carries shot coordinates', () => {
+    const v = buildReportView(raw([shot(1, 1.5, -2), shot(2, null, null)]), 'air_rifle');
+    expect(v.series[0].shots.map((s) => [s.x, s.y])).toEqual([[1.5, -2], [null, null]]);
+  });
+
+  it('computes the mean point and the group (widest centre-to-centre spread) when SIUS gave none', () => {
+    const v = buildReportView(raw([shot(1, 0, 0), shot(2, 4, 0), shot(3, 2, 3)]), 'air_rifle');
+    expect(v.series[0].mpi).toEqual({ x: 2, y: 1 });
+    expect(v.series[0].groupMm).toBeCloseTo(4, 6);
+  });
+
+  it('keeps the figures SIUS reported', () => {
+    const v = buildReportView(raw([shot(1, 0, 0), shot(2, 4, 0)], { mpi_x: 0.5, mpi_y: -0.5, group_mm: 9 }), 'air_rifle');
+    expect(v.series[0].mpi).toEqual({ x: 0.5, y: -0.5 });
+    expect(v.series[0].groupMm).toBe(9);
+  });
+
+  it('needs at least two placed shots', () => {
+    const v = buildReportView(raw([shot(1, 1, 1), shot(2, null, null)]), 'air_rifle');
+    expect(v.series[0].mpi).toBeNull();
+    expect(v.series[0].groupMm).toBeNull();
+  });
+});

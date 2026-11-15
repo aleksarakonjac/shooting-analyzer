@@ -1,5 +1,5 @@
 'use client';
-import { useMemo, useState } from 'react';
+import { useMemo } from 'react';
 import { hrOption, type Selection } from '@/lib/report/charts';
 import { hrStats } from '@/lib/report/derive';
 import { hrAt } from '@/lib/report/hrAt';
@@ -19,7 +19,10 @@ export function HrPanel({
   onSelect,
   tz,
   group,
+  around,
 }: {
+  /** Show the pulse before and after the match too (the switch sits in the panel title, beside the three dots). */
+  around: boolean;
   hr: HrState;
   hasFile: boolean;
   view: ReportView;
@@ -28,7 +31,6 @@ export function HrPanel({
   tz: string;
   group: string;
 }) {
-  const [around, setAround] = useState(false);
   const samples = hr.status === 'ready' ? hr.samples : null;
   const wide = hr.status === 'ready' && hr.fullAvailable && around;
   const shown = wide && hr.status === 'ready' ? hr.full : samples;
@@ -51,11 +53,6 @@ export function HrPanel({
   const atAvg = atShots.length ? Math.round(atShots.reduce((a, b) => a + b, 0) / atShots.length) : null;
   return (
     <div className="chart-panel">
-      {hr.status === 'ready' && hr.fullAvailable && (
-        <button type="button" role="switch" aria-checked={around} className="button--quiet chart-panel__toggle" onClick={() => setAround((v) => !v)}>
-          {t.hrAround}
-        </button>
-      )}
       <p className="chart-panel__legend">
         <span><i className="key key--raw" aria-hidden="true" /> {t.hr}</span>
         <span><i className="key key--line" aria-hidden="true" /> {t.hrRolling}</span>
@@ -75,5 +72,14 @@ export function HrPanel({
         onPick={(d) => d?.n && onSelect({ series: d.series, shot: d.n })}
       />
     </div>
+  );
+}
+
+/** The small "before and after the match" switch for the pulse panel title, beside the three dots. */
+export function HrAroundToggle({ on, onToggle }: { on: boolean; onToggle: () => void }) {
+  return (
+    <button type="button" role="switch" aria-checked={on} className="hr-around__toggle" onClick={onToggle} title={t.hrAround} aria-label={t.hrAround}>
+      {t.hrAroundShort}
+    </button>
   );
 }

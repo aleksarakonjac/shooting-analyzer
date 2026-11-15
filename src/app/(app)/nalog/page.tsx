@@ -13,6 +13,7 @@ import { PasskeyPanel } from './PasskeyPanel';
 import { InboxTokenPanel, type TokenRow } from './InboxTokenPanel';
 import { GoogleHealthPanel, type HealthFlash } from './GoogleHealthPanel';
 import { SiusPanel } from './SiusPanel';
+import { AccountTabs, type AccountTab } from './AccountTabs';
 import { createAdminClient, siteUrl } from '@/lib/supabase/admin';
 import { DISCIPLINES } from '@/lib/domain/disciplines';
 import type { DisciplineId } from '@/lib/domain/types';
@@ -68,23 +69,50 @@ async function Body({ searchParams }: { searchParams: Promise<Search> }) {
   }
   const healthFlash = HEALTH_FLASHES.find((f) => f === gh) ?? null;
 
-  const profilePanel = (
-    <div className="stack">
+  const flash = (
+    <>
       {sacuvano && <p role="status">{t.saved}</p>}
       {greska && <p role="alert">{t.invalid}</p>}
-      <ProfileForm name={(data?.display_name as string | undefined) ?? ''} tz={profile.tz} />
-      <PasskeyPanel />
-      {tokens && <InboxTokenPanel tokens={tokens} uploadUrl={`${siteUrl() ?? ''}/api/inbox`} />}
-      {health && <GoogleHealthPanel status={health.status} connectedAt={health.connectedAt} flash={healthFlash} />}
-      {sius && <SiusPanel userId={profile.id} status={sius} athleteId={(data?.sius_athlete_id as string | null | undefined) ?? null} />}
-    </div>
+    </>
   );
-
-  const displayPanel = (
-    <div className="stack">
+  const profilePane = (
+    <>
+      {flash}
+      <section className="account__sec" aria-labelledby="profile-title">
+        <h2 id="profile-title">{t.profile}</h2>
+        <ProfileForm name={(data?.display_name as string | undefined) ?? ''} tz={profile.tz} />
+      </section>
+      <section className="account__sec">
+        <PasskeyPanel />
+      </section>
+    </>
+  );
+  const connectionsPane = (
+    <>
+      {sius && (
+        <section className="account__sec">
+          <SiusPanel userId={profile.id} status={sius} athleteId={(data?.sius_athlete_id as string | null | undefined) ?? null} />
+        </section>
+      )}
+      {health && (
+        <section className="account__sec">
+          <GoogleHealthPanel status={health.status} connectedAt={health.connectedAt} flash={healthFlash} />
+        </section>
+      )}
+      {tokens && (
+        <section className="account__sec">
+          <InboxTokenPanel tokens={tokens} uploadUrl={`${siteUrl() ?? ''}/api/inbox`} />
+        </section>
+      )}
+      {!sius && !health && !tokens && <p className="panel__empty">{t.noConnections}</p>}
+    </>
+  );
+  const displayPane = (
+    <section className="account__sec" aria-labelledby="display-title">
+      <h2 id="display-title">{t.display}</h2>
       {prikaz && <p role="status">{t.pipSaved}</p>}
       <PipRuleForm current={pipCurrent} />
-    </div>
+    </section>
   );
 
   const entries = [
@@ -94,7 +122,7 @@ async function Body({ searchParams }: { searchParams: Promise<Search> }) {
     { href: '/dnevnik', title: t.audit, hint: t.auditHint },
     { href: '/privatnost', title: t.privacy, hint: t.privacyHint },
   ];
-  const more = (
+  const morePane = (
     <>
       <ul className="dash__list account__links">
         {entries.map((e) => (
@@ -113,16 +141,25 @@ async function Body({ searchParams }: { searchParams: Promise<Search> }) {
       </form>
     </>
   );
+  // The tab that holds the page's message opens first.
+  const initial: AccountTab = gh ? 'connections' : prikaz ? 'display' : 'profile';
 
   return (
     <Workspace
       label={t.title}
       rows={1}
+      noTabs
       strip={<div className="ws__head"><h1 className="ws__title">{t.title}</h1></div>}
       panels={[
-        { id: 'profile', title: t.profile, col: '1 / 5', row: '1 / 2', children: profilePanel },
-        { id: 'display', title: t.display, col: '5 / 9', row: '1 / 2', children: displayPanel },
-        { id: 'more', title: t.sections, col: '9 / 13', row: '1 / 2', wide: true, flush: true, children: more },
+        {
+          id: 'account',
+          title: t.title,
+          headless: true,
+          col: '1 / 13',
+          row: '1 / 2',
+          wide: true,
+          children: <AccountTabs initial={initial} panes={{ profile: profilePane, connections: connectionsPane, display: displayPane, more: morePane }} />,
+        },
       ]}
     />
   );

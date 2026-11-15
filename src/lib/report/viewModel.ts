@@ -11,7 +11,7 @@ export interface RawSeries {
   mpi_x: number | string | null;
   mpi_y: number | string | null;
   group_mm: number | string | null;
-  shots: { id?: string; idx: number; value: number | string; value_decimal?: number | string | null; inner: boolean | null; direction?: string | null; t_ms: number | string | null; scatt_shot_id?: number | null; comment?: string | null }[];
+  shots: { id?: string; idx: number; value: number | string; value_decimal?: number | string | null; inner: boolean | null; direction?: string | null; x?: number | string | null; y?: number | string | null; t_ms: number | string | null; scatt_shot_id?: number | null; comment?: string | null }[];
 }
 
 export interface ShotView {
@@ -28,6 +28,9 @@ export interface ShotView {
   inner: boolean;
   /** SIUS direction arrow of the hit (45° steps), when the report carried one. */
   direction: string | null;
+  /** Hit position measured by SIUS (mm, x right, y up), when the source had it (SIUS Cloud). */
+  x: number | null;
+  y: number | null;
   tMs: number | null;
   band: ScoreBand;
   series: number;
@@ -80,6 +83,17 @@ const num = (v: number | string | null | undefined): number | null => (v === nul
 const round1 = (v: number) => Math.round(v * 10) / 10;
 
 /** Plain, ordered data for the report panels (server and client alike). */
+/** Mean point of impact and group (widest centre-to-centre spread, mm) of the shots SIUS placed; needs two. */
+function placedGroup(shots: ShotView[]): { mpi: { x: number; y: number }; groupMm: number } | null {
+  const pts = shots.flatMap((s) => (s.x !== null && s.y !== null ? [{ x: s.x, y: s.y }] : []));
+  if (pts.length < 2) return null;
+  const mpi = { x: round2(pts.reduce((a, p) => a + p.x, 0) / pts.length), y: round2(pts.reduce((a, p) => a + p.y, 0) / pts.length) };
+  let widest = 0;
+  for (let i = 0; i < pts.length; i++) for (let j = i + 1; j < pts.length; j++) widest = Math.max(widest, Math.hypot(pts[i].x - pts[j].x, pts[i].y - pts[j].y));
+  return { mpi, groupMm: widest };
+}
+const round2 = (v: number) => Math.round(v * 100) / 100;
+
 /** Sighter rows grouped by the series they precede, in shooting order. */
 function groupSighters(rows: RawSighter[]): SighterGroupView[] {
   const groups: SighterGroupView[] = [];
@@ -107,17 +121,19 @@ export function buildReportView(raw: RawSeries[], discipline: DisciplineId, pipT
         .map((sh): ShotView => {
           n += 1;
           const value = Number(sh.value);
-          return { id: sh.id ?? null, comment: sh.comment ?? '', n, idx: sh.idx, value, valueDecimal: num(sh.value_decimal), inner: Boolean(sh.inner), direction: sh.direction ?? null, tMs: num(sh.t_ms), band: scoreBand(value, decimal, top), series: s.idx, scattId: sh.scatt_shot_id ?? null };
+          return { id: sh.id ?? null, comment: sh.comment ?? '', n, idx: sh.idx, value, valueDecimal: num(sh.value_decimal), inner: Boolean(sh.inner), direction: sh.direction ?? null, x: num(sh.x), y: num(sh.y), tMs: num(sh.t_ms), band: scoreBand(value, decimal, top), series: s.idx, scattId: sh.scatt_shot_id ?? null };
         });
-      const mx = num(s.mpi_x);
-      const my = num(s.mpi_y);
+      // SIUS reports carry the group and mean point; from SIUS Cloud coordinates they are computed here.
+      const own = placedGroup(shots);
+      const mx = num(s.mpi_x) ?? own?.mpi.x ?? null;
+      const my = num(s.mpi_y) ?? own?.mpi.y ?? null;
       return {
         id: s.id,
         idx: s.idx,
         position: s.position,
         total: decimal ? (num(s.total_decimal) ?? s.total ?? 0) : (s.total ?? 0),
         mpi: mx !== null && my !== null ? { x: mx, y: my } : null,
-        groupMm: num(s.group_mm),
+        groupMm: num(s.group_mm) ?? own?.groupMm ?? null,
         shots,
         firstShot: shots.length ? first : 0,
         lastShot: shots.length ? n : 0,
