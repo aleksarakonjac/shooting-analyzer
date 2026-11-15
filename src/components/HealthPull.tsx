@@ -1,4 +1,5 @@
 'use client';
+import Link from 'next/link';
 import { useState } from 'react';
 import { sr } from '@/lib/i18n/sr';
 import type { PullError, PullInput } from '@/lib/googleHealth/pull';
@@ -40,7 +41,13 @@ export function HealthPull({
   tz,
   body,
   onPulled,
+  disabled = false,
+  loadedName,
 }: {
+  /** Not yet: the saved files of the training are still loading and would replace a pulled file. */
+  disabled?: boolean;
+  /** Name of the pulse file the form holds now; the success message stays only while it is the pulled one. */
+  loadedName?: string | null;
   status: 'none' | 'ok' | 'broken';
   isCoach: boolean;
   tz: string;
@@ -50,10 +57,17 @@ export function HealthPull({
 }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [done, setDone] = useState<PulledInfo | null>(null);
+  const [done, setDone] = useState<(PulledInfo & { fileName: string }) | null>(null);
+  const [errorCode, setErrorCode] = useState<PullError | null>(null);
 
+  // The shooter fixes a broken link themselves on the account page; a coach can only ask the shooter.
+  const brokenOwn = (role: 'status' | 'alert') => (
+    <p role={role}>
+      {t.pull.brokenOwn} <Link href="/nalog">{t.pull.accountLink}</Link>.
+    </p>
+  );
   if (status === 'none') return null;
-  if (status === 'broken') return <p role="status">{t.pull.broken}</p>;
+  if (status === 'broken') return isCoach ? <p role="status">{t.pull.broken}</p> : brokenOwn('status');
 
   const hm = (ms: number) => new Intl.DateTimeFormat('sr-Latn-RS', { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: tz }).format(ms);
   const request = body();
@@ -62,15 +76,17 @@ export function HealthPull({
     if (!request) return;
     setBusy(true);
     setError(null);
+    setErrorCode(null);
     try {
       const res = await fetch('/api/google-health/pulse', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(request) });
       const data = (await res.json().catch(() => null)) as (Ok | { error?: PullError }) | null;
       if (res.ok && data && 'tcx' in data) {
         const info = { range: data.range, received: data.received ?? data.range, workout: data.workout };
         onPulled(new File([data.tcx], data.fileName, { type: 'application/xml' }), info);
-        setDone(info);
+        setDone({ ...info, fileName: data.fileName });
       } else {
         const code = data && 'error' in data ? data.error : undefined;
+        setErrorCode(code ?? null);
         setError(code === 'no_window' && isCoach ? t.pull.errors.no_window_coach : (code && t.pull.errors[code]) || t.pull.errors.google_unavailable);
       }
     } catch {
@@ -80,18 +96,19 @@ export function HealthPull({
     }
   };
 
+  const current = done && (loadedName === undefined || loadedName === done.fileName) ? done : null;
   return (
     <div className="stack">
-      <button type="button" className="button--quiet" onClick={pull} disabled={!request || busy} aria-busy={busy}>
+      <button type="button" className="button--quiet" onClick={pull} disabled={!request || busy || disabled} aria-busy={busy}>
         {t.pull.button}
       </button>
       {busy && <p role="status">{t.pull.busy}</p>}
-      {error && <p role="alert">{error}</p>}
-      {done && !error && (
+      {error && (errorCode === 'reconnect' && !isCoach ? brokenOwn('alert') : <p role="alert">{error}</p>)}
+      {current && !error && (
         <>
-          <p role="status">{t.pull.done(hm(done.received.fromMs), hm(done.received.toMs))}</p>
-          {done.received.toMs < done.range.toMs - SHORT_MS && <p>{t.pull.short}</p>}
-          {done.workout && <p>{t.pull.workout(hm(done.workout.startMs), hm(done.workout.endMs))}</p>}
+          <p role="status">{t.pull.done(hm(current.received.fromMs), hm(current.received.toMs))}</p>
+          {current.received.toMs < current.range.toMs - SHORT_MS && <p>{t.pull.short}</p>}
+          {current.workout && <p>{t.pull.workout(hm(current.workout.startMs), hm(current.workout.endMs))}</p>}
         </>
       )}
     </div>

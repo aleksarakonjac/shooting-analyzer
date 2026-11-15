@@ -48,11 +48,6 @@ describe('HealthPull', () => {
     expect(screen.getByRole('button', { name: 'Povuci puls sa Google Health' })).toBeTruthy();
   });
 
-  it('tells about a broken link', () => {
-    render(<HealthPull {...base} status="broken" />);
-    expect(screen.getByText('Veza sa Google Health je istekla — strelac treba ponovo da je poveže.')).toBeTruthy();
-  });
-
   it('hands the pulled TCX on as a file and shows the range and workout', async () => {
     const fetchFn = stubFetch(200, ok);
     const onPulled = vi.fn();
@@ -124,5 +119,49 @@ describe('HealthPull received range', () => {
       startedAt: 'a',
       endedAt: null,
     });
+  });
+});
+
+describe('HealthPull fixes', () => {
+  it('tells the shooter to reconnect on the account page, with a link', () => {
+    render(<HealthPull {...base} status="broken" />);
+    expect(screen.getByText(/Veza sa Google Health je istekla\. Poveži je ponovo na stranici/)).toBeTruthy();
+    expect(screen.getByRole('link', { name: 'Nalog' }).getAttribute('href')).toBe('/nalog');
+  });
+
+  it('keeps the coach wording without a link', () => {
+    render(<HealthPull {...base} status="broken" isCoach />);
+    expect(screen.getByText('Veza sa Google Health je istekla — strelac treba ponovo da je poveže.')).toBeTruthy();
+    expect(screen.queryByRole('link', { name: 'Nalog' })).toBeNull();
+  });
+
+  it('gives the shooter the account link on a reconnect answer', async () => {
+    stubFetch(409, { status: 409, error: 'reconnect' });
+    render(<HealthPull {...base} status="ok" />);
+    fireEvent.click(screen.getByRole('button', { name: 'Povuci puls sa Google Health' }));
+    expect((await screen.findByRole('alert')).textContent).toContain('Poveži je ponovo na stranici');
+    expect(screen.getByRole('link', { name: 'Nalog' })).toBeTruthy();
+  });
+
+  it('explains an account not linked to the Google Health app', async () => {
+    stubFetch(409, { status: 409, error: 'not_linked' });
+    render(<HealthPull {...base} status="ok" />);
+    fireEvent.click(screen.getByRole('button', { name: 'Povuci puls sa Google Health' }));
+    expect((await screen.findByRole('alert')).textContent).toBe('Google nalog nije povezan sa Google Health aplikacijom. Prijavi se u aplikaciju na telefonu, pa pokušaj ponovo.');
+  });
+
+  it('is disabled while the saved files are still loading', () => {
+    render(<HealthPull {...base} status="ok" disabled />);
+    expect((screen.getByRole('button', { name: 'Povuci puls sa Google Health' }) as HTMLButtonElement).disabled).toBe(true);
+  });
+
+  it('drops the success message once another pulse file replaces the pulled one', async () => {
+    stubFetch(200, ok);
+    const { rerender } = render(<HealthPull {...base} status="ok" loadedName={null} />);
+    fireEvent.click(screen.getByRole('button', { name: 'Povuci puls sa Google Health' }));
+    rerender(<HealthPull {...base} status="ok" loadedName={ok.fileName} />);
+    expect(await screen.findByText(/Puls povučen sa Google Health/)).toBeTruthy();
+    rerender(<HealthPull {...base} status="ok" loadedName="moj-sat.tcx" />);
+    expect(screen.queryByText(/Puls povučen sa Google Health/)).toBeNull();
   });
 });

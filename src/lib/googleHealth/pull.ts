@@ -32,7 +32,16 @@ export interface PullDeps {
   tz: string;
 }
 
-export type PullError = 'unauthorized' | 'forbidden' | 'not_found' | 'no_data' | 'not_connected' | 'reconnect' | 'no_window' | 'google_unavailable';
+export type PullError =
+  | 'unauthorized'
+  | 'forbidden'
+  | 'not_found'
+  | 'no_data'
+  | 'not_connected'
+  | 'reconnect'
+  | 'not_linked'
+  | 'no_window'
+  | 'google_unavailable';
 
 export type PullResult =
   | {
@@ -122,11 +131,15 @@ export async function pullPulse(input: PullInput, deps: PullDeps): Promise<PullR
     const received = { fromMs: samples[0].tMs, toMs: samples[samples.length - 1].tMs, count: samples.length };
     return { status: 200, tcx, fileName: tcxFileName(samples[0].tMs, deps.tz), workout: win.workout, range: win.fetch, received, source: win.source };
   } catch (e) {
-    if (e instanceof GoogleHealthError && e.code === 'invalid_grant') {
-      await deps.markBroken(shooterId);
-      return fail(409, 'reconnect');
+    if (e instanceof GoogleHealthError) {
+      // Revoked, expired, or a scope taken back: only a new connection helps.
+      if (e.code === 'invalid_grant' || (e.code === 'http' && (e.status === 401 || e.status === 403))) {
+        await deps.markBroken(shooterId);
+        return fail(409, 'reconnect');
+      }
+      if (e.code === 'not_linked') return fail(409, 'not_linked');
+      return fail(503, 'google_unavailable');
     }
-    if (e instanceof GoogleHealthError) return fail(503, 'google_unavailable');
     throw e;
   }
 }

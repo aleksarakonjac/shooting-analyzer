@@ -172,3 +172,18 @@ describe('final review fixes', () => {
     expect(d.markBroken).toHaveBeenCalledWith('shooter');
   });
 });
+
+describe('Google refusals on data calls', () => {
+  it('401 or 403 from Google marks the link broken and asks to reconnect', async () => {
+    for (const status of [401, 403]) {
+      const d = deps({}, { heartRate: vi.fn(async () => { throw new GoogleHealthError('http', status); }) });
+      expect(await pullPulse(fresh, d)).toEqual({ status: 409, error: 'reconnect' });
+      expect(d.markBroken).toHaveBeenCalledWith('shooter');
+    }
+  });
+  it('an account not linked to the Google Health app gets its own error', async () => {
+    const d = deps({}, { workouts: vi.fn(async () => { throw new GoogleHealthError('not_linked', 400); }) });
+    expect(await pullPulse(fresh, d)).toEqual({ status: 409, error: 'not_linked' });
+    expect(d.markBroken).not.toHaveBeenCalled();
+  });
+});

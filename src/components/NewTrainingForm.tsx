@@ -257,6 +257,8 @@ export function NewTrainingForm({
   // Pulse from Google Health arrives as a TCX file and goes the same way as an upload.
   const onHealthPulled = async (file: File, info: PulledInfo) => {
     await addHr(file);
+    // Google's samples are already on the right clock: an offset set for an earlier watch file does not apply.
+    setHrOffsetS(0);
     if (!timeFrom && !timeTo && info.workout) {
       const hm = new Intl.DateTimeFormat('en-GB', { hour: '2-digit', minute: '2-digit', hourCycle: 'h23', timeZone: venueTz });
       setTimeFrom(hm.format(info.workout.startMs));
@@ -798,6 +800,8 @@ export function NewTrainingForm({
             return pullBody({ trainingId: edit?.trainingId, shooterId: userId, date: trainedOn, shotTimes: times, startedAt: range.startedAt, endedAt: range.endedAt });
           }}
           onPulled={onHealthPulled}
+          disabled={restoring}
+          loadedName={hrLoaded?.file.name ?? null}
         />
         {hrLoaded && (
           <>
