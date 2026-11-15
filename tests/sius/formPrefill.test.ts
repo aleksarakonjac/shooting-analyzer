@@ -36,7 +36,7 @@ describe('restoreCloudResult', () => {
   it('3x20: re-reads the stored JSON with decimals, times and sighters', () => {
     const raw = fx('rifle-3x20.json');
     const stored = mapSiusShots(raw, { name: '50m Rifle 3x20' });
-    const r = restoreCloudResult(raw, 'smallbore_3p', stored);
+    const r = restoreCloudResult(raw, 'smallbore_3p', stored)!;
     expect(r.series.map((s) => s.position)).toEqual(stored.series.map((s) => s.position));
     expect(r.series[0].shots[0]).toMatchObject({ value: 10, valueDecimal: 10.6, tMs: expect.any(Number) });
     expect(r.sighters).toHaveLength(3);
@@ -52,7 +52,7 @@ describe('restoreCloudResult', () => {
       split.series.map((s) => ({ idx: s.index, position: s.position ?? null, total: s.total, total_decimal: null, mpi_x: null, mpi_y: null, group_mm: null, shots: s.shots.map((x, i) => ({ idx: i + 1, value: x.value, inner: !!x.inner, direction: null, x: null, y: null })) })),
       'smallbore_3p',
     );
-    const r = restoreCloudResult(raw, 'smallbore_3p', fromDb);
+    const r = restoreCloudResult(raw, 'smallbore_3p', fromDb)!;
     expect(r.series.map((s) => [s.position, s.shots.length])).toEqual(split.series.map((s) => [s.position, s.shots.length]));
     expect(r.sighters?.map((g) => g.beforeSeries)).toEqual(split.sighters?.map((g) => g.beforeSeries));
     expect(r.series[0].shots[0].valueDecimal).toBeTypeOf('number');
@@ -64,3 +64,10 @@ describe('restoreCloudResult', () => {
     expect(restoreCloudResult(raw, 'smallbore_3p', stored)).toBe(stored);
   });
 });
+
+describe('restoreCloudResult without a stored match', () => {
+  it('returns null (a final kept in finals has no match to restore)', () => {
+    expect(restoreCloudResult(fx('public-qual.json'), 'air_rifle', null)).toBeNull();
+  });
+});
+

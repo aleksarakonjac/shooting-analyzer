@@ -964,8 +964,8 @@ async function readCloudFile(file: File, edit: SessionEdit): Promise<{ parsed: P
   const bytes = new Uint8Array(await file.arrayBuffer());
   try {
     const raw = JSON.parse(new TextDecoder().decode(bytes));
-    const stored = edit.storedSius ?? { discipline: '', total: 0, series: [] };
-    const parsed = restoreCloudResult(raw, edit.initial.disciplineId, stored);
+    const parsed = restoreCloudResult(raw, edit.initial.disciplineId, edit.storedSius);
+    if (!parsed) return null;
     const first = parsed.series.flatMap((x) => x.shots).find((x) => x.tMs !== undefined)?.tMs;
     const shotCount = parsed.series.reduce((a, x) => a + x.shots.length, 0);
     // Stored files are named by content hash; the existing source row keeps the real exercise id (re-upload is a no-op).

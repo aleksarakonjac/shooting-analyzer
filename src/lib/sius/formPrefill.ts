@@ -45,7 +45,13 @@ const CANONICAL: Record<DisciplineId, string> = {
  * single-block exercise (prone program) the saved positions are put back shot by shot. When the counts no longer
  * match, the result rebuilt from the database is kept unchanged.
  */
-export function restoreCloudResult(raw: SiusShotsResponse, discipline: DisciplineId, stored: ParsedSiusResult): ParsedSiusResult {
+export function restoreCloudResult(
+  raw: SiusShotsResponse,
+  discipline: DisciplineId,
+  stored: ParsedSiusResult | null,
+): ParsedSiusResult | null {
+  // No saved match (e.g. a final stored in `finals` with its SIUS JSON): there is nothing to load back.
+  if (!stored) return null;
   const mapped = mapSiusShots(raw, { name: CANONICAL[discipline] });
   if (matchShotCount(mapped) !== matchShotCount(stored)) return stored;
   if (raw.stageResults?.length) return mapped;
