@@ -1726,6 +1726,29 @@ button.hr-align__toggle:hover:not(:disabled) { color: var(--ink); background: va
 }
 
 
+/* Session page, phone held upright: the whole header is one row. The name and its facts give way first (they
+   truncate); the alignment flag shrinks to its pennant; the total, the menu and close keep their size. */
+@media (max-width: 720px) and (orientation: portrait) {
+  .ws__strip:has(.ws__head--session) { flex-wrap: nowrap; align-items: center; gap: var(--space-2); padding: var(--space-2) var(--space-3); min-height: 3.25rem; }
+  .ws__strip:has(.ws__head--session) > .ws__head { flex: 1 1 auto; min-width: 0; gap: 2px; }
+  .ws__strip:has(.ws__head--session) .ws__title--session { font-size: var(--fs-lg); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .ws__strip:has(.ws__head--session) .ws__facts { font-size: var(--fs-xs); }
+  .ws__strip:has(.ws__head--session) .ws__facts > li { padding: 0 var(--space-2); gap: var(--space-1); }
+  .ws__strip:has(.ws__head--session) .ws__facts > li:first-child { padding-left: 0; }
+  .ws__strip:has(.ws__head--session) .ws__facts svg { width: 12px; height: 12px; }
+  .ws__strip:has(.ws__head--session) > .align-state { flex: 0 0 auto; }
+  .ws__strip:has(.ws__head--session) .flag-badge--action { padding: 0 var(--space-2); min-height: var(--control-h); }
+  .ws__strip:has(.ws__head--session) .flag-badge--action .flag-badge__rest,
+  .ws__strip:has(.ws__head--session) .flag-badge--action .flag-badge__hover { display: none; }
+  .ws__strip:has(.ws__head--session) > .ws__strip-end { flex: 0 0 auto; margin-left: 0; gap: var(--space-1); flex-wrap: nowrap; }
+  .ws__strip:has(.ws__head--session) > .ws__strip-end > * { flex: 0 0 auto; }
+  .ws__strip:has(.ws__head--session) .ws__slot { margin-right: 0; }
+  .ws__strip:has(.ws__head--session) .ws__toggle { padding: 0 var(--space-2); font-size: var(--fs-xs); }
+  .ws__strip:has(.ws__head--session) .ws__score .lane-plate { padding: 0 var(--space-2); gap: var(--space-1); }
+  .ws__strip:has(.ws__head--session) .ws__score .lane-plate__label { display: none; }
+  .ws__strip:has(.ws__head--session) .ws__score .lane-plate__value { font-size: var(--fs-lg); }
+}
+
 /* Expand / collapse all series: in the page header, left of the total, on a phone only (desktop has it in the panel header) */
 .ws__slot { display: none; }
 @media (max-width: 720px) {
