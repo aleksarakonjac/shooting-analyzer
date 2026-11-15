@@ -41,3 +41,10 @@ export const PinIcon = () => (
 export const TrophyIcon = () => (
   <svg {...base} width="16" height="16"><path d="M8 4h8v5a4 4 0 0 1-8 0V4ZM8 6H5v1.5A3.5 3.5 0 0 0 8.5 11M16 6h3v1.5a3.5 3.5 0 0 1-3.5 3.5M12 13v4M9 20h6M10 17h4" /></svg>
 );
+/** Rows opened out (arrows apart) or folded (arrows together): the series list's show / hide shots switch. */
+export const UnfoldIcon = () => (
+  <svg {...base} width="16" height="16"><path d="m7 9 5-5 5 5M7 15l5 5 5-5" /></svg>
+);
+export const FoldIcon = () => (
+  <svg {...base} width="16" height="16"><path d="m7 4 5 5 5-5M7 20l5-5 5 5" /></svg>
+);

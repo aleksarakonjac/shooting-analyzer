@@ -869,6 +869,7 @@ a.audit__pager-link:hover { color: var(--ink); }
 /* ---------- account and sharing ---------- */
 /* One readable column under the tab bar, sections divided by steel rules (no cards). */
 .account { max-width: 46rem; padding: var(--space-4) var(--gutter) var(--space-12); }
+@media (max-width: 720px) { .account { padding: 0 0 var(--space-8); } }
 .account .ui-tabs { gap: var(--space-6); }
 .account__pane { display: grid; gap: 0; }
 .account__sec { padding: var(--space-6) 0; border-top: 1px solid var(--rule); }
@@ -1395,7 +1396,7 @@ a.audit__pager-link:hover { color: var(--ink); }
 
 /* ---------- phone: shot and series navigation under the target ---------- */
 .target-pane { display: flex; flex-direction: column; min-height: 0; height: 100%; }
-.target-pane__main { flex: 1 1 auto; min-height: 0; overflow: auto; }
+.target-pane__main { flex: 1 1 auto; min-height: 0; overflow: auto; display: flex; flex-direction: column; }
 .shot-nav { flex: none; display: grid; gap: var(--space-2); padding: var(--space-3); border-top: 1px solid var(--rule); background: var(--panel); }
 .shot-nav__series { display: grid; grid-template-columns: 3rem 1fr 3rem; align-items: center; text-align: center; }
 .shot-nav__series button { min-height: 2.75rem; font-size: var(--fs-xl); }
@@ -1726,36 +1727,63 @@ button.hr-align__toggle:hover:not(:disabled) { color: var(--ink); background: va
 }
 
 
-/* Session page, phone held upright: the whole header is one row. The name and its facts give way first (they
-   truncate); the alignment flag shrinks to its pennant; the total, the menu and close keep their size. */
+/* Sessions list, phone held upright: title and tools in one row. The filter shrinks to its funnel (its border
+   still turns cyan while filters narrow the list); the title gives way first. */
 @media (max-width: 720px) and (orientation: portrait) {
-  .ws__strip:has(.ws__head--session) { flex-wrap: nowrap; align-items: center; gap: var(--space-2); padding: var(--space-2) var(--space-3); min-height: 3.25rem; }
-  .ws__strip:has(.ws__head--session) > .ws__head { flex: 1 1 auto; min-width: 0; gap: 2px; }
-  .ws__strip:has(.ws__head--session) .ws__title--session { font-size: var(--fs-lg); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .ws__strip:has(.ws__head--session) .ws__facts { font-size: var(--fs-xs); }
-  .ws__strip:has(.ws__head--session) .ws__facts > li { padding: 0 var(--space-2); gap: var(--space-1); }
-  .ws__strip:has(.ws__head--session) .ws__facts > li:first-child { padding-left: 0; }
+  .ws__strip:has(.dash__tools) { flex-wrap: nowrap; gap: var(--space-2); padding: var(--space-2) var(--space-3); }
+  .ws__strip:has(.dash__tools) > .dash__head { flex: 1 1 auto; min-width: 0; }
+  .ws__strip .dash__tools { gap: var(--space-1); }
+  .ws__strip .filters__trigger { width: var(--control-h); padding: 0; justify-content: center; }
+  .ws__strip .filters__trigger .filters__period, .ws__strip .filters__trigger .filters__count { display: none; }
+  .ws__strip .dash__side-toggle { padding: 0 var(--space-2); }
+}
+
+/* Session page, phone held upright: a compact board header in columns. The name on the left (up to three lines),
+   the facts in their own column beside it (one per line: when, where, the event), and a narrow column of figure
+   and tools: the total on top, the flag, the series switch and the menu under it. No fades, no sideways scroll. */
+@media (max-width: 720px) and (orientation: portrait) {
+  .ws__strip:has(.ws__head--session) {
+    display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr) auto auto auto; grid-template-rows: auto auto;
+    align-items: center; column-gap: var(--space-1); row-gap: var(--space-1); padding: var(--space-2) var(--space-3);
+  }
+  .ws__strip:has(.ws__head--session) > .ws__head--session, .ws__strip:has(.ws__head--session) > .ws__strip-end { display: contents; }
+  .ws__strip:has(.ws__head--session) .ws__title--session {
+    grid-column: 1; grid-row: 1 / 3; align-self: center; font-size: var(--fs-lg); line-height: 1.1; white-space: normal;
+    display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; overflow-wrap: anywhere;
+    max-height: 3.15em; /* clips the accents of a hidden fourth line (Š, Ž) */
+  }
+  .ws__strip:has(.ws__head--session) .ws__facts {
+    grid-column: 2; grid-row: 1 / 3; align-self: stretch; flex-direction: column; flex-wrap: nowrap; align-items: flex-start; justify-content: center;
+    gap: 2px; padding-left: var(--space-2); margin: 0 var(--space-2) 0 var(--space-1); border-left: 1px solid var(--rule-strong); font-size: var(--fs-xs); min-width: 0;
+  }
+  .ws__strip:has(.ws__head--session) .ws__facts > li { padding: 0; border: 0; gap: var(--space-1); max-width: 100%; min-width: 0; }
+  .ws__strip:has(.ws__head--session) .ws__facts > li > span:last-child,
+  .ws__strip:has(.ws__head--session) .ws__facts > li > a { overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+  .ws__strip:has(.ws__head--session) .ws__facts > li { overflow: hidden; text-overflow: ellipsis; }
   .ws__strip:has(.ws__head--session) .ws__facts svg { width: 12px; height: 12px; }
-  .ws__strip:has(.ws__head--session) > .align-state { flex: 0 0 auto; }
-  .ws__strip:has(.ws__head--session) .flag-badge--action { padding: 0 var(--space-2); min-height: var(--control-h); }
-  .ws__strip:has(.ws__head--session) .flag-badge--action .flag-badge__rest,
-  .ws__strip:has(.ws__head--session) .flag-badge--action .flag-badge__hover { display: none; }
-  .ws__strip:has(.ws__head--session) > .ws__strip-end { flex: 0 0 auto; margin-left: 0; gap: var(--space-1); flex-wrap: nowrap; }
-  .ws__strip:has(.ws__head--session) > .ws__strip-end > * { flex: 0 0 auto; }
-  .ws__strip:has(.ws__head--session) .ws__slot { margin-right: 0; }
-  .ws__strip:has(.ws__head--session) .ws__toggle { padding: 0 var(--space-2); font-size: var(--fs-xs); }
-  .ws__strip:has(.ws__head--session) .ws__score .lane-plate { padding: 0 var(--space-2); gap: var(--space-1); }
+  .ws__strip:has(.ws__head--session) .ws__score { grid-column: 3 / 6; grid-row: 1; justify-self: stretch; }
+  /* The total: a small white bug, not a block. */
+  .ws__strip:has(.ws__head--session) .ws__score .lane-plate { width: 100%; justify-content: center; height: 1.875rem; padding: 0 var(--space-2); gap: var(--space-1); }
   .ws__strip:has(.ws__head--session) .ws__score .lane-plate__label { display: none; }
   .ws__strip:has(.ws__head--session) .ws__score .lane-plate__value { font-size: var(--fs-lg); }
+  .ws__strip:has(.ws__head--session) > .align-state { grid-column: 3; grid-row: 2; }
+  .ws__strip:has(.ws__head--session) .ws__slot { grid-column: 4; grid-row: 2; margin: 0; align-self: center; }
+  .ws__strip:has(.ws__head--session) .more__trigger { grid-column: 5; grid-row: 2; }
+  .ws__strip:has(.ws__head--session) > [role='alert'] { grid-column: 1 / -1; grid-row: 3; }
+  /* The small controls of the tool row: 1.875rem squares, the same height as the total above them. */
+  .ws__strip:has(.ws__head--session) .flag-badge--action,
+  .ws__strip:has(.ws__head--session) .more__trigger,
+  .ws__strip:has(.ws__head--session) .ws__toggle { min-height: 1.875rem; height: 1.875rem; min-width: 1.875rem; width: 1.875rem; padding: 0; justify-content: center; }
+  .ws__strip:has(.ws__head--session) .flag-badge--action .flag-badge__rest,
+  .ws__strip:has(.ws__head--session) .flag-badge--action .flag-badge__hover,
+  .ws__strip:has(.ws__head--session) .ws__toggle-label { display: none; }
 }
 
 /* Expand / collapse all series: in the page header, left of the total, on a phone only (desktop has it in the panel header) */
 .ws__slot { display: none; }
+.ws__toggle { gap: var(--space-1); }
+.ws__toggle-icon { display: inline-flex; }
 @media (max-width: 720px) {
-  /* Phone: the facts stay one line and slide sideways instead of pushing the board down. */
-  .ws__head--session { display: grid; }
-  .ws__facts { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; -webkit-mask-image: linear-gradient(90deg, #000 85%, transparent); mask-image: linear-gradient(90deg, #000 85%, transparent); }
-  .ws__facts::-webkit-scrollbar { display: none; }
   /* left edge of the row, as tall as the total beside it */
   .ws__slot { display: flex; align-items: stretch; align-self: stretch; margin-right: auto; }
   .ws__toggle { display: none; height: 100%; min-height: 0; padding: 0 var(--space-3); font-size: var(--fs-sm); white-space: nowrap; }

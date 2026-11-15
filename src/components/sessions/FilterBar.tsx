@@ -77,7 +77,11 @@ export function FilterBar({
 
   return (
     <DialogTrigger>
-      <Button className="ui-trigger filters__trigger" data-active={activeCount > 0 || undefined}>
+      <Button
+        className="ui-trigger filters__trigger"
+        data-active={activeCount > 0 || undefined}
+        aria-label={[t.filters, periodLabel(filters), activeCount > 0 ? t.narrowing(activeCount) : ''].filter(Boolean).join(', ')}
+      >
         {funnel}
         <span className="filters__period">{periodLabel(filters)}</span>
         {activeCount > 0 && <span className="filters__count">{t.narrowing(activeCount)}</span>}

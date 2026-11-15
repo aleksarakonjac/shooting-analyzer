@@ -29,7 +29,7 @@ import { ReplaySettingsProvider, useReplaySettings } from './replaySettings';
 import { scattTargetFor } from '@/lib/scatt/targets';
 import { targetSpec } from '@/lib/report/target';
 
-import { ChevronLeft, ChevronRight } from '@/components/ui/icons';
+import { ChevronLeft, ChevronRight, FoldIcon, UnfoldIcon } from '@/components/ui/icons';
 
 const t = sr.report;
 const TARGET_OFF_KEY = 'report-target-off';
@@ -549,8 +549,16 @@ function ReportBoard({
             {targetOff ? <ChevronRight /> : <ChevronLeft />}
             {targetOff ? t.showTarget : t.hideTarget}
           </button>
-          <button type="button" className="button--quiet ws__toggle" onClick={() => setAllOpen(openIds.size === 0)} aria-pressed={openIds.size === 0}>
-            {openIds.size === 0 ? t.collapseSeries : t.expandSeries}
+          <button
+            type="button"
+            className="button--quiet ws__toggle"
+            onClick={() => setAllOpen(openIds.size === 0)}
+            aria-pressed={openIds.size === 0}
+            aria-label={openIds.size === 0 ? t.collapseSeries : t.expandSeries}
+            title={openIds.size === 0 ? t.collapseSeries : t.expandSeries}
+          >
+            <span className="ws__toggle-icon" aria-hidden="true">{openIds.size === 0 ? <UnfoldIcon /> : <FoldIcon />}</span>
+            <span className="ws__toggle-label">{openIds.size === 0 ? t.collapseSeries : t.expandSeries}</span>
           </button>
         </>,
         toggleSlot,

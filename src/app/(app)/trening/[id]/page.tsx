@@ -7,7 +7,7 @@ import { CloseReport } from '@/components/report/CloseReport';
 import { FinalsList, type FinalRow } from '@/components/FinalsList';
 import { ReplaySettingsSection } from '@/components/report/replaySettings';
 import { AlignFlag, type AlignFacts } from '@/components/report/AlignFlag';
-import { CalendarIcon, PinIcon, TrophyIcon } from '@/components/ui/icons';
+import { CalendarIcon, ClockIcon, PinIcon, TrophyIcon } from '@/components/ui/icons';
 import { LanePlate } from '@/components/LanePlate';
 import { ReportWorkspace } from '@/components/report/ReportWorkspace';
 import { MoreMenu } from '@/components/report/MoreMenu';
@@ -116,9 +116,8 @@ async function Body({ params, searchParams }: { params: Promise<{ id: string }>;
   const hm = (iso: string | null) =>
     iso ? new Intl.DateTimeFormat('sr-Latn-RS', { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: tz }).format(new Date(iso)) : null;
   const clock = tr.started_at || tr.ended_at ? `${hm(tr.started_at) ?? '—'}–${hm(tr.ended_at) ?? '—'}` : null;
-  const sessionLabel = [tr.kind !== 'trening' ? nt.kinds[tr.kind] : null, tr.stage !== 'slobodno' ? nt.stages[tr.stage] : null]
-    .filter(Boolean)
-    .join(', ');
+  // The part says enough when there is one (a qualification is a competition's); otherwise the kind of session.
+  const sessionLabel = tr.stage !== 'slobodno' ? nt.stages[tr.stage] : tr.kind !== 'trening' ? nt.kinds[tr.kind] : '';
 
   // Editing opens the full form at once: words, type, event, time, files and alignment.
   if (canEdit && izmena) redirect(`/trening/${tr.id}/podaci`);
@@ -163,12 +162,14 @@ async function Body({ params, searchParams }: { params: Promise<{ id: string }>;
       <div className="ws__head ws__head--session">
         <h1 className="ws__title ws__title--session">{tr.name}</h1>
         <ul className="ws__facts">
-          <li>
-            <CalendarIcon />
-            <span className="num">{date}</span>
-            {clock && <span className="num">{clock}</span>}
-            {clock && tz !== viewerTz && <span className="ws__facts-muted">{tz.split('/').pop()?.replace(/_/g, ' ')}</span>}
-          </li>
+          <li><CalendarIcon /><span className="num">{date}</span></li>
+          {clock && (
+            <li>
+              <ClockIcon />
+              <span className="num">{clock}</span>
+              {tz !== viewerTz && <span className="ws__facts-muted">{tz.split('/').pop()?.replace(/_/g, ' ')}</span>}
+            </li>
+          )}
           {!tr.name.includes(cfg.nameSr) && <li>{cfg.nameSr}</li>}
           {tr.place && <li><PinIcon />{tr.place}</li>}
           {(sessionLabel || tr.events) && (
