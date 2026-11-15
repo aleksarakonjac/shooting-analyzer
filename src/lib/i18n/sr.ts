@@ -386,6 +386,7 @@ export const sr = {
     noShotTimes: 'Pogoci nemaju vreme. Dodajte SCATT fajl da bi se prikazali kroz vreme.',
     hrNoFile: 'Trening nema TCX fajl.',
     hrOutside: 'Puls iz fajla ne pada u vreme pogodaka.',
+    hrAround: 'Pre i posle meča',
     other: 'Ostalo',
     more: 'Više o sesiji',
     info: 'O sesiji',

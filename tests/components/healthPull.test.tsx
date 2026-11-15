@@ -18,7 +18,7 @@ const ok = {
 };
 
 function stubFetch(status: number, body: unknown) {
-  const fn = vi.fn(async (_url: string, _init?: RequestInit) => new Response(JSON.stringify(body), { status }));
+  const fn = vi.fn<(url: string, init?: RequestInit) => Promise<Response>>(async () => new Response(JSON.stringify(body), { status }));
   vi.stubGlobal('fetch', fn);
   return fn;
 }

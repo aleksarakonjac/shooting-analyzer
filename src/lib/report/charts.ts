@@ -240,7 +240,7 @@ export function rolling(samples: HrSample[], windowMs: number): [number, number]
 
 /** Heart rate over the same clock as the timeline; every timed shot sits on the curve at its moment's heart rate. */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-export function hrOption(samples: HrSample[], v: ReportView, sel: Selection, tz: string): any {
+export function hrOption(samples: HrSample[], v: ReportView, sel: Selection, tz: string, matchSpan?: { fromMs: number; toMs: number }): any {
   const fmt = clock(tz);
   const dec = v.decimal ? 1 : 0;
   const shots = v.series
@@ -266,6 +266,14 @@ export function hrOption(samples: HrSample[], v: ReportView, sel: Selection, tz:
       };
     });
   const picked = shots.find((d) => d.n === sel.shot);
+  // Pulse before and after the match, when shown, sits on a muted band.
+  const first = samples[0]?.tMs;
+  const last = samples[samples.length - 1]?.tMs;
+  const outside: [{ xAxis: number }, { xAxis: number }][] = [];
+  if (matchSpan && first !== undefined && last !== undefined) {
+    if (first < matchSpan.fromMs) outside.push([{ xAxis: first }, { xAxis: matchSpan.fromMs }]);
+    if (last > matchSpan.toMs) outside.push([{ xAxis: matchSpan.toMs }, { xAxis: last }]);
+  }
   return {
     animation: false,
     grid: { left: 46, right: 12, top: 26, bottom: 48 },
@@ -294,6 +302,7 @@ export function hrOption(samples: HrSample[], v: ReportView, sel: Selection, tz:
           symbol: 'none',
           data: picked ? [{ xAxis: picked.value[0], lineStyle: { color: CHART.select, width: 1.5, type: 'solid' }, label: { show: false } }] : [],
         },
+        ...(matchSpan ? { markArea: { silent: true, itemStyle: { color: CHART.faint, opacity: 0.12 }, data: outside } } : {}),
       },
       {
         type: 'line',

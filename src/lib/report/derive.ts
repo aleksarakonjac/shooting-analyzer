@@ -74,3 +74,22 @@ export function hrAvgOverShots(samples: HrSample[], shotTimes: (number | null)[]
   if (!win) return null;
   return hrStats(samples.filter((s) => s.tMs >= win.fromMs && s.tMs <= win.toMs))?.avg ?? null;
 }
+
+/**
+ * Which heart rate the report shows. `match`: the shots with `padMs` either side, else the training's entered time,
+ * else the whole file. `full`: the whole file (for "before and after the match"). Times are on the shot clock.
+ */
+export function hrWindows(
+  shotTimes: (number | null | undefined)[],
+  training: { startedAt: string | null; endedAt: string | null },
+  file: { firstMs: number; lastMs: number } | null,
+  padMs = 60_000,
+): { match: { fromMs: number; toMs: number } | null; full: { fromMs: number; toMs: number } | null } {
+  const full = file ? { fromMs: file.firstMs, toMs: file.lastMs } : null;
+  const shots = shotWindow(shotTimes, padMs);
+  if (shots) return { match: shots, full };
+  const a = Date.parse(training.startedAt ?? '');
+  const b = Date.parse(training.endedAt ?? '');
+  if (Number.isFinite(a) && Number.isFinite(b) && b > a) return { match: { fromMs: a, toMs: b }, full };
+  return { match: full, full };
+}

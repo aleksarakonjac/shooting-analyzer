@@ -107,6 +107,18 @@ describe('hrOption', () => {
   });
 });
 
+describe('hrOption outside the match', () => {
+  const v = buildReportView(raw, 'air_rifle');
+  const hr = [{ tMs: 100, bpm: 70 }, { tMs: 2900, bpm: 82 }, { tMs: 9000, bpm: 75 }];
+  it('greys the parts before and after the match when a match span is given', () => {
+    const o = hrOption(hr, v, { series: null, shot: null }, 'Europe/Belgrade', { fromMs: 1000, toMs: 5000 });
+    expect(o.series[0].markArea.data).toEqual([[{ xAxis: 100 }, { xAxis: 1000 }], [{ xAxis: 5000 }, { xAxis: 9000 }]]);
+  });
+  it('draws no grey area without a match span', () => {
+    expect(hrOption(hr, v, { series: null, shot: null }, 'Europe/Belgrade').series[0].markArea).toBeUndefined();
+  });
+});
+
 describe('rolling', () => {
   it('averages the trailing window', () => {
     const s = [0, 1000, 2000, 20000].map((tMs, i) => ({ tMs, bpm: [90, 100, 110, 80][i] }));

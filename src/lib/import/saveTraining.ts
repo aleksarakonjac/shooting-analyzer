@@ -3,7 +3,7 @@ import type { DisciplineId, ParsedSiusResult } from '@/lib/domain/types';
 import { alignMatch, selectMatchShots, type MatchSelection } from '@/lib/alignment/align';
 import type { ScattData } from '@/lib/parsers/scatt';
 import { hrWindow, type HrSample } from '@/lib/parsers/tcx';
-import { hrStats, shotWindow } from '@/lib/report/derive';
+import { hrStats, hrWindows } from '@/lib/report/derive';
 import { createClient } from '@/lib/supabase/client';
 
 export type SessionKind = 'trening' | 'kontrolni' | 'takmicenje';
@@ -90,9 +90,13 @@ export const defaultTrainingName = (trainedOn: string, disciplineId: DisciplineI
   return `${dd}.${mm}. ${DISCIPLINES[disciplineId].nameSr}`;
 };
 
+/** Over the match shots; without shot times over the entered training time, else over the whole file. */
 function hrAverage(draft: TrainingDraft, match: SavePayload['match']): number | null {
-  if (!draft.hr || draft.hr.length === 0 || !match) return null;
-  const win = shotWindow(match.series.flatMap((s) => s.shots.map((x) => x.t_ms)), 0);
+  if (!draft.hr || draft.hr.length === 0) return null;
+  const times = match ? match.series.flatMap((s) => s.shots.map((x) => x.t_ms)) : [];
+  const ms = draft.hr.map((x) => x.tMs + draft.hrOffsetMs);
+  const file = { firstMs: Math.min(...ms), lastMs: Math.max(...ms) };
+  const win = hrWindows(times, { startedAt: draft.startedAt ?? null, endedAt: draft.endedAt ?? null }, file, 0).match;
   if (!win) return null;
   return hrStats(hrWindow(draft.hr, win.fromMs, win.toMs, draft.hrOffsetMs))?.avg ?? null;
 }

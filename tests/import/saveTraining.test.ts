@@ -117,10 +117,19 @@ describe('hr_avg_bpm (average heart rate over the match shots)', () => {
     expect(p.hr_avg_bpm).toBe(90);
   });
 
-  it('is null without samples, without shot times, or when no sample falls in the window', () => {
+  it('is null without samples, or when no sample falls in the shot window', () => {
     expect(buildSavePayload(base, 'u').hr_avg_bpm).toBeNull();
     expect(buildSavePayload({ ...base, hr: [{ tMs: first - 600_000, bpm: 70 }] }, 'u').hr_avg_bpm).toBeNull();
-    expect(buildSavePayload({ ...base, scatt: undefined, hr: [{ tMs: 1, bpm: 70 }] }, 'u').hr_avg_bpm).toBeNull();
+  });
+
+  it('without shot times falls back to the training time, then to the whole file', () => {
+    const untimed = { ...base, scatt: undefined, sius: { ...sius, series: sius.series.map((se) => ({ ...se, shots: se.shots.map((sh) => ({ ...sh, tMs: undefined })) })) } };
+    const hr = [{ tMs: 1_000, bpm: 60 }, { tMs: 5_000, bpm: 80 }, { tMs: 9_000, bpm: 100 }];
+    expect(buildSavePayload({ ...untimed, hr }, 'u').hr_avg_bpm).toBe(80);
+    const timed = { ...untimed, hr, startedAt: new Date(4_000).toISOString(), endedAt: new Date(10_000).toISOString() };
+    expect(buildSavePayload(timed, 'u').hr_avg_bpm).toBe(90);
+    // SIUS alone carries no shot times in the payload: the whole file is used now (it used to give no average).
+    expect(buildSavePayload({ ...base, scatt: undefined, hr: [{ tMs: 1, bpm: 70 }] }, 'u').hr_avg_bpm).toBe(70);
   });
 });
 

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { hrStats, matchTotal, offsetDirection, shotWindow, zoneShiftMs } from '@/lib/report/derive';
+import { hrStats, hrWindows, matchTotal, offsetDirection, shotWindow, zoneShiftMs } from '@/lib/report/derive';
 
 describe('offsetDirection', () => {
   it('names the side for each axis (+X right, +Y up) and drops a zero axis', () => {
@@ -58,5 +58,25 @@ describe('hrAvgOverShots', () => {
   it('is null without timed shots or samples inside them', () => {
     expect(hrAvgOverShots([{ tMs: 0, bpm: 70 }], [null])).toBeNull();
     expect(hrAvgOverShots([{ tMs: 0, bpm: 70 }], [5_000, 9_000])).toBeNull();
+  });
+});
+
+describe('hrWindows', () => {
+  const file = { firstMs: 0, lastMs: 10_000_000 };
+  const training = { startedAt: new Date(2_000_000).toISOString(), endedAt: new Date(5_000_000).toISOString() };
+  it('uses the shots with a minute either side first', () => {
+    expect(hrWindows([3_000_000, null, 4_000_000], training, file)).toEqual({ match: { fromMs: 2_940_000, toMs: 4_060_000 }, full: { fromMs: 0, toMs: 10_000_000 } });
+  });
+  it('falls back to the training time without timed shots', () => {
+    expect(hrWindows([null], training, file).match).toEqual({ fromMs: 2_000_000, toMs: 5_000_000 });
+  });
+  it('falls back to the whole file without shots or times', () => {
+    expect(hrWindows([], { startedAt: null, endedAt: null }, file)).toEqual({ match: { fromMs: 0, toMs: 10_000_000 }, full: { fromMs: 0, toMs: 10_000_000 } });
+  });
+  it('has nothing without a file, shots or times', () => {
+    expect(hrWindows([], { startedAt: null, endedAt: null }, null)).toEqual({ match: null, full: null });
+  });
+  it('takes the padding it is given', () => {
+    expect(hrWindows([3_000_000, 4_000_000], training, null, 0).match).toEqual({ fromMs: 3_000_000, toMs: 4_000_000 });
   });
 });

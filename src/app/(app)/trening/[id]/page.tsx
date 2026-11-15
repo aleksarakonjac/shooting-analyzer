@@ -15,7 +15,7 @@ import { DISCIPLINES } from '@/lib/domain/disciplines';
 import type { DisciplineId } from '@/lib/domain/types';
 import { isFinalDiscipline } from '@/lib/finals/format';
 import { sr } from '@/lib/i18n/sr';
-import { shotWindow } from '@/lib/report/derive';
+import { hrWindows } from '@/lib/report/derive';
 import { pipTopFor } from '@/lib/report/target';
 import { buildReportView, type RawSeries } from '@/lib/report/viewModel';
 import { createClient } from '@/lib/supabase/server';
@@ -98,7 +98,8 @@ async function Body({ params, searchParams }: { params: Promise<{ id: string }>;
   const tcx = tr.source_files.find((f) => f.kind === 'tcx')?.storage_path ?? null;
   const scattPaths = tr.source_files.filter((f) => f.kind === 'scatt').map((f) => f.storage_path);
   const allShots = view.series.flatMap((s) => s.shots);
-  const win = shotWindow(allShots.map((s) => s.tMs), 60_000);
+  // Match window: the shots with a minute either side, else the entered training time (null: the whole file).
+  const win = hrWindows(allShots.map((s) => s.tMs), { startedAt: tr.started_at, endedAt: tr.ended_at }, null).match;
   const canEdit = profile !== null;
   const date = new Intl.DateTimeFormat('sr-Latn-RS', { day: 'numeric', month: 'numeric', year: 'numeric', timeZone: 'UTC' }).format(new Date(`${tr.trained_on}T00:00:00Z`));
   const hm = (iso: string | null) =>
