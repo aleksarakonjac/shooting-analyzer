@@ -23,6 +23,7 @@ const shoulders = localFont({
 export const metadata: Metadata = {
   title: sr.appName,
   description: 'Trening, SIUS, SCATT i puls na jednoj vremenskoj liniji.',
+  appleWebApp: { capable: true, title: sr.appName, statusBarStyle: 'black-translucent' },
 };
 
 export const viewport: Viewport = {

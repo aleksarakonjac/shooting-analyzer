@@ -36,5 +36,5 @@ export async function proxy(request: NextRequest) {
 
 export const config = {
   // /api/inbox is left out: it authorizes by token, and skipping the proxy avoids buffering the upload twice.
-  matcher: ['/((?!_next/static|_next/image|favicon.ico|api/inbox|.*\\.(?:svg|png|jpg|ico|wasm|mjs)$).*)'],
+  matcher: ['/((?!_next/static|_next/image|favicon.ico|api/inbox|.*\\.(?:svg|png|jpg|ico|webmanifest|wasm|mjs)$).*)'],
 };
