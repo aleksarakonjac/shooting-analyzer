@@ -187,3 +187,32 @@ describe('Google refusals on data calls', () => {
     expect(d.markBroken).not.toHaveBeenCalled();
   });
 });
+
+describe('pullPulse with the watch on another zone', () => {
+  // Doha: SIUS shots 06:16–07:30 UTC; the watch logged the SHOOTING workout 2 h later than the true time.
+  const shots = { fromMs: at(6, 16, 3), toMs: at(7, 30, 3) };
+  const workout = { id: 'w1', startMs: at(8, 5, 3), endMs: at(9, 45, 3) };
+  const input = { shooterId: 'shooter', date: '2026-11-03', shotSpan: shots };
+
+  it('reads the pulse in the watch’s frame and moves it back onto the shot times', async () => {
+    const heartRate = vi.fn(async (_a: string, s: Span) => everyTwoSeconds(s));
+    const r = await pullPulse(input, deps({}, { workouts: vi.fn(async () => [workout]), heartRate }));
+    if (r.status !== 200) throw new Error(`status ${r.status}`);
+    // Asked for in the watch's time (shots + 2 h, with the margins)…
+    const asked = heartRate.mock.calls[0][1];
+    expect(asked.fromMs).toBeLessThanOrEqual(shots.fromMs + 2 * 3_600_000);
+    expect(asked.toMs).toBeGreaterThanOrEqual(shots.toMs + 2 * 3_600_000);
+    // …and handed back in true time, next to the shots.
+    const samples = parseTcx(r.tcx).samples;
+    expect(samples[0].tMs).toBe(asked.fromMs - 2 * 3_600_000);
+    expect(r.clockShiftMs).toBe(2 * 3_600_000);
+    expect(r.workout).toEqual({ id: 'w1', startMs: workout.startMs - 2 * 3_600_000, endMs: workout.endMs - 2 * 3_600_000 });
+    expect(r.received.fromMs).toBe(samples[0].tMs);
+  });
+
+  it('no shift when the workout already holds the shots', async () => {
+    const r = await pullPulse(input, deps({}, { workouts: vi.fn(async () => [{ id: 'w0', startMs: at(6, 10, 3), endMs: at(7, 40, 3) }]) }));
+    if (r.status !== 200) throw new Error(`status ${r.status}`);
+    expect(r.clockShiftMs).toBe(0);
+  });
+});

@@ -70,3 +70,30 @@ export function chooseWindows({ shots, workouts, training, isCoach }: WindowInpu
   }
   return { ok: true, match, fetch, workout, source };
 }
+
+const QUARTER_MS = 15 * 60_000;
+const MAX_SHIFT_MS = 14 * 3_600_000;
+/** How far the shots may stick out of a workout and still count as inside it (the workout is started by hand). */
+const FIT_TOLERANCE_MS = 5 * 60_000;
+
+/**
+ * The watch's clock against the shot times. SIUS shot times are true instants; when the shooter's SHOOTING workout
+ * (and so the pulse, from the same watch) sits away from them, the watch was on another zone's clock (travel, a
+ * competition abroad). For each workout the gap between its middle and the shots' middle is rounded to a whole
+ * hour, else a half, else a quarter hour (zones are whole hours almost everywhere), as long as every shot then
+ * falls inside the workout. The smallest such shift wins (0 when the shots already fit); null when none fits.
+ */
+export function clockShift(shots: Span, workouts: Workout[]): { shiftMs: number; workout: Workout } | null {
+  const fits = (w: Workout, shiftMs: number) =>
+    Math.abs(shiftMs) <= MAX_SHIFT_MS &&
+    shots.fromMs + shiftMs >= w.startMs - FIT_TOLERANCE_MS &&
+    shots.toMs + shiftMs <= w.endMs + FIT_TOLERANCE_MS;
+  let best: { shiftMs: number; workout: Workout } | null = null;
+  for (const w of workouts) {
+    const gap = (w.startMs + w.endMs) / 2 - (shots.fromMs + shots.toMs) / 2;
+    // A workout that already holds the shots means the clocks agree, wherever its middle is.
+    const shiftMs = fits(w, 0) ? 0 : [4, 2, 1].map((q) => Math.round(gap / (q * QUARTER_MS)) * q * QUARTER_MS).find((s) => fits(w, s));
+    if (shiftMs !== undefined && (!best || Math.abs(shiftMs) < Math.abs(best.shiftMs))) best = { shiftMs: shiftMs === 0 ? 0 : shiftMs, workout: w };
+  }
+  return best;
+}

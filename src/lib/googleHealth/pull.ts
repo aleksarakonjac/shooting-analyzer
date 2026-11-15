@@ -1,7 +1,7 @@
 import type { HrSample } from '@/lib/parsers/tcx';
 import { GoogleHealthError } from './client';
 import { buildTcx, tcxFileName } from './tcx';
-import { chooseWindows, type Span, type Workout } from './window';
+import { chooseWindows, clockShift, type Span, type Workout } from './window';
 
 /** Unsaved shot and entered times from the form. On a saved training only the shooter's own are used. */
 interface FormTimes {
@@ -54,6 +54,11 @@ export type PullResult =
       /** First and last sample actually received (the watch may not have synced all of it yet). */
       received: Span & { count: number };
       source: 'shots' | 'workout' | 'training';
+      /**
+       * How far the watch's clock was from the shot times (ms; positive = the watch was ahead), found from the
+       * SHOOTING workout. The pulse, workout, range and received span are already moved back onto true time.
+       */
+      clockShiftMs: number;
     }
   | { status: 401 | 403 | 404 | 409 | 422 | 503; error: PullError };
 
@@ -122,14 +127,32 @@ export async function pullPulse(input: PullInput, deps: PullDeps): Promise<PullR
     // Listed a day either side so a workout past midnight UTC is found, then kept to the training's own date.
     const listed = await deps.google.workouts(access, shiftDate(date, -1), shiftDate(date, 2));
     const workouts = listed.filter((w) => civilDate(w.startMs, deps.tz) === date);
-    const win = chooseWindows({ shots, workouts, training, isCoach });
+    // Shot times are true instants. When the watch ran on another zone's clock (a competition abroad), its SHOOTING
+    // workout and pulse sit whole hours away from them: read the pulse in the watch's frame, then move it back.
+    const shift = shots ? clockShift(shots, listed) : null;
+    const shiftMs = shift?.shiftMs ?? 0;
+    const move = (s: Span): Span => ({ fromMs: s.fromMs - shiftMs, toMs: s.toMs - shiftMs });
+    const win = shift && shots
+      ? chooseWindows({ shots: { fromMs: shots.fromMs + shiftMs, toMs: shots.toMs + shiftMs }, workouts: [shift.workout], training: null, isCoach })
+      : chooseWindows({ shots, workouts, training, isCoach });
     if (!win.ok) return fail(422, 'no_window');
-    const samples = await deps.google.heartRate(access, win.fetch);
-    if (samples.length === 0) return fail(404, 'no_data');
+    const watchSamples = await deps.google.heartRate(access, win.fetch);
+    if (watchSamples.length === 0) return fail(404, 'no_data');
+    const samples = shiftMs ? watchSamples.map((x) => ({ ...x, tMs: x.tMs - shiftMs })) : watchSamples;
+    const workout = win.workout ? { ...win.workout, startMs: win.workout.startMs - shiftMs, endMs: win.workout.endMs - shiftMs } : null;
     const tcx = buildTcx(samples);
     await deps.touch(shooterId);
     const received = { fromMs: samples[0].tMs, toMs: samples[samples.length - 1].tMs, count: samples.length };
-    return { status: 200, tcx, fileName: tcxFileName(samples[0].tMs, deps.tz), workout: win.workout, range: win.fetch, received, source: win.source };
+    return {
+      status: 200,
+      tcx,
+      fileName: tcxFileName(samples[0].tMs, deps.tz),
+      workout,
+      range: move(win.fetch),
+      received,
+      source: win.source,
+      clockShiftMs: shiftMs,
+    };
   } catch (e) {
     if (e instanceof GoogleHealthError) {
       // Revoked, expired, or a scope taken back: only a new connection helps.

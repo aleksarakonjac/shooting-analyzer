@@ -673,6 +673,8 @@ export const sr = {
       busy: 'Povlačim puls…',
       done: (from: string, to: string) => `Puls povučen sa Google Health: ${from}–${to}`,
       workout: (from: string, to: string) => `Pronađena vežba Shooting ${from}–${to}`,
+      clockShift: (shift: string) =>
+        `Sat je merio po drugoj vremenskoj zoni (${shift} h u odnosu na vremena pogodaka). Puls je poravnat po vežbi Shooting.`,
       short: 'Puls se završava pre kraja treninga — sat možda još nije sinhronizovan. Sinhronizuj ga i povuci ponovo.',
       broken: 'Veza sa Google Health je istekla — strelac treba ponovo da je poveže.',
       brokenOwn: 'Veza sa Google Health je istekla. Poveži je ponovo na stranici',

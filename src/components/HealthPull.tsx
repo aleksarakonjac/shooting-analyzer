@@ -27,9 +27,17 @@ export interface PulledInfo {
   range: Span;
   received: Span;
   workout: Workout | null;
+  /** The watch ran this far off the shot times (another zone's clock); the pulse is already moved back. */
+  clockShiftMs: number;
 }
 
-type Ok = { status: 200; tcx: string; fileName: string; workout: Workout | null; range: Span; received?: Span };
+type Ok = { status: 200; tcx: string; fileName: string; workout: Workout | null; range: Span; received?: Span; clockShiftMs?: number };
+
+/** A clock shift as "+2:00" / "−0:45" (hours and minutes). */
+const shiftLabel = (ms: number) => {
+  const m = Math.round(Math.abs(ms) / 60_000);
+  return `${ms < 0 ? '−' : '+'}${Math.floor(m / 60)}:${String(m % 60).padStart(2, '0')}`;
+};
 
 /** Pulse that stops this long before the asked-for end most likely means the watch has not synced yet. */
 const SHORT_MS = 10 * 60_000;
@@ -81,7 +89,7 @@ export function HealthPull({
       const res = await fetch('/api/google-health/pulse', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(request) });
       const data = (await res.json().catch(() => null)) as (Ok | { error?: PullError }) | null;
       if (res.ok && data && 'tcx' in data) {
-        const info = { range: data.range, received: data.received ?? data.range, workout: data.workout };
+        const info = { range: data.range, received: data.received ?? data.range, workout: data.workout, clockShiftMs: data.clockShiftMs ?? 0 };
         onPulled(new File([data.tcx], data.fileName, { type: 'application/xml' }), info);
         setDone({ ...info, fileName: data.fileName });
       } else {
@@ -109,6 +117,7 @@ export function HealthPull({
           <p role="status">{t.pull.done(hm(current.received.fromMs), hm(current.received.toMs))}</p>
           {current.received.toMs < current.range.toMs - SHORT_MS && <p>{t.pull.short}</p>}
           {current.workout && <p>{t.pull.workout(hm(current.workout.startMs), hm(current.workout.endMs))}</p>}
+          {current.clockShiftMs !== 0 && <p role="status">{t.pull.clockShift(shiftLabel(current.clockShiftMs))}</p>}
         </>
       )}
     </div>

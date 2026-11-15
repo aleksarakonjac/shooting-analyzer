@@ -278,6 +278,7 @@ function CompetitionPicker({ shooterId, onApply }: { shooterId: string; onApply:
     place: [s.comp.city, s.comp.country].filter(Boolean).join(', '),
     date: partLocalDate(s.part.startDate, s.comp.timeZone),
     stage: stageFromPartName(s.part.name),
+    ...(s.comp.timeZone ? { tz: s.comp.timeZone } : {}),
   });
   const rowLine = (r: RankingRow) => `${r.rank ? `${r.rank}. ` : ''}${r.displayName} (${r.nation}) ${r.total}`;
 

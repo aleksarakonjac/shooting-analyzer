@@ -54,3 +54,13 @@ export function zoneNames(fallback: string): string[] {
     return [fallback];
   }
 }
+
+/** True for a time zone name this runtime knows (IANA, e.g. "Asia/Qatar"). */
+export function isValidZone(tz: string): boolean {
+  try {
+    new Intl.DateTimeFormat('en', { timeZone: tz });
+    return true;
+  } catch {
+    return false;
+  }
+}

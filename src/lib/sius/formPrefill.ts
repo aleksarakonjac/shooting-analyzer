@@ -10,6 +10,8 @@ export interface CloudSession {
   place: string;
   date: string;
   stage: SessionStage | null;
+  /** The competition's own time zone (IANA), so times read as on the range. */
+  tz?: string;
 }
 
 /**
@@ -19,13 +21,14 @@ export interface CloudSession {
 export function prefillSession(
   cur: { name: string; eventName: string; place: string; dateTouched: boolean },
   s: CloudSession,
-): Partial<{ name: string; eventName: string; place: string; trainedOn: string; stage: SessionStage }> {
+): Partial<{ name: string; eventName: string; place: string; trainedOn: string; stage: SessionStage; tz: string }> {
   return {
     ...(!cur.name.trim() && s.name ? { name: s.name } : {}),
     ...(!cur.eventName.trim() && s.eventName ? { eventName: s.eventName } : {}),
     ...(!cur.place.trim() && s.place ? { place: s.place } : {}),
     ...(!cur.dateTouched && s.date ? { trainedOn: s.date } : {}),
     ...(s.stage ? { stage: s.stage } : {}),
+    ...(s.tz ? { tz: s.tz } : {}),
   };
 }
 

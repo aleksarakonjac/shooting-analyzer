@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { chooseWindows, MAX_FETCH_MS, type Span, type Workout } from '../../src/lib/googleHealth/window';
+import { chooseWindows, clockShift, MAX_FETCH_MS, type Span, type Workout } from '../../src/lib/googleHealth/window';
 
 const at = (h: number, m = 0) => Date.UTC(2026, 10, 13, h, m);
 const span = (a: number, b: number): Span => ({ fromMs: a, toMs: b });
@@ -47,3 +47,35 @@ describe('chooseWindows', () => {
     expect((r.fetch.fromMs + r.fetch.toMs) / 2).toBe(at(12, 5));
   });
 });
+
+describe('clockShift', () => {
+  const H = 3_600_000;
+  // SIUS shots (true time) 06:16–07:30 UTC; the watch's SHOOTING workout logged 2 h later (its clock on another zone).
+  const shots = { fromMs: Date.parse('2026-11-03T06:16:00Z'), toMs: Date.parse('2026-11-03T07:30:00Z') };
+  const late = { id: 'w', startMs: Date.parse('2026-11-03T08:05:00Z'), endMs: Date.parse('2026-11-03T09:45:00Z') };
+
+  it('no shift when the shots already fall in a workout', () => {
+    expect(clockShift(shots, [{ id: 'w', startMs: shots.fromMs - 10 * 60_000, endMs: shots.toMs + 5 * 60_000 }])).toEqual({ shiftMs: 0, workout: expect.objectContaining({ id: 'w' }) });
+  });
+
+  it('finds the whole-hour shift that puts the shots inside the workout', () => {
+    expect(clockShift(shots, [late])).toEqual({ shiftMs: 2 * H, workout: late });
+  });
+
+  it('prefers the smallest shift and allows quarter hours (e.g. a +5:45 zone)', () => {
+    const q = { id: 'q', startMs: shots.fromMs + 0.75 * H - 60_000, endMs: shots.toMs + 0.75 * H + 60_000 };
+    expect(clockShift(shots, [late, q])?.shiftMs).toBe(0.75 * H);
+  });
+
+  it('null when no workout can hold the shots', () => {
+    const short = { id: 's', startMs: 0, endMs: 10 * 60_000 };
+    expect(clockShift(shots, [short])).toBeNull();
+    expect(clockShift(shots, [])).toBeNull();
+  });
+
+  it('a long workout that already holds the shots means no shift, even off-centre', () => {
+    const long = { id: 'l', startMs: Date.parse('2026-11-03T06:00:00Z'), endMs: Date.parse('2026-11-03T10:00:00Z') };
+    expect(clockShift(shots, [long])?.shiftMs).toBe(0);
+  });
+});
+

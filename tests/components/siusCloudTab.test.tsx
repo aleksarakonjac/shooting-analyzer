@@ -152,7 +152,7 @@ describe('SiusCloudTab: Takmičenje', () => {
     expect(await screen.findByText(/RAKONJAC Aleksa/)).toBeTruthy();
     fireEvent.click(screen.getByRole('button', { name: 'Uvezi' }));
     expect(onApply.mock.calls[0][0].session).toEqual({
-      name: 'ISSF World Championship Vazdušna puška Kvalifikacije', eventName: 'ISSF World Championship', place: 'Doha, Qatar', date: '2026-11-03', stage: 'kvalifikacije',
+      name: 'ISSF World Championship Vazdušna puška Kvalifikacije', eventName: 'ISSF World Championship', place: 'Doha, Qatar', date: '2026-11-03', stage: 'kvalifikacije', tz: 'Asia/Qatar',
     });
   });
 

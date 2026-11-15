@@ -18,6 +18,9 @@ describe('prefillSession', () => {
       name: 'ISSF WCh Doha Vazdušna puška Kvalifikacije', stage: 'kvalifikacije',
     });
   });
+  it('the competition’s zone always comes along', () => {
+    expect(prefillSession({ name: 'x', eventName: 'y', place: 'z', dateTouched: true }, { ...session, stage: null, tz: 'Asia/Qatar' })).toEqual({ tz: 'Asia/Qatar' });
+  });
   it('a part without a known stage leaves the stage alone', () => {
     expect(prefillSession({ name: 'x', eventName: 'y', place: 'z', dateTouched: true }, { ...session, stage: null })).toEqual({});
   });

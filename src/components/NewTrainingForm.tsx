@@ -19,6 +19,7 @@ import { parseTcx, reinterpretAsZone, type HrSample } from '@/lib/parsers/tcx';
 import { HealthPull, pullBody, type PulledInfo } from './HealthPull';
 import { hrCoverage } from '@/lib/report/derive';
 import { isRepeatedHour, toInstantRange, type Fold } from '@/lib/import/times';
+import { isValidZone } from '@/lib/time/zone';
 import { isFinalDiscipline } from '@/lib/finals/format';
 import { createClient } from '@/lib/supabase/client';
 import type { EventOption } from '@/lib/eventTypes';
@@ -131,7 +132,8 @@ export function NewTrainingForm({
   const [stage, setStage] = useState<SessionStage>(init?.stage ?? 'slobodno');
   const [eventName, setEventName] = useState(init?.eventName ?? '');
   // No zone input: a session is entered where it happened, so the device clock and the venue clock agree.
-  const venueTz = init?.tz ?? tz;
+  // A competition picked from SIUS moves it to the competition's zone (times then read as on that range).
+  const [venueTz, setVenueTz] = useState(init?.tz ?? tz);
   const [foldFrom, setFoldFrom] = useState<Fold>('earlier');
   const [foldTo, setFoldTo] = useState<Fold>('earlier');
   const [finalDraft, setFinalDraft] = useState<FinalDraft | null>(null);
@@ -227,6 +229,7 @@ export function NewTrainingForm({
       if (ch.place !== undefined) setPlace(ch.place);
       if (ch.trainedOn !== undefined) setTrainedOn(ch.trainedOn);
       if (ch.stage !== undefined) setStage(ch.stage);
+      if (ch.tz !== undefined && isValidZone(ch.tz)) setVenueTz(ch.tz);
     } else if (target === 'final') {
       setStage('finale');
     }
