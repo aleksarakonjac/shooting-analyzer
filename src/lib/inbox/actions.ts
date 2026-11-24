@@ -1,8 +1,13 @@
 'use server';
 import { revalidatePath } from 'next/cache';
 import { requireUuid } from '@/lib/actionGuard';
+import { linkedShooters } from '@/lib/auth/linkedShooters';
+import { getSessionProfile } from '@/lib/auth/session';
+import { createAdminClient } from '@/lib/supabase/admin';
 import { createClient } from '@/lib/supabase/server';
+import { confirmUpload, startUpload, type ConfirmResult, type StartResult } from './directUpload';
 import { hashInboxToken, newInboxToken } from './token';
+import { uploadDeps } from './uploadDeps';
 
 export type TokenState = { token?: string; error?: boolean } | undefined;
 
@@ -43,4 +48,27 @@ export async function discardInboxFiles(ids: string[]): Promise<void> {
 /** Form version of discardInboxFiles, for the phone inbox page. */
 export async function discardInboxFileForm(form: FormData): Promise<void> {
   await discardInboxFiles([requireUuid(form.get('id'))]);
+}
+
+/** A signed-in shooter for themselves, a coach for the shooters linked to them. */
+async function ownDeps() {
+  const profile = await getSessionProfile();
+  const admin = createAdminClient();
+  if (!admin || !profile || profile.status !== 'active') return null;
+  const ids = profile.role === 'shooter' ? [profile.id] : profile.role === 'coach' ? (await linkedShooters()).map((s) => s.id) : [];
+  return uploadDeps(admin, { started_by: profile.id }, async (id) => ids.includes(id));
+}
+
+export async function startOwnUpload(req: { shooterId: string; fileName: string; bytes: number; meta: unknown }): Promise<StartResult> {
+  const deps = await ownDeps();
+  if (!deps) return { status: 403, error: 'not allowed' };
+  return startUpload({ shooterId: String(req.shooterId), fileName: String(req.fileName), bytes: req.bytes, meta: req.meta }, deps);
+}
+
+export async function confirmOwnUpload(uploadId: string): Promise<ConfirmResult> {
+  const deps = await ownDeps();
+  if (!deps) return { status: 403, error: 'not allowed' };
+  const result = await confirmUpload(requireUuid(uploadId), deps);
+  if (result.status === 201) revalidatePath('/', 'layout');
+  return result;
 }
