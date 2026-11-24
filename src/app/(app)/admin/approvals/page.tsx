@@ -1,4 +1,5 @@
 import { Suspense } from 'react';
+import { ClubManage } from '@/components/ClubManage';
 import { Workspace } from '@/components/Workspace';
 import { sr } from '@/lib/i18n/sr';
 import { createClient } from '@/lib/supabase/server';
@@ -19,6 +20,23 @@ async function PendingList() {
     .select('id, display_name, created_at, requested_role')
     .eq('status', 'pending')
     .order('created_at');
+  const { data: clubRows } = await supabase.rpc('admin_clubs');
+  const clubs = (clubRows ?? []) as { id: string; name: string; members: number }[];
+  const clubsBody = !clubs.length ? (
+    <p className="panel__empty dash__empty">{sr.club.adminEmpty}</p>
+  ) : (
+    <ul className="rows">
+      {clubs.map((c) => (
+        <li key={c.id} className="rows__item">
+          <div className="rows__main">
+            <strong>{c.name}</strong>
+            <div className="rows__muted num">{sr.club.members(c.members)}</div>
+          </div>
+          <ClubManage key={c.name} id={c.id} name={c.name} />
+        </li>
+      ))}
+    </ul>
+  );
   const body = !pending?.length ? (
     <p className="panel__empty dash__empty">{sr.admin.empty}</p>
   ) : (
@@ -41,9 +59,12 @@ async function PendingList() {
   return (
     <Workspace
       label={sr.admin.approvalsTitle}
-      rows={1}
+      rows={2}
       strip={<div className="ws__head"><h1 className="ws__title">{sr.admin.approvalsTitle}</h1></div>}
-      panels={[{ id: 'pending', title: sr.admin.pendingTitle, range: pending?.length ? String(pending.length) : undefined, col: '1 / 13', row: '1 / 2', flush: true, children: body }]}
+      panels={[
+        { id: 'pending', title: sr.admin.pendingTitle, range: pending?.length ? String(pending.length) : undefined, col: '1 / 13', row: '1 / 2', flush: true, children: body },
+        { id: 'clubs', title: sr.club.adminTitle, range: clubs.length ? String(clubs.length) : undefined, col: '1 / 13', row: '2 / 3', flush: true, children: clubsBody },
+      ]}
     />
   );
 }
