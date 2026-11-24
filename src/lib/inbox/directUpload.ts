@@ -19,7 +19,7 @@ export interface UploadDeps {
   reserve(u: StartedUpload): Promise<boolean>;
   /** Only an upload started by whoever is asking. */
   findUpload(id: string): Promise<StartedUpload | null>;
-  /** Takes the upload over: true for exactly one caller, after which it no longer exists. */
+  /** Takes the upload over: true for exactly one caller, after which it is no longer found. */
   claimUpload(id: string): Promise<boolean>;
   /** A token with which exactly this path can be written once. */
   signUpload(path: string): Promise<string>;

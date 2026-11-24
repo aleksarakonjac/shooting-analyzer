@@ -175,6 +175,8 @@ create table inbox_uploads (
   file_name text not null check (char_length(file_name) between 1 and 200),
   meta jsonb,
   created_at timestamptz not null default now(),
+  -- Confirmed or refused; the row stays until the daily job so that it counts towards the day's limit.
+  claimed_at timestamptz,
   check ((club_id is null) <> (started_by is null))
 );
 create index inbox_uploads_user on inbox_uploads (user_id);
@@ -196,7 +198,14 @@ begin
   perform lock_inbox(p_user);
   if (select count(*) from inbox_files where user_id = p_user)
      + (select count(*) from inbox_uploads where user_id = p_user and created_at > now() - interval '2 hours'
-          and club_id is not distinct from p_club and started_by is not distinct from p_by) >= 50 then
+          and claimed_at is null and club_id is not distinct from p_club and started_by is not distinct from p_by) >= 50 then
+    return false;
+  end if;
+  -- What one link or person may start in a day, whoever it is for: every start is a token that can write one file.
+  perform pg_advisory_xact_lock(hashtextextended('uploader:' || coalesce(p_club, p_by)::text, 0));
+  if (select count(*) from inbox_uploads u where u.club_id is not distinct from p_club and u.started_by is not distinct from p_by
+        and u.created_at > greatest(now() - interval '24 hours',
+          coalesce((select l.created_at from club_links l where l.club_id = p_club), '-infinity'))) >= 300 then
     return false;
   end if;
   insert into inbox_uploads (id, user_id, club_id, started_by, storage_path, file_name, meta)
@@ -261,4 +270,4 @@ grant execute on function choose_club(text), my_club(), club_mates(), rename_clu
 grant execute on function club_shooters(text), purge_clubs(), reserve_inbox_upload(uuid, uuid, uuid, uuid, text, jsonb),
   accept_inbox_file(uuid, uuid, text, text, text, int, text, jsonb) to service_role;
 -- This project does not grant service_role table privileges by default (see 0026).
-grant select, delete on inbox_uploads to service_role;
+grant select, update (claimed_at), delete on inbox_uploads to service_role;

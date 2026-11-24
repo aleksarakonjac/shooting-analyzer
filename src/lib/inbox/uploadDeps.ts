@@ -29,12 +29,12 @@ export function uploadDeps(admin: Admin, who: Uploader, allowed: UploadDeps['all
       return data === true;
     },
     async findUpload(id) {
-      const { data, error } = await admin.from('inbox_uploads').select('id, user_id, storage_path, file_name, meta').eq('id', id).eq(column, value).maybeSingle();
+      const { data, error } = await admin.from('inbox_uploads').select('id, user_id, storage_path, file_name, meta').eq('id', id).eq(column, value).is('claimed_at', null).maybeSingle();
       fail(error);
       return data as StartedUpload | null;
     },
     async claimUpload(id) {
-      const { data, error } = await admin.from('inbox_uploads').delete().eq('id', id).eq(column, value).select('id');
+      const { data, error } = await admin.from('inbox_uploads').update({ claimed_at: new Date().toISOString() }).eq('id', id).eq(column, value).is('claimed_at', null).select('id');
       fail(error);
       return (data ?? []).length === 1;
     },
