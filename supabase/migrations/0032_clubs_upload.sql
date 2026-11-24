@@ -201,8 +201,10 @@ begin
           and claimed_at is null and club_id is not distinct from p_club and started_by is not distinct from p_by) >= 50 then
     return false;
   end if;
-  -- For one shooter from everyone together: more than one link may start, so a link alone cannot block the shooter.
-  if (select count(*) from inbox_uploads where user_id = p_user and created_at > now() - interval '24 hours') >= 600 then
+  -- For one shooter from all links together, which replacing a link does not reset. Signed-in uploads have their own
+  -- limit below, so links cannot use those up.
+  if p_club is not null and (select count(*) from inbox_uploads
+        where user_id = p_user and club_id is not null and created_at > now() - interval '24 hours') >= 600 then
     return false;
   end if;
   -- What one link or person may start in a day, whoever it is for: every start is a token that can write one file.
