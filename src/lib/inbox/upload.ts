@@ -1,3 +1,4 @@
+import type { InboxKind } from './types';
 import { MAX_UPLOAD_BYTES } from '@/lib/import/uploadSource';
 
 /** Every SCATT Expert export is an SQLite database. */
@@ -23,17 +24,21 @@ export function isPdfBytes(bytes: Uint8Array): boolean {
   return head.includes(magic);
 }
 
-export type InboxKind = 'scatt' | 'tcx' | 'sius_pdf';
+export type { InboxKind };
+
+/** A gzip stream, which is how a SIUS .prnx starts. The parser checks the rest when it is read. */
+export const isGzipBytes = (bytes: Uint8Array): boolean => bytes[0] === 0x1f && bytes[1] === 0x8b && bytes[2] === 8;
 
 /** What an uploaded file is, from its content (never from its name). */
 export function inboxKindOf(bytes: Uint8Array): InboxKind | null {
   if (isScattBytes(bytes)) return 'scatt';
   if (isTcxBytes(bytes)) return 'tcx';
   if (isPdfBytes(bytes)) return 'sius_pdf';
+  if (isGzipBytes(bytes)) return 'sius_prnx';
   return null;
 }
 
-const EXT: Record<InboxKind, string> = { scatt: 'scatt-expert', tcx: 'tcx', sius_pdf: 'pdf' };
+const EXT: Record<InboxKind, string> = { scatt: 'scatt-expert', tcx: 'tcx', sius_pdf: 'pdf', sius_prnx: 'prnx' };
 
 /** A display name safe to keep: no path, no control characters, at most 200 characters, never empty. */
 export function cleanFileName(raw: string | null | undefined, kind: InboxKind = 'scatt'): string {
@@ -70,7 +75,7 @@ export type InboxResult =
 export type ReadOutcome = { name: string | null; bytes: Uint8Array } | null | 'too large';
 
 /**
- * Accepts one uploaded SCATT, TCX or PDF file for the token's owner and parks it in their inbox. The body is read only
+ * Accepts one uploaded SCATT, TCX, PDF or PRNX file for the token's owner and parks it in their inbox. The body is read only
  * after the token is known to belong to an active shooter and the declared size fits, so a made-up token
  * never makes the server buffer anything.
  */
@@ -94,7 +99,7 @@ export async function acceptInboxFile(
   if (!file || file.bytes.length === 0) return { status: 400, error: 'no file' };
   if (file.bytes.length > MAX_UPLOAD_BYTES) return { status: 413, error: 'file too large' };
   const kind = inboxKindOf(file.bytes);
-  if (!kind) return { status: 415, error: 'not a SCATT, TCX or PDF file' };
+  if (!kind) return { status: 415, error: 'not a SCATT, TCX, PDF or PRNX file' };
   if ((await deps.waiting(owner.userId)) >= MAX_WAITING) return { status: 429, error: 'inbox full' };
 
   const id = deps.newId();

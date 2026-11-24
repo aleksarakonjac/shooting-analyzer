@@ -48,6 +48,8 @@ describe('file checks', () => {
     expect(inboxKindOf(sqlite())).toBe('scatt');
     expect(inboxKindOf(new Uint8Array(readFileSync('samples/50m Rifle 3x20.pdf')))).toBe('sius_pdf');
     expect(inboxKindOf(new TextEncoder().encode('<html><body>TrainingCenterDatabase</body></html>'))).toBeNull();
+    expect(inboxKindOf(new Uint8Array(readFileSync('tests/fixtures/2026-11-11T195109.prnx')))).toBe('sius_prnx');
+    expect(inboxKindOf(new Uint8Array(readFileSync('tests/fixtures/2026-11-22T173807.html')))).toBeNull();
   });
   it('stores a TCX file with its own extension and kind', async () => {
     const d = deps();

@@ -18,7 +18,7 @@ const RECENT = 8;
 
 /** A SIUS report fills a session's result: one that has series already has it. */
 const hasResult = (s: TrainingSummary) => s.matches.some((m) => m.series.length > 0);
-const HAS = { scatt: hasScatt, tcx: hasPulse, sius_pdf: hasResult } as const;
+const HAS = { scatt: hasScatt, tcx: hasPulse, sius_pdf: hasResult, sius_prnx: hasResult } as const;
 
 type Search = { f?: string };
 
