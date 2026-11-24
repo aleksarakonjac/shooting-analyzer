@@ -40,6 +40,7 @@ describe('sha256Hex', () => {
 describe('storagePath', () => {
   it('is keyed by training and content, with an extension chosen by kind', () => {
     expect(storagePath('t1', 'abc', 'sius_csv')).toBe('t1/abc.csv');
+    expect(storagePath('t1', 'abc', 'sius_html')).toBe('t1/abc.html');
     expect(storagePath('t1', 'abc', 'scatt')).toBe('t1/abc.scatt-expert');
     expect(storagePath('t1', 'abc', 'tcx')).toBe('t1/abc.tcx');
     expect(storagePath('t1', 'abc', 'sius_pdf')).toBe('t1/abc.pdf');

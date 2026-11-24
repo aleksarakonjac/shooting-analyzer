@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { gzipSync } from 'node:zlib';
+import { gunzipSync, gzipSync } from 'node:zlib';
+import { siusHitPoint } from '@/lib/report/hit';
+import { scattTargetFor } from '@/lib/scatt/targets';
 import { NotSiusPrnxError, looksLikePrnx, parsePrnxXml, parseSiusPrnx } from '@/lib/parsers/siusPrnx';
 
 const bytes = new Uint8Array(readFileSync(join(__dirname, '../fixtures/2026-11-11T195109.prnx')));
@@ -27,6 +29,28 @@ describe('parseSiusPrnx', () => {
     // 11/11/2026 19:51:09 Europe/Belgrade (CET, UTC+1)
     expect(r.reportTime?.toISOString()).toBe('2026-11-11T18:51:09.000Z');
     expect(r.reportTimeAmbiguous).toBe(false);
+  });
+
+  it('reads the measured direction of every shot; the two dead-centre 10.9 have a blank arrow', async () => {
+    const shots = (await parseSiusPrnx(bytes)).series.flatMap((s) => s.shots);
+    expect(shots.filter((s) => /^[→↗↑↖←↙↓↘]\d{1,3}$/.test(s.direction ?? ''))).toHaveLength(58);
+    expect(shots.filter((s) => s.direction === '•').map((s) => s.value)).toEqual([10.9, 10.9]);
+  });
+
+  it('the arrows put each series where the report says its MPI is', async () => {
+    const tg = scattTargetFor('air_rifle');
+    for (const s of (await parseSiusPrnx(bytes)).series) {
+      const pts = s.shots.map((x) => siusHitPoint({ value: x.value, x: null, y: null, direction: x.direction ?? null }, true, tg)!);
+      expect(Math.abs(pts.reduce((a, p) => a + p.x, 0) / 10 - s.mpi!.x)).toBeLessThan(0.1);
+      expect(Math.abs(pts.reduce((a, p) => a + p.y, 0) / 10 - s.mpi!.y)).toBeLessThan(0.1);
+    }
+  });
+
+  it('a broken arrow picture leaves the shot without a direction', async () => {
+    const xml = new TextDecoder().decode(gunzipSync(bytes)).replace(/ImageSource="img,iVBOR[^"]{300,700}"/, 'ImageSource="img,iVBORw0KGgoAAAA"');
+    const r = await parseSiusPrnx(new Uint8Array(gzipSync(xml)));
+    expect(r.total).toBe(628.8);
+    expect(r.series.flatMap((s) => s.shots).filter((s) => !s.direction)).toHaveLength(1);
   });
 
   it('does not touch the bytes it is given', async () => {

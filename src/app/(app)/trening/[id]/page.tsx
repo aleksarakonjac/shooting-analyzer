@@ -50,7 +50,7 @@ export default function ReportPage({
   );
 }
 
-const SOURCE_LABEL: Record<string, string> = { sius_csv: 'SIUS CSV', sius_pdf: 'SIUS PDF', sius_prnx: 'SIUS PRNX', sius_cloud: 'SIUS Cloud', scatt: 'SCATT', tcx: 'Puls (TCX)' };
+const SOURCE_LABEL: Record<string, string> = { sius_csv: 'SIUS CSV', sius_pdf: 'SIUS PDF', sius_prnx: 'SIUS PRNX', sius_html: 'SIUS HTML', sius_cloud: 'SIUS Cloud', scatt: 'SCATT', tcx: 'Puls (TCX)' };
 
 async function Body({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ izmena?: string; greska?: string }> }) {
   const [{ id }, { izmena, greska }] = await Promise.all([params, searchParams]);

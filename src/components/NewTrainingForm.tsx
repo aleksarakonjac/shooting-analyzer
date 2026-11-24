@@ -13,6 +13,7 @@ import { MAX_UPLOAD_BYTES, sha256Hex, uploadSource, type SourceKind, type Source
 import { decodeText } from '@/lib/parsers/decode';
 import type { ScattData } from '@/lib/parsers/scatt';
 import { parseSiusCsv } from '@/lib/parsers/siusCsv';
+import { looksLikeSiusHtml, parseSiusHtml } from '@/lib/parsers/siusHtml';
 import { looksLikePrnx } from '@/lib/parsers/siusPrnx';
 import { mergeScattData } from '@/lib/scatt/merge';
 import { parseTcx, reinterpretAsZone, type HrSample } from '@/lib/parsers/tcx';
@@ -410,7 +411,7 @@ export function NewTrainingForm({
       const load = async (kind: SourceKind[]) => (await loadAll(kind))[0] ?? null;
       try {
         const [siusF, scattFs, hrF, cloudF] = await Promise.all([
-          load(['sius_csv', 'sius_pdf', 'sius_prnx']),
+          load(['sius_csv', 'sius_pdf', 'sius_prnx', 'sius_html']),
           loadAll(['scatt']),
           load(['tcx']),
           load(['sius_cloud']),
@@ -767,7 +768,7 @@ export function NewTrainingForm({
             label: t.tabFile,
             content: (
               <SourceCard title={t.siusTitle} error={errors.sius}>
-                <FileField label={t.siusFile} accept=".csv,.pdf,.prnx,text/csv,application/pdf" onChange={onSius} fileName={siusFile?.file.name} />
+                <FileField label={t.siusFile} accept=".csv,.pdf,.prnx,.html,.htm,text/csv,application/pdf,text/html" onChange={onSius} fileName={siusFile?.file.name} />
                 {inboxTray('sius_pdf')}
               </SourceCard>
             ),
@@ -960,7 +961,7 @@ export function NewTrainingForm({
 
 /** Which kind of SIUS report a file is, by its name or type (the stored copy is named after its hash, with the kind's extension). */
 const siusKind = (file: File): SourceKind =>
-  /\.prnx$/i.test(file.name) ? 'sius_prnx' : /pdf/i.test(file.type + file.name) ? 'sius_pdf' : 'sius_csv';
+  /\.prnx$/i.test(file.name) ? 'sius_prnx' : /\.html?$/i.test(file.name) ? 'sius_html' : /pdf/i.test(file.type + file.name) ? 'sius_pdf' : 'sius_csv';
 
 /** A stored SIUS Cloud JSON, read back for editing with the saved positions (see restoreCloudResult). */
 async function readCloudFile(file: File, edit: SessionEdit): Promise<{ parsed: ParsedSiusResult; sha: string; cloud: SourceMeta } | null> {
@@ -979,7 +980,7 @@ async function readCloudFile(file: File, edit: SessionEdit): Promise<{ parsed: P
   }
 }
 
-/** Reads a SIUS CSV, PDF or print-preview (.prnx) report. */
+/** Reads a SIUS CSV, PDF, HTML or print-preview (.prnx) report. */
 async function parseSiusFile(file: File, tz: string): Promise<{ parsed: ParsedSiusResult; sha: string }> {
   const bytes = new Uint8Array(await file.arrayBuffer());
   const sha = await sha256Hex(bytes);
@@ -990,8 +991,9 @@ async function parseSiusFile(file: File, tz: string): Promise<{ parsed: ParsedSi
   if (/\.pdf$/i.test(file.name) || String.fromCharCode(...bytes.slice(0, 4)) === '%PDF') {
     const [{ parseSiusPdf }, { configurePdfWorker }] = await Promise.all([import('@/lib/parsers/siusPdf'), import('@/lib/parsers/browser')]);
     configurePdfWorker();
-    return { parsed: await parseSiusPdf(bytes), sha };
+    return { parsed: await parseSiusPdf(bytes, { tz }), sha };
   }
+  if (looksLikeSiusHtml(bytes, file.name)) return { parsed: parseSiusHtml(decodeText(bytes), { tz }), sha };
   return { parsed: parseSiusCsv(decodeText(bytes), { tz }), sha };
 }
 

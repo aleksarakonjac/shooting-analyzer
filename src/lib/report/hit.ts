@@ -25,11 +25,25 @@ export function radiusBand(value: number, decimal: boolean, tg: ScattTarget): { 
 
 const ARROWS: Record<string, number> = { '→': 0, '↗': 45, '↑': 90, '↖': 135, '←': 180, '↙': 225, '↓': 270, '↘': 315 };
 
-/** The direction (degrees, 0 = right, counter-clockwise, y up) of a SIUS arrow, or null. SIUS prints it in 45° steps. */
+/** SIUS drew no arrow because the hit is dead in the centre (see readArrow in the parsers). */
+const CENTRE = '•';
+/** An arrow measured from its picture carries its angle: "→350". */
+const MEASURED = /^[→↗↑↖←↙↓↘](\d{1,3})$/;
+
+/**
+ * The direction (degrees, 0 = right, counter-clockwise, y up) of a SIUS arrow, or null. A bare arrow is a 45° step;
+ * one measured from the report's picture has its own angle.
+ */
 export function arrowAngle(direction: string | null | undefined): number | null {
-  const a = direction ? ARROWS[[...direction][0]] : undefined;
-  return a === undefined ? null : a;
+  if (!direction) return null;
+  const measured = MEASURED.exec(direction);
+  if (measured) return Number(measured[1]);
+  return ARROWS[[...direction][0]] ?? null;
 }
+
+const isMeasured = (direction: string | null | undefined) => Boolean(direction && MEASURED.test(direction));
+/** Only a ten can be in the centre: a blank arrow at any other score says nothing. */
+const isCentre = (value: number, direction: string | null | undefined) => direction === CENTRE && value >= 10;
 
 /** Half of the 45° step of the SIUS arrow: an angle inside it agrees with the arrow. */
 export const ARROW_HALF_STEP = 22.5;
@@ -37,9 +51,9 @@ export const ARROW_HALF_STEP = 22.5;
 /**
  * How sure the drawn position is. The distance always comes from the SIUS score (within one tenth, 0.25 mm on the air rifle);
  * what varies is the direction: confirmed by the SIUS arrow, only SCATT's (no arrow to check it), or the arrow's alone
- * because SCATT disagreed (good to about 22 degrees).
+ * because SCATT disagreed (good to about 22 degrees), or the angle measured from the SIUS arrow (good to about a degree).
  */
-export type HitConfidence = 'verified' | 'scatt-only' | 'arrow-only' | 'sius';
+export type HitConfidence = 'verified' | 'scatt-only' | 'arrow-only' | 'sius-angle' | 'sius';
 
 export interface CorrectedHit {
   confidence: HitConfidence;
@@ -56,7 +70,8 @@ const wrap = (deg: number) => ((((deg + 180) % 360) + 360) % 360) - 180;
 /**
  * SCATT's hit point set against what SIUS measured: the distance is forced into the band of the SIUS score,
  * and the direction is kept when it agrees with the SIUS arrow (SCATT's is finer) and replaced by the arrow
- * when it does not. Without an arrow the SCATT direction stays.
+ * when it does not. An arrow with a measured angle is finer than SCATT and always gives the direction.
+ * Without an arrow the SCATT direction stays.
  */
 export function correctHit(
   scatt: { x: number; y: number },
@@ -67,6 +82,7 @@ export function correctHit(
 ): CorrectedHit {
   const band = radiusBand(value, decimal, tg);
   const r = Math.hypot(scatt.x, scatt.y);
+  if (isCentre(value, direction)) return { x: 0, y: 0, movedMm: r, turned: false, confidence: 'sius-angle' };
   let angle = r > 1e-9 ? (Math.atan2(scatt.y, scatt.x) * 180) / Math.PI : null;
   const arrow = arrowAngle(direction);
   let turned = false;
@@ -74,17 +90,19 @@ export function correctHit(
     turned = angle !== null;
     angle = arrow;
   }
+  const measured = isMeasured(direction);
+  if (measured) angle = arrow;
   const radius = band ? Math.min(band.hi, Math.max(band.lo, r)) : r;
   if (angle === null) return { x: scatt.x, y: scatt.y, movedMm: 0, turned: false, confidence: 'scatt-only' };
   const x = radius * Math.cos((angle * Math.PI) / 180);
   const y = radius * Math.sin((angle * Math.PI) / 180);
-  const confidence: HitConfidence = turned ? 'arrow-only' : arrow !== null ? 'verified' : 'scatt-only';
+  const confidence: HitConfidence = measured ? 'sius-angle' : turned ? 'arrow-only' : arrow !== null ? 'verified' : 'scatt-only';
   return { x, y, movedMm: Math.hypot(x - scatt.x, y - scatt.y), turned, confidence };
 }
 
 /**
  * Where to draw a hit from SIUS alone (no SCATT trace): its coordinates when SIUS measured them (SIUS Cloud),
- * otherwise the middle of its score band in the direction of the SIUS arrow (PDF reports; about ±22°).
+ * otherwise the middle of its score band in the direction of the SIUS arrow (about ±1° when measured, else ±22°).
  * Null when there is neither, or for a miss.
  */
 export function siusHitPoint(
@@ -93,9 +111,10 @@ export function siusHitPoint(
   tg: ScattTarget,
 ): { x: number; y: number; confidence: HitConfidence } | null {
   if (shot.x !== null && shot.y !== null) return { x: shot.x, y: shot.y, confidence: 'sius' };
+  if (isCentre(shot.value, shot.direction)) return { x: 0, y: 0, confidence: 'sius-angle' };
   const angle = arrowAngle(shot.direction);
   const band = radiusBand(shot.value, decimal, tg);
   if (angle === null || !band) return null;
   const r = (band.lo + band.hi) / 2;
-  return { x: r * Math.cos((angle * Math.PI) / 180), y: r * Math.sin((angle * Math.PI) / 180), confidence: 'arrow-only' };
+  return { x: r * Math.cos((angle * Math.PI) / 180), y: r * Math.sin((angle * Math.PI) / 180), confidence: isMeasured(shot.direction) ? 'sius-angle' : 'arrow-only' };
 }

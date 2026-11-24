@@ -1,7 +1,9 @@
-import { getDocument } from 'pdfjs-dist/legacy/build/pdf.mjs';
+import { getDocument, ImageKind, OPS, type PDFPageProxy } from 'pdfjs-dist/legacy/build/pdf.mjs';
 import { disciplineFromSiusName } from '@/lib/domain/disciplines';
 import type { ParsedSeries, ParsedShot, ParsedSiusResult, Position } from '@/lib/domain/types';
 import { zonedWallTimeToUtcMs } from '@/lib/time/zone';
+import { readArrow } from './arrow';
+import { PAGE_STRIDE, parseReportLabels, UNITS_PER_POINT, type Arrow, type Label, type SiusReportOptions } from './siusReport';
 
 export class UnrecognisedLayoutError extends Error {
   constructor(message = 'SIUS PDF layout not recognised') {
@@ -15,22 +17,92 @@ const POSITIONS: Record<string, Position> = { Kneeling: 'kneeling', Prone: 'pron
 // value, optional inner-ten 'x', optional direction arrow (U+2190-21FF)
 const SHOT = /^(\d+(?:\.\d+)?)(x)?\s*([\u2190-\u21ff]+)?$/;
 
-async function extractTokens(data: Uint8Array): Promise<string[]> {
-  // pdfjs transfers the buffer; hand it a copy so the caller's bytes survive.
-  const task = getDocument({ data: data.slice(), useSystemFonts: true });
-  const doc = await task.promise;
-  const tokens: string[] = [];
-  for (let p = 1; p <= doc.numPages; p++) {
-    const content = await (await doc.getPage(p)).getTextContent();
-    for (const item of content.items) {
-      if ('str' in item) {
-        const t = item.str.trim();
-        if (t) tokens.push(t);
-      }
+/** The arrows of the summary report are 24 px pictures of about 7 pt; anything larger is a target or a logo. */
+const MAX_ARROW_PT = 16;
+const MAX_ARROW_PX = 128;
+
+type Matrix = [number, number, number, number, number, number];
+const times = (m: Matrix, n: Matrix): Matrix => [
+  m[0] * n[0] + m[2] * n[1],
+  m[1] * n[0] + m[3] * n[1],
+  m[0] * n[2] + m[2] * n[3],
+  m[1] * n[2] + m[3] * n[3],
+  m[0] * n[4] + m[2] * n[5] + m[4],
+  m[1] * n[4] + m[3] * n[5] + m[5],
+];
+
+interface PdfContent {
+  tokens: string[];
+  labels: Label[];
+  /** Read only on demand: it decodes the pictures of every page. */
+  arrows(): Promise<Arrow[]>;
+}
+
+/** The direction arrows drawn on a page, in report units. */
+async function pageArrows(page: PDFPageProxy, pageIndex: number): Promise<Arrow[]> {
+  const [, , , top] = page.view;
+  const { fnArray, argsArray } = await page.getOperatorList();
+  const arrows: Arrow[] = [];
+  let ctm: Matrix = [1, 0, 0, 1, 0, 0];
+  const stack: Matrix[] = [];
+  for (let i = 0; i < fnArray.length; i++) {
+    if (fnArray[i] === OPS.save) stack.push(ctm);
+    else if (fnArray[i] === OPS.restore) ctm = stack.pop() ?? ctm;
+    else if (fnArray[i] === OPS.transform) ctm = times(ctm, argsArray[i] as Matrix);
+    else if (fnArray[i] === OPS.paintImageXObject) {
+      if (Math.abs(ctm[0]) > MAX_ARROW_PT || Math.abs(ctm[3]) > MAX_ARROW_PT) continue;
+      const id = argsArray[i][0] as string;
+      const store = id.startsWith('g_') ? page.commonObjs : page.objs;
+      const img = await new Promise<PdfImage | null>((resolve) => store.get(id, resolve));
+      if (!img?.data || img.kind !== ImageKind.RGBA_32BPP || img.width > MAX_ARROW_PX || img.height > MAX_ARROW_PX) continue;
+      const direction = readArrow(img.data, img.width, img.height);
+      if (direction === null) continue;
+      // A picture fills the unit square of its matrix.
+      const x = ctm[4] + (ctm[0] + ctm[2]) / 2;
+      const y = ctm[5] + (ctm[1] + ctm[3]) / 2;
+      arrows.push({ x: x * UNITS_PER_POINT, y: pageIndex * PAGE_STRIDE + (top - y) * UNITS_PER_POINT, direction });
     }
   }
-  await task.destroy();
-  return tokens;
+  return arrows;
+}
+
+interface PdfImage {
+  width: number;
+  height: number;
+  kind: number;
+  data?: Uint8ClampedArray;
+}
+
+async function readPdf<T>(data: Uint8Array, read: (content: PdfContent) => Promise<T>): Promise<T> {
+  // pdfjs transfers the buffer; hand it a copy so the caller's bytes survive. Pictures as plain pixels, not bitmaps.
+  const task = getDocument({ data: data.slice(), useSystemFonts: true, isOffscreenCanvasSupported: false, isImageDecoderSupported: false });
+  try {
+    const pages: PDFPageProxy[] = [];
+    const tokens: string[] = [];
+    const labels: Label[] = [];
+    try {
+      const doc = await task.promise;
+      for (let p = 1; p <= doc.numPages; p++) {
+        const page = await doc.getPage(p);
+        pages.push(page);
+        const [, , , top] = page.view;
+        for (const item of (await page.getTextContent()).items) {
+          if (!('str' in item)) continue;
+          const text = item.str.trim();
+          if (!text) continue;
+          tokens.push(text);
+          const [x, y] = item.transform.slice(4) as [number, number];
+          labels.push({ text, x: x * UNITS_PER_POINT, y: (p - 1) * PAGE_STRIDE + (top - y) * UNITS_PER_POINT });
+        }
+      }
+    } catch (e) {
+      throw new UnrecognisedLayoutError(`Cannot read PDF: ${(e as Error).message}`);
+    }
+    const arrows = async () => (await Promise.all(pages.map(pageArrows))).flat();
+    return await read({ tokens, labels, arrows });
+  } finally {
+    await task.destroy();
+  }
 }
 
 function parseReportTime(tokens: string[]): Date | undefined {
@@ -44,14 +116,14 @@ function parseReportTime(tokens: string[]): Date | undefined {
   return undefined;
 }
 
-export async function parseSiusPdf(data: Uint8Array): Promise<ParsedSiusResult> {
-  let tokens: string[];
-  try {
-    tokens = await extractTokens(data);
-  } catch (e) {
-    throw new UnrecognisedLayoutError(`Cannot read PDF: ${(e as Error).message}`);
-  }
-  return parseSiusTokens(tokens);
+/** Reads either SIUS PDF: the match result list ("Series: 1", arrows as text) or the summary report ("Series 1:", arrows as pictures). */
+export async function parseSiusPdf(data: Uint8Array, opts: SiusReportOptions = {}): Promise<ParsedSiusResult> {
+  return readPdf(data, async ({ tokens, labels, arrows }) => {
+    if (!parseReportLabels(labels, opts)) return parseSiusTokens(tokens);
+    // Without its arrows a report is still a result.
+    const drawn = await arrows().catch(() => []);
+    return parseReportLabels(labels, opts, drawn)!;
+  });
 }
 
 /** Layout logic on the extracted text tokens (exported so edge cases can be tested without a PDF). */
