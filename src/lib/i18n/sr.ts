@@ -692,6 +692,9 @@ export const sr = {
     notConnected: 'Ovaj računar nije povezan',
     notConnectedHint: 'Otvorite link svog kluba. Nalazi se u aplikaciji: Nalog, Profil, Klub.',
     offline: 'Nema veze sa serverom.',
+    switchAsk: (now: string, next: string) => `Ovaj računar je povezan sa klubom ${now}. Prebaciti ga na ${next}?`,
+    switchYes: (name: string) => `Prebaci na ${name}`,
+    switchNo: (name: string) => `Ostavi ${name}`,
   },
   club: {
     title: 'Klub',

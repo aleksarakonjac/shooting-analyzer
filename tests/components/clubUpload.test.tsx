@@ -10,6 +10,7 @@ vi.mock('@/lib/import/readFiles', () => ({ describeFile: (...a: unknown[]) => de
 const { ClubUpload } = await import('../../src/components/inbox/ClubUpload');
 
 const TOKEN = `ub_${'a'.repeat(64)}`;
+const OTHER = `ub_${'c'.repeat(64)}`;
 const CLUB = { name: 'Čačak', shooters: [{ id: 's1', name: 'Ana' }, { id: 's2', name: 'Boris' }] };
 const SIUS = { kind: 'sius_prnx', meta: { sius: { discipline: 'Air Rifle 60', total: 628.8, shots: 60, atMs: Date.UTC(2026, 10, 11, 18, 51) } } };
 const SCATT = { kind: 'scatt', meta: { scatt: { shots: 75, startMs: 0, endMs: 1 } } };
@@ -33,6 +34,7 @@ beforeEach(() => {
     const body = init?.body ? JSON.parse(String(init.body)) : null;
     const auth = new Headers(init?.headers).get('authorization');
     calls.push({ token: auth, body });
+    if (auth === `Bearer ${OTHER}`) return reply({ name: 'Drugi klub', shooters: [] });
     if (auth !== `Bearer ${TOKEN}`) return reply({ error: 'unauthorized' }, 401);
     if (!body) return reply(CLUB);
     if (body.step === 'start') {
@@ -76,13 +78,49 @@ describe('pairing the computer', () => {
     expect(localStorage.getItem('club-link')).toBeNull();
   });
 
+  it('asks before a link of another club replaces a working one', async () => {
+    localStorage.setItem('club-link', TOKEN);
+    history.replaceState(null, '', `/ubaci#${OTHER}`);
+    render(<ClubUpload />);
+    await screen.findByText('Ovaj računar je povezan sa klubom Čačak. Prebaciti ga na Drugi klub?');
+    expect(location.hash).toBe('');
+    expect(localStorage.getItem('club-link')).toBe(TOKEN);
+    fireEvent.click(screen.getByRole('button', { name: 'Ostavi Čačak' }));
+    await screen.findByLabelText('Ana');
+    expect(localStorage.getItem('club-link')).toBe(TOKEN);
+    cleanup();
+    history.replaceState(null, '', `/ubaci#${OTHER}`);
+    render(<ClubUpload />);
+    fireEvent.click(await screen.findByRole('button', { name: 'Prebaci na Drugi klub' }));
+    await screen.findByText('U klubu još nema strelaca.');
+    expect(localStorage.getItem('club-link')).toBe(OTHER);
+  });
+
+  it('takes a new link without asking when the old one no longer works', async () => {
+    localStorage.setItem('club-link', `ub_${'b'.repeat(64)}`);
+    render(<ClubUpload />);
+    await screen.findByLabelText('Ana');
+    expect(localStorage.getItem('club-link')).toBe(TOKEN);
+  });
+
+  it('a wrong link does not break a working one', async () => {
+    localStorage.setItem('club-link', TOKEN);
+    history.replaceState(null, '', `/ubaci#ub_${'d'.repeat(64)}`);
+    render(<ClubUpload />);
+    await screen.findByLabelText('Ana');
+    expect(localStorage.getItem('club-link')).toBe(TOKEN);
+  });
+
   it('a lost connection is not a lost link', async () => {
+    localStorage.setItem('club-link', TOKEN);
+    history.replaceState(null, '', '/ubaci');
     vi.stubGlobal('fetch', async () => {
       throw new TypeError('offline');
     });
     render(<ClubUpload />);
     await screen.findByText('Nema veze sa serverom.');
     expect(localStorage.getItem('club-link')).toBe(TOKEN);
+    expect(calls).toHaveLength(0);
   });
 
   it('works until closed when the browser keeps nothing', async () => {
