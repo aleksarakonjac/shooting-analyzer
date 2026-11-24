@@ -1,7 +1,7 @@
 import { createHash } from 'node:crypto';
 import { MAX_UPLOAD_BYTES } from '@/lib/import/uploadSource';
 import type { InboxKind, InboxMeta } from './types';
-import { cleanFileName, inboxKindOf, MAX_WAITING } from './upload';
+import { cleanFileName, inboxKindOf } from './upload';
 
 /** An upload that was started: the browser sends the file to storage_path, then asks for it to be confirmed. */
 export interface StartedUpload {
@@ -15,22 +15,23 @@ export interface StartedUpload {
 export interface UploadDeps {
   /** May whoever is asking put a file into this shooter's inbox right now? */
   allowed(shooterId: string): Promise<boolean>;
-  /** Files waiting and uploads started for this shooter. */
-  waiting(shooterId: string): Promise<number>;
-  insertUpload(u: StartedUpload): Promise<void>;
+  /** Records a started upload, or false when the shooter's inbox has no room (counted and recorded in one step). */
+  reserve(u: StartedUpload): Promise<boolean>;
   /** Only an upload started by whoever is asking. */
   findUpload(id: string): Promise<StartedUpload | null>;
-  deleteUpload(id: string): Promise<void>;
+  /** Takes the upload over: true for exactly one caller, after which it no longer exists. */
+  claimUpload(id: string): Promise<boolean>;
   /** A token with which exactly this path can be written once. */
   signUpload(path: string): Promise<string>;
   readObject(path: string): Promise<Uint8Array | null>;
   removeObject(path: string): Promise<void>;
-  insertFile(f: StartedUpload & { kind: InboxKind; bytes: number; sha256: string }): Promise<'ok' | 'duplicate'>;
+  moveObject(from: string, to: string): Promise<void>;
+  acceptFile(f: StartedUpload & { kind: InboxKind; bytes: number; sha256: string }): Promise<'ok' | 'duplicate' | 'full'>;
   newId(): string;
 }
 
 export type StartResult = { status: 201; uploadId: string; path: string; token: string } | { status: 400 | 403 | 413 | 429; error: string };
-export type ConfirmResult = { status: 201; kind: InboxKind } | { status: 403 | 404 | 409 | 413 | 415; error: string };
+export type ConfirmResult = { status: 201; kind: InboxKind } | { status: 403 | 404 | 409 | 413 | 415 | 429; error: string };
 
 const num = (v: unknown): v is number => typeof v === 'number' && Number.isFinite(v);
 
@@ -60,38 +61,47 @@ export async function startUpload(req: { shooterId: string; fileName: string; by
   if (!Number.isInteger(req.bytes) || req.bytes <= 0) return { status: 400, error: 'bad size' };
   if (req.bytes > MAX_UPLOAD_BYTES) return { status: 413, error: 'file too large' };
   if (!(await deps.allowed(req.shooterId))) return { status: 403, error: 'not allowed' };
-  if ((await deps.waiting(req.shooterId)) >= MAX_WAITING) return { status: 429, error: 'inbox full' };
   const id = deps.newId();
-  const path = `${req.shooterId}/${id}`;
-  await deps.insertUpload({ id, user_id: req.shooterId, storage_path: path, file_name: cleanFileName(req.fileName), meta: cleanMeta(req.meta) });
+  const path = `incoming/${id}`;
+  const room = await deps.reserve({ id, user_id: req.shooterId, storage_path: path, file_name: cleanFileName(req.fileName), meta: cleanMeta(req.meta) });
+  if (!room) return { status: 429, error: 'inbox full' };
   return { status: 201, uploadId: id, path, token: await deps.signUpload(path) };
 }
 
-/** Second step: the stored bytes decide what the file is; anything refused is removed. */
+/**
+ * Second step: the stored bytes decide what the file is; anything refused is removed. Only the caller that claims the
+ * upload changes anything, so two confirmations at once cannot undo each other. An accepted file moves to a path of its
+ * own: the token the browser wrote with covers the incoming path only, and what it may write there later is swept daily.
+ */
 export async function confirmUpload(uploadId: string, deps: UploadDeps): Promise<ConfirmResult> {
+  const unknown = { status: 404, error: 'unknown upload' } as const;
   const up = await deps.findUpload(uploadId);
-  if (!up) return { status: 404, error: 'unknown upload' };
-  const drop = async () => {
+  if (!up) return unknown;
+  const refuse = async <T extends ConfirmResult>(result: T): Promise<T | typeof unknown> => {
+    if (!(await deps.claimUpload(up.id))) return unknown;
     await deps.removeObject(up.storage_path);
-    await deps.deleteUpload(up.id);
+    return result;
   };
-  if (!(await deps.allowed(up.user_id))) {
-    await drop();
-    return { status: 403, error: 'not allowed' };
-  }
+  if (!(await deps.allowed(up.user_id))) return refuse({ status: 403, error: 'not allowed' });
   const bytes = await deps.readObject(up.storage_path);
   // Not there (yet): the upload stays open, the daily job removes it if nothing comes.
   if (!bytes) return { status: 404, error: 'no file' };
   const kind = inboxKindOf(bytes);
-  if (!kind || bytes.length > MAX_UPLOAD_BYTES) {
-    await drop();
-    return kind ? { status: 413, error: 'file too large' } : { status: 415, error: 'not a SCATT, TCX, PDF or PRNX file' };
-  }
+  if (!kind) return refuse({ status: 415, error: 'not a SCATT, TCX, PDF or PRNX file' });
+  if (bytes.length > MAX_UPLOAD_BYTES) return refuse({ status: 413, error: 'file too large' });
+
+  if (!(await deps.claimUpload(up.id))) return unknown;
+  const path = `${up.user_id}/${deps.newId()}`;
+  await deps.moveObject(up.storage_path, path);
   const sha256 = createHash('sha256').update(bytes).digest('hex');
-  if ((await deps.insertFile({ ...up, kind, bytes: bytes.length, sha256 })) === 'duplicate') {
-    await drop();
-    return { status: 409, error: 'already sent' };
+  let accepted: 'ok' | 'duplicate' | 'full';
+  try {
+    accepted = await deps.acceptFile({ ...up, storage_path: path, kind, bytes: bytes.length, sha256 });
+  } catch (e) {
+    await deps.removeObject(path).catch(() => {});
+    throw e;
   }
-  await deps.deleteUpload(up.id);
-  return { status: 201, kind };
+  if (accepted === 'ok') return { status: 201, kind };
+  await deps.removeObject(path);
+  return accepted === 'full' ? { status: 429, error: 'inbox full' } : { status: 409, error: 'already sent' };
 }

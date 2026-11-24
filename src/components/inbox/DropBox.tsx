@@ -90,7 +90,7 @@ export function DropBox({ shooters, sender, tz, fixed = false, onSent }: {
       const c = await sender.confirm(s.uploadId);
       if (c.status === 201) return { state: 'sent' };
       if (c.status === 409) return { state: 'duplicate' };
-      return { state: 'failed', problem: c.status === 403 ? t.notListed : c.status === 415 ? t.unknown : t.failed };
+      return { state: 'failed', problem: c.status === 403 ? t.notListed : c.status === 429 ? t.full : c.status === 415 ? t.unknown : t.failed };
     } catch {
       return { state: 'failed', problem: t.failed };
     }

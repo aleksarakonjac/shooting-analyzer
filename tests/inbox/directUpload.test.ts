@@ -3,7 +3,6 @@ import { readFileSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 import { cleanMeta, clubToken, confirmUpload, startUpload, type StartedUpload, type UploadDeps } from '@/lib/inbox/directUpload';
 import { MAX_UPLOAD_BYTES } from '@/lib/import/uploadSource';
-import { MAX_WAITING } from '@/lib/inbox/upload';
 
 const PRNX = new Uint8Array(readFileSync('tests/fixtures/2026-11-11T195109.prnx'));
 const SIUS = { sius: { discipline: 'Air Rifle 60', total: 628.8, shots: 60, atMs: 1 } };
@@ -15,14 +14,22 @@ function setup(over: Partial<UploadDeps> = {}) {
   let n = 0;
   const deps: UploadDeps = {
     allowed: async (id) => id === 's1',
-    waiting: async () => 0,
-    insertUpload: async (u) => void uploads.set(u.id, u),
+    reserve: async (u) => {
+      uploads.set(u.id, u);
+      return true;
+    },
     findUpload: async (id) => uploads.get(id) ?? null,
-    deleteUpload: async (id) => void uploads.delete(id),
+    claimUpload: async (id) => uploads.delete(id),
     signUpload: async (path) => `sig:${path}`,
     readObject: async (path) => objects.get(path) ?? null,
     removeObject: async (path) => void objects.delete(path),
-    insertFile: async (f) => {
+    moveObject: async (from, to) => {
+      const b = objects.get(from);
+      if (!b || objects.has(to)) throw new Error('move');
+      objects.delete(from);
+      objects.set(to, b);
+    },
+    acceptFile: async (f) => {
       if (files.some((x) => x.sha256 === f.sha256 && x.user_id === f.user_id)) return 'duplicate';
       files.push({ ...f });
       return 'ok';
@@ -47,13 +54,13 @@ describe('startUpload', () => {
   it('gives a path the server chose and a signature for it', async () => {
     const s = setup();
     const r = await startUpload(req({ fileName: '../../x/evil.prnx' }), s.deps);
-    expect(r).toEqual({ status: 201, uploadId: 'id1', path: 's1/id1', token: 'sig:s1/id1' });
-    expect(s.uploads.get('id1')).toMatchObject({ user_id: 's1', storage_path: 's1/id1', file_name: 'evil.prnx', meta: SIUS });
+    expect(r).toEqual({ status: 201, uploadId: 'id1', path: 'incoming/id1', token: 'sig:incoming/id1' });
+    expect(s.uploads.get('id1')).toMatchObject({ user_id: 's1', storage_path: 'incoming/id1', file_name: 'evil.prnx', meta: SIUS });
   });
 
   it('refuses someone who is not on the list, a full inbox and a too large or empty file', async () => {
     expect((await startUpload(req({ shooterId: 's2' }), setup().deps)).status).toBe(403);
-    expect((await startUpload(req(), setup({ waiting: async () => MAX_WAITING }).deps)).status).toBe(429);
+    expect((await startUpload(req(), setup({ reserve: async () => false }).deps)).status).toBe(429);
     expect((await startUpload(req({ bytes: MAX_UPLOAD_BYTES + 1 }), setup().deps)).status).toBe(413);
     for (const bytes of [0, -1, 1.5, Number.NaN, '5' as unknown as number]) expect((await startUpload(req({ bytes }), setup().deps)).status).toBe(400);
   });
@@ -65,10 +72,27 @@ describe('confirmUpload', () => {
     const r = await started(s);
     expect(await confirmUpload(r.uploadId, s.deps)).toEqual({ status: 201, kind: 'sius_prnx' });
     expect(s.files).toEqual([
-      { id: 'id1', user_id: 's1', kind: 'sius_prnx', storage_path: 's1/id1', file_name: 'a.prnx', bytes: PRNX.length, sha256: createHash('sha256').update(PRNX).digest('hex'), meta: SIUS },
+      { id: 'id1', user_id: 's1', kind: 'sius_prnx', storage_path: 's1/id2', file_name: 'a.prnx', bytes: PRNX.length, sha256: createHash('sha256').update(PRNX).digest('hex'), meta: SIUS },
     ]);
     expect(s.uploads.size).toBe(0);
-    expect(s.objects.size).toBe(1);
+    // At a path the sender's signed token does not cover.
+    expect([...s.objects.keys()]).toEqual(['s1/id2']);
+  });
+
+  it('two confirmations at once accept one file and leave its object alone', async () => {
+    const s = setup();
+    const r = await started(s);
+    const both = await Promise.all([confirmUpload(r.uploadId, s.deps), confirmUpload(r.uploadId, s.deps)]);
+    expect(both.map((x) => x.status).sort()).toEqual([201, 404]);
+    expect(s.files).toHaveLength(1);
+    expect([...s.objects.keys()]).toEqual([s.files[0].storage_path]);
+  });
+
+  it('a full inbox at confirmation keeps nothing', async () => {
+    const s = setup({ acceptFile: async () => 'full' });
+    const r = await started(s);
+    expect((await confirmUpload(r.uploadId, s.deps)).status).toBe(429);
+    expect([s.objects.size, s.uploads.size]).toEqual([0, 0]);
   });
 
   it('does not know an upload started by someone else', async () => {

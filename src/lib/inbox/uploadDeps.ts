@@ -14,24 +14,29 @@ const fail = (error: { message: string } | null) => {
 export function uploadDeps(admin: Admin, who: Uploader, allowed: UploadDeps['allowed']): UploadDeps {
   const bucket = admin.storage.from('inbox');
   const [column, value] = 'club_id' in who ? (['club_id', who.club_id] as const) : (['started_by', who.started_by] as const);
-  const count = async (table: 'inbox_files' | 'inbox_uploads', userId: string) => {
-    const { count: n, error } = await admin.from(table).select('id', { count: 'exact', head: true }).eq('user_id', userId);
-    fail(error);
-    return n ?? 0;
-  };
   return {
     allowed,
-    waiting: async (id) => (await count('inbox_files', id)) + (await count('inbox_uploads', id)),
-    async insertUpload(u) {
-      fail((await admin.from('inbox_uploads').insert({ ...u, ...who })).error);
+    async reserve(u) {
+      const { data, error } = await admin.rpc('reserve_inbox_upload', {
+        p_id: u.id,
+        p_user: u.user_id,
+        p_club: 'club_id' in who ? who.club_id : null,
+        p_by: 'started_by' in who ? who.started_by : null,
+        p_name: u.file_name,
+        p_meta: u.meta,
+      });
+      fail(error);
+      return data === true;
     },
     async findUpload(id) {
       const { data, error } = await admin.from('inbox_uploads').select('id, user_id, storage_path, file_name, meta').eq('id', id).eq(column, value).maybeSingle();
       fail(error);
       return data as StartedUpload | null;
     },
-    async deleteUpload(id) {
-      fail((await admin.from('inbox_uploads').delete().eq('id', id)).error);
+    async claimUpload(id) {
+      const { data, error } = await admin.from('inbox_uploads').delete().eq('id', id).eq(column, value).select('id');
+      fail(error);
+      return (data ?? []).length === 1;
     },
     async signUpload(path) {
       const { data, error } = await bucket.createSignedUploadUrl(path);
@@ -45,11 +50,23 @@ export function uploadDeps(admin: Admin, who: Uploader, allowed: UploadDeps['all
     async removeObject(path) {
       fail((await bucket.remove([path])).error);
     },
-    async insertFile(f) {
-      const { error } = await admin.from('inbox_files').insert(f);
-      if (error?.code === '23505') return 'duplicate';
+    async moveObject(from, to) {
+      fail((await bucket.move(from, to)).error);
+    },
+    async acceptFile(f) {
+      const { data, error } = await admin.rpc('accept_inbox_file', {
+        p_id: f.id,
+        p_user: f.user_id,
+        p_kind: f.kind,
+        p_path: f.storage_path,
+        p_name: f.file_name,
+        p_bytes: f.bytes,
+        p_sha: f.sha256,
+        p_meta: f.meta,
+      });
       fail(error);
-      return 'ok';
+      if (data !== 'ok' && data !== 'duplicate' && data !== 'full') throw new Error('not accepted');
+      return data;
     },
     newId: randomUUID,
   };

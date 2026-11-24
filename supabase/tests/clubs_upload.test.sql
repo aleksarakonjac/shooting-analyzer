@@ -1,5 +1,5 @@
 begin;
-select plan(51);
+select plan(60);
 
 -- Runs q as the user and returns its single value as text ('denied' when it raised).
 create function val(uid uuid, q text) returns text language plpgsql as $$
@@ -95,6 +95,21 @@ select is(tap(u(1), 'select * from inbox_files'), 0::bigint, 'and no longer sees
 select is(tap(u(2), $$select * from storage.objects where bucket_id = 'inbox'$$), 2::bigint, 'the new owner reads the object');
 update inbox_files set user_id = u(1) where id = u(201);
 select is(tap(u(4), format($$select pass_inbox_file(%L, %L)$$, u(201), u(3))), 1::bigint, 'a coach passes between their shooters');
+
+-- room for uploads, under one lock per shooter
+select ok(not has_function_privilege('authenticated', 'reserve_inbox_upload(uuid, uuid, uuid, uuid, text, jsonb)', 'execute'), 'only the server reserves');
+select ok(not has_function_privilege('authenticated', 'accept_inbox_file(uuid, uuid, text, text, text, int, text, jsonb)', 'execute'), 'and accepts');
+select ok(reserve_inbox_upload(u(301), u(8), (select id from clubs), null, 'x', null), 'there is room');
+insert into inbox_uploads (user_id, club_id, storage_path, file_name)
+  select u(8), (select id from clubs), 'incoming/c' || n, 'x' from generate_series(1, 49) n;
+select ok(not reserve_inbox_upload(u(302), u(8), (select id from clubs), null, 'x', null), 'fifty started by the club are the limit');
+select ok(reserve_inbox_upload(u(303), u(8), null, u(8), 'x', null), 'which does not block the shooter''s own');
+update inbox_uploads set created_at = now() - interval '3 hours' where user_id = u(8);
+select ok(reserve_inbox_upload(u(304), u(8), (select id from clubs), null, 'x', null), 'old ones no longer count');
+select is(accept_inbox_file(u(401), u(8), 'scatt', 'q/1', 'x', 1, repeat('c', 64), null), 'ok', 'a file is accepted');
+select is(accept_inbox_file(u(402), u(8), 'scatt', 'q/2', 'x', 1, repeat('c', 64), null), 'duplicate', 'the same content is not');
+insert into inbox_files (user_id, kind, storage_path, file_name, bytes) select u(8), 'scatt', 'q/f' || n, 'x', 1 from generate_series(1, 49) n;
+select is(accept_inbox_file(u(403), u(8), 'scatt', 'q/3', 'x', 1, repeat('d', 64), null), 'full', 'nor a fifty-first');
 
 -- leaving and empty clubs
 select is(val(u(1), $$select choose_club('  ')$$), null, 'a blank name leaves the club');

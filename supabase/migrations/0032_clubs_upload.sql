@@ -163,7 +163,8 @@ alter table inbox_files add column meta jsonb;
 alter table inbox_files add column sha256 text check (sha256 ~ '^[0-9a-f]{64}$');
 create unique index inbox_files_user_sha on inbox_files (user_id, sha256) where sha256 is not null;
 
--- Uploads that were started and not yet confirmed; server only.
+-- Uploads that were started and not yet confirmed; server only. The browser writes to incoming/<id> with a token that
+-- is good for 2 h; an accepted file moves to a path no token covers.
 create table inbox_uploads (
   id uuid primary key default gen_random_uuid(),
   user_id uuid not null references profiles (id) on delete cascade,
@@ -182,6 +183,37 @@ create index inbox_uploads_club on inbox_uploads (club_id);
 create index inbox_uploads_started_by on inbox_uploads (started_by);
 alter table inbox_uploads enable row level security;
 revoke all on inbox_uploads from anon, authenticated;
+
+-- Both steps take the same lock per shooter, so parallel requests cannot pass the limit of 50 together.
+create function lock_inbox(uid uuid) returns void language sql set search_path = public as
+$$ select pg_advisory_xact_lock(hashtextextended('inbox:' || uid::text, 0)) $$;
+
+-- Room for one more: waiting files, and what the same uploader started while its upload tokens are still good (2 h).
+-- A club link that starts many uploads therefore does not block the shooter's own.
+create function reserve_inbox_upload(p_id uuid, p_user uuid, p_club uuid, p_by uuid, p_name text, p_meta jsonb) returns boolean
+language plpgsql security definer set search_path = public as $$
+begin
+  perform lock_inbox(p_user);
+  if (select count(*) from inbox_files where user_id = p_user)
+     + (select count(*) from inbox_uploads where user_id = p_user and created_at > now() - interval '2 hours'
+          and club_id is not distinct from p_club and started_by is not distinct from p_by) >= 50 then
+    return false;
+  end if;
+  insert into inbox_uploads (id, user_id, club_id, started_by, storage_path, file_name, meta)
+  values (p_id, p_user, p_club, p_by, 'incoming/' || p_id, p_name, p_meta);
+  return true;
+end $$;
+
+create function accept_inbox_file(p_id uuid, p_user uuid, p_kind text, p_path text, p_name text, p_bytes int, p_sha text, p_meta jsonb)
+returns text language plpgsql security definer set search_path = public as $$
+begin
+  perform lock_inbox(p_user);
+  if exists (select 1 from inbox_files where user_id = p_user and sha256 = p_sha) then return 'duplicate'; end if;
+  if (select count(*) from inbox_files where user_id = p_user) >= 50 then return 'full'; end if;
+  insert into inbox_files (id, user_id, kind, storage_path, file_name, bytes, sha256, meta)
+  values (p_id, p_user, p_kind, p_path, p_name, p_bytes, p_sha, p_meta);
+  return 'ok';
+end $$;
 
 -- The shooter's coach sees and removes waiting files too. The object follows its row, so passing a file on also
 -- moves who can read it (the folder in its path may name an earlier owner).
@@ -213,16 +245,20 @@ begin
       and (coach_of(t.id) or t.club_id = (select club_id from profiles where id = f.user_id))) then
     raise exception 'not allowed' using errcode = '42501';
   end if;
+  perform lock_inbox(to_shooter);
   if (select count(*) from inbox_files where user_id = to_shooter) >= 50 then raise exception 'inbox full'; end if;
   update inbox_files set user_id = to_shooter where id = fid;
 end $$;
 
 -- ---------- who may run what ----------
 revoke all on function club_key(text), new_club_token(), choose_club(text), can_manage_club(uuid), my_club(), club_mates(),
-  rename_club(uuid, text), replace_club_link(uuid), admin_clubs(), club_shooters(text), purge_clubs(), pass_inbox_file(uuid, uuid)
+  rename_club(uuid, text), replace_club_link(uuid), admin_clubs(), club_shooters(text), purge_clubs(), pass_inbox_file(uuid, uuid),
+  lock_inbox(uuid), reserve_inbox_upload(uuid, uuid, uuid, uuid, text, jsonb),
+  accept_inbox_file(uuid, uuid, text, text, text, int, text, jsonb)
   from public, anon, authenticated;
 grant execute on function choose_club(text), my_club(), club_mates(), rename_club(uuid, text), replace_club_link(uuid),
   admin_clubs(), pass_inbox_file(uuid, uuid) to authenticated;
-grant execute on function club_shooters(text), purge_clubs() to service_role;
+grant execute on function club_shooters(text), purge_clubs(), reserve_inbox_upload(uuid, uuid, uuid, uuid, text, jsonb),
+  accept_inbox_file(uuid, uuid, text, text, text, int, text, jsonb) to service_role;
 -- This project does not grant service_role table privileges by default (see 0026).
-grant select, insert, delete on inbox_uploads to service_role;
+grant select, delete on inbox_uploads to service_role;
