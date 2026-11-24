@@ -201,6 +201,10 @@ begin
           and claimed_at is null and club_id is not distinct from p_club and started_by is not distinct from p_by) >= 50 then
     return false;
   end if;
+  -- For one shooter from everyone together: more than one link may start, so a link alone cannot block the shooter.
+  if (select count(*) from inbox_uploads where user_id = p_user and created_at > now() - interval '24 hours') >= 600 then
+    return false;
+  end if;
   -- What one link or person may start in a day, whoever it is for: every start is a token that can write one file.
   perform pg_advisory_xact_lock(hashtextextended('uploader:' || coalesce(p_club, p_by)::text, 0));
   if (select count(*) from inbox_uploads u where u.club_id is not distinct from p_club and u.started_by is not distinct from p_by

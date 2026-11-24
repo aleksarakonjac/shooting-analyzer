@@ -1,5 +1,5 @@
 begin;
-select plan(64);
+select plan(65);
 
 -- Runs q as the user and returns its single value as text ('denied' when it raised).
 create function val(uid uuid, q text) returns text language plpgsql as $$
@@ -124,6 +124,11 @@ select ok(reserve_inbox_upload(u(503), u(8), (select id from clubs), null, 'x', 
 update club_links set created_at = now() - interval '3 days';
 update inbox_uploads set created_at = now() - interval '25 hours';
 select ok(reserve_inbox_upload(u(504), u(8), (select id from clubs), null, 'x', null), 'and a day later there is room again');
+
+delete from inbox_uploads;
+insert into inbox_uploads (user_id, started_by, storage_path, file_name, created_at, claimed_at)
+  select u(8), u(4), 'incoming/s' || n, 'x', now() - interval '5 hours', now() from generate_series(1, 600) n;
+select ok(not reserve_inbox_upload(u(505), u(8), (select id from clubs), null, 'x', null), '600 a day for one shooter are the limit, whoever sends');
 
 -- leaving and empty clubs
 select is(val(u(1), $$select choose_club('  ')$$), null, 'a blank name leaves the club');
