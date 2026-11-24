@@ -166,6 +166,9 @@ export function DropBox({ shooters, sender, tz, fixed = false, onSent }: {
             void add(files);
           }}
         />
+        <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M12 16V4m0 0-4 4m4-4 4 4M4 16v3a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-3" />
+        </svg>
         <span className="ui-file__text">{t.zone}</span>
         <span className="ui-file__btn">{t.pick}</span>
       </label>
