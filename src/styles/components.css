@@ -1922,10 +1922,10 @@ html[data-target-motion]::view-transition-old(root), html[data-target-motion]::v
 .shell[data-collapsed] .shell__rail .badge { right: -7px; }
 .dash__inbox { position: relative; display: none; padding: 0; width: var(--control-h); justify-content: center; }
 .dash__inbox .badge { top: -6px; right: -6px; }
-/* Phone (portrait bottom bar, landscape side bar): no room for the inbox in the bar, so it takes the header's plus
+/* Phone (portrait bottom bar, landscape side bar): no room for a shooter's inbox in the bar, so it takes the header's plus
    spot (the bar keeps "Nova sesija"). */
 @media (max-width: 720px) and (orientation: portrait), (orientation: landscape) and (max-height: 520px) {
-  .shell__nav > a[href='/sa-telefona'] { display: none; }
+  .shell[data-role='shooter'] .shell__nav > a[href='/sa-telefona'] { display: none; }
   .ws__strip .dash__inbox { display: inline-flex; }
   .ws__strip .dash__new { display: none; }
 }

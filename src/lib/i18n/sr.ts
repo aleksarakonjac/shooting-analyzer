@@ -669,6 +669,7 @@ export const sr = {
   drop: {
     pageTitle: 'Pošalji fajlove · ZeroIn',
     who: 'Ko si?',
+    forWhom: 'Za koga?',
     nobody: 'U klubu još nema strelaca.',
     files: 'SIUS i SCATT fajlovi',
     zone: 'Prevuci SIUS i SCATT fajl ovde',

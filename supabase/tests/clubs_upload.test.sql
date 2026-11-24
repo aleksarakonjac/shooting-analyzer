@@ -129,7 +129,7 @@ delete from inbox_uploads;
 insert into clubs (id, name, name_key) values (u(601), 'Drugi', 'drugi');
 insert into inbox_uploads (user_id, club_id, storage_path, file_name, created_at, claimed_at)
   select u(8), u(601), 'incoming/s' || n, 'x', now() - interval '5 hours', now() from generate_series(1, 600) n;
-select ok(not reserve_inbox_upload(u(505), u(8), (select id from clubs), null, 'x', null), '600 a day for one shooter are the limit for links, whichever');
+select ok(not reserve_inbox_upload(u(505), u(8), (select id from clubs where id <> u(601)), null, 'x', null), '600 a day for one shooter are the limit for links, whichever');
 select ok(reserve_inbox_upload(u(506), u(8), null, u(8), 'x', null), 'links cannot use up the shooter''s own');
 delete from clubs where id = u(601);
 

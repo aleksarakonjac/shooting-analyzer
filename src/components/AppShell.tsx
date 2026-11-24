@@ -94,7 +94,7 @@ export function AppShell({
   const collapsed = useSyncExternalStore(subscribe, readCollapsed, () => false);
   const toggle = () => setCollapsed(!collapsed);
   return (
-    <div className="shell" data-collapsed={collapsed || undefined}>
+    <div className="shell" data-role={role} data-collapsed={collapsed || undefined}>
       <a className="shell__skip" href="#sadrzaj">{sr.nav.skip}</a>
       <aside className="shell__rail">
         <div className="shell__top">

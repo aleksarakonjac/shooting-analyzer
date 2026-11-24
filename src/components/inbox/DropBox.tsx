@@ -44,12 +44,14 @@ export function metaText(kind: InboxKind, meta: InboxMeta, tz: string): string {
 }
 
 /** Pick a name, drop files, send: on the club's public page and, signed in, in the inbox. */
-export function DropBox({ shooters, sender, tz, fixed = false, onSent }: {
+export function DropBox({ shooters, sender, tz, fixed = false, who: whoLabel = t.who, onSent }: {
   shooters: DropShooter[];
   sender: Sender;
   tz: string;
   /** The files are for the one shooter given; no name to pick. */
   fixed?: boolean;
+  /** The question over the names. */
+  who?: string;
   onSent?: () => void;
 }) {
   const id = useId();
@@ -130,7 +132,7 @@ export function DropBox({ shooters, sender, tz, fixed = false, onSent }: {
     <div className="drop">
       {!fixed && (
         <fieldset className="drop__names" disabled={busy}>
-          <legend className="ui-label">{t.who}</legend>
+          <legend className="ui-label">{whoLabel}</legend>
           {shooters.map((s) => (
             <label key={s.id} className="drop__name" data-on={who === s.id || undefined}>
               <input type="radio" className="sr-only" name={`${id}-who`} checked={who === s.id} onChange={() => setWho(s.id)} />
