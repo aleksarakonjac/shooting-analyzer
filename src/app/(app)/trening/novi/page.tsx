@@ -25,7 +25,7 @@ async function Body({ searchParams }: { searchParams: Promise<Search> }) {
   // Coaches enter trainings for a linked shooter from /strelci/<id>/novi.
   if (!profile || profile.role !== 'shooter') redirect(HOME);
   const today = new Intl.DateTimeFormat('en-CA', { timeZone: profile.tz }).format(new Date());
-  const inbox = await waitingInbox();
+  const inbox = await waitingInbox([profile.id]);
   // ?inbox=<id> (from the Shortcut) loads that file; ?inbox=all loads every waiting one.
   const asked = [(await searchParams).inbox ?? []].flat();
   const autoInbox = asked.includes('all') ? inbox.map((i) => i.id) : asked;

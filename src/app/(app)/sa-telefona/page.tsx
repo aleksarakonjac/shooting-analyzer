@@ -1,29 +1,33 @@
-import Link from 'next/link';
 import { Suspense } from 'react';
 import { redirect } from 'next/navigation';
 import { connection } from 'next/server';
+import { InboxDay, type InboxSession } from '@/components/inbox/InboxDay';
+import { OwnDrop } from '@/components/inbox/OwnDrop';
 import { Workspace } from '@/components/Workspace';
+import { linkedShooters } from '@/lib/auth/linkedShooters';
 import { getSessionProfile } from '@/lib/auth/session';
 import { sr } from '@/lib/i18n/sr';
-import { discardInboxFileForm } from '@/lib/inbox/actions';
+import { groupInbox } from '@/lib/inbox/pairs';
 import { waitingInbox } from '@/lib/inbox/waiting';
-import { orderTargets } from '@/lib/inbox/targets';
+import { HOME } from '@/lib/routes';
 import { parseFilters } from '@/lib/stats/filters';
 import { loadSessions } from '@/lib/stats/loadSessions';
 import { hasPulse, hasScatt, type TrainingSummary } from '@/lib/stats/periodStats';
-import { HOME } from '@/lib/routes';
+import { createClient } from '@/lib/supabase/server';
 
-/** How many recent sessions are offered as a place for a phone file. */
+/** How many recent sessions are offered as a place for waiting files. */
 const RECENT = 8;
 
 /** A SIUS report fills a session's result: one that has series already has it. */
 const hasResult = (s: TrainingSummary) => s.matches.some((m) => m.series.length > 0);
-const HAS = { scatt: hasScatt, tcx: hasPulse, sius_pdf: hasResult, sius_prnx: hasResult } as const;
 
 type Search = { f?: string };
 
-/** Files sent from the phone: each goes into a new session or one already saved (e.g. entered from SIUS on the laptop). */
-export default function PhoneInboxPage({ searchParams }: { searchParams: Promise<Search> }) {
+/**
+ * The inbox: files sent from the range laptops, the phone or here, to be put together into sessions. A shooter sees
+ * their own, a coach those of the linked shooters. (The address is older than the name: the phone Shortcut opens it.)
+ */
+export default function InboxPage({ searchParams }: { searchParams: Promise<Search> }) {
   return (
     <Suspense fallback={null}>
       <Body searchParams={searchParams} />
@@ -34,62 +38,59 @@ export default function PhoneInboxPage({ searchParams }: { searchParams: Promise
 async function Body({ searchParams }: { searchParams: Promise<Search> }) {
   await connection();
   const profile = await getSessionProfile();
-  if (!profile || profile.role !== 'shooter') redirect(HOME);
+  if (!profile || profile.role === 'admin') redirect(HOME);
   const t = sr.inbox;
+  const coach = profile.role === 'coach';
   const { f } = await searchParams;
-  const [files, sessions] = await Promise.all([waitingInbox(), loadSessions(profile.id, parseFilters({}, new Date(), profile.tz))]);
-  const day = (iso: string) => new Intl.DateTimeFormat('en-CA', { timeZone: profile.tz }).format(new Date(iso));
+  const supabase = await createClient();
+  const [shooters, { data: mateRows }] = await Promise.all([
+    coach ? linkedShooters() : [{ id: profile.id, name: '' }],
+    coach ? { data: [] } : supabase.rpc('club_mates'),
+  ]);
+  const mates = ((mateRows ?? []) as { id: string; display_name: string }[]).map((m) => ({ id: m.id, name: m.display_name }));
+  const files = await waitingInbox(shooters.map((s) => s.id));
   // The file the Shortcut just sent comes first.
-  const ordered = [...files].sort((a, b) => Number(b.id === f) - Number(a.id === f));
+  const groups = groupInbox(files, profile.tz).sort((a, b) => Number(b.items.some((i) => i.id === f)) - Number(a.items.some((i) => i.id === f)));
+  const withFiles = [...new Set(groups.map((g) => g.shooterId))];
+  const filters = parseFilters({}, new Date(), profile.tz);
+  const sessions = new Map<string, InboxSession[]>(
+    await Promise.all(
+      withFiles.map(async (id): Promise<[string, InboxSession[]]> => {
+        const recent = (await loadSessions(id, filters)).slice(0, RECENT);
+        return [id, recent.map((s) => ({ id: s.id, name: s.name, trainedOn: s.trainedOn, has: { scatt: hasScatt(s), tcx: hasPulse(s), sius: hasResult(s) } }))];
+      }),
+    ),
+  );
+  const nameOf = (id: string) => shooters.find((s) => s.id === id)?.name ?? '';
 
-  const body =
-    ordered.length === 0 ? (
-      <p className="panel__empty dash__empty">{t.emptyInbox}</p>
-    ) : (
-      <ul className="inbox__files">
-        {ordered.map((file) => {
-          const has = HAS[file.kind];
-          const targets = orderTargets(sessions.slice(0, RECENT), day(file.createdAt), has);
-          return (
-            <li key={file.id} className="inbox__file" data-current={file.id === f || undefined}>
-              <div className="rows__line">
-                <div className="rows__main">
-                  <strong>{file.name}</strong>
-                  <div className="rows__muted num">
-                    {t.kindLabel[file.kind]} · {t.received(new Date(file.createdAt).toLocaleString('sr-Latn-RS', { timeZone: profile.tz, dateStyle: 'short', timeStyle: 'short' }))}
-                  </div>
-                </div>
-                <div className="rows__actions">
-                  <Link className="button" href={`/trening/novi?inbox=${file.id}`}>{t.newSession}</Link>
-                  <form action={discardInboxFileForm}>
-                    <input type="hidden" name="id" value={file.id} />
-                    <button type="submit" className="button--quiet">{t.discard}</button>
-                  </form>
-                </div>
-              </div>
-              {targets.length > 0 && (
-                <>
-                  <small className="rows__muted">{t.addToExisting}</small>
-                  <ul className="rows">
-                    {targets.map((s) => (
-                      <li key={s.id}>
-                        <Link className="rows__item inbox__target" href={`/trening/${s.id}/podaci?inbox=${file.id}`}>
-                          <span className="rows__main">
-                            <strong>{s.name}</strong>
-                            <span className="rows__muted num"> · {s.trainedOn}</span>
-                          </span>
-                          <span className={s.has ? 'rows__muted' : 'rows__state'}>{s.has ? t.alreadyHas[file.kind] : t.missing[file.kind]}</span>
-                        </Link>
-                      </li>
-                    ))}
-                  </ul>
-                </>
-              )}
-            </li>
-          );
-        })}
-      </ul>
-    );
+  const body = (
+    <div className="inbox">
+      <OwnDrop shooters={shooters} fixed={!coach} tz={profile.tz} />
+      {groups.length === 0 ? (
+        <p className="panel__empty dash__empty">{t.emptyInbox}</p>
+      ) : (
+        groups.map((g) => (
+          <section key={`${g.shooterId} ${g.day}`} className="inbox__group">
+            <h2>
+              {[coach && nameOf(g.shooterId), new Date(`${g.day}T12:00:00Z`).toLocaleDateString('sr-Latn-RS', { timeZone: 'UTC', dateStyle: 'medium' })].filter(Boolean).join(' · ')}
+            </h2>
+            <InboxDay
+              // A change of files starts the choice over.
+              key={g.items.map((i) => i.id).join()}
+              items={g.items}
+              pairs={g.pairs}
+              day={g.day}
+              tz={profile.tz}
+              newHref={coach ? `/strelci/${g.shooterId}/novi` : '/trening/novi'}
+              sessions={sessions.get(g.shooterId) ?? []}
+              passTo={(coach ? shooters : mates).filter((p) => p.id !== g.shooterId)}
+              current={g.items.some((i) => i.id === f) ? f : undefined}
+            />
+          </section>
+        ))
+      )}
+    </div>
+  );
 
   return (
     <Workspace

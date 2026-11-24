@@ -51,6 +51,6 @@ describe('inbox files in the training form', () => {
   it('says when a file is already gone', async () => {
     download.mockResolvedValue({ data: null, error: { message: 'not found' } });
     render(form(['a']));
-    expect(await screen.findByText('Fajl sa telefona nije učitan.')).toBeTruthy();
+    expect(await screen.findByText('Fajl iz sandučeta nije učitan.')).toBeTruthy();
   });
 });

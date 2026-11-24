@@ -40,6 +40,7 @@ const NAV: Record<Role, NavItem[]> = {
   ],
   coach: [
     { href: '/strelci', label: sr.nav.shooters, icon: ICON.people },
+    { href: '/sa-telefona', label: sr.nav.inbox, icon: ICON.inbox },
   ],
   admin: [
     { href: '/admin/approvals', label: sr.nav.approvals, icon: ICON.shield },
@@ -85,7 +86,7 @@ export function AppShell({
   children,
 }: {
   role: Role;
-  /** Phone files waiting to be added to a session (shooters). */
+  /** Files waiting in the inbox. */
   inboxCount?: number;
   signOutAction?: () => Promise<void>;
   children: ReactNode;

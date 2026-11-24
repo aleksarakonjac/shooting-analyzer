@@ -29,7 +29,7 @@ async function Body({ searchParams }: { searchParams: Promise<DashboardSearch> }
       base={HOME}
       newHref="/trening/novi"
       search={await searchParams}
-      inboxCount={(await waitingInbox()).length}
+      inboxCount={(await waitingInbox([profile.id])).length}
     />
   );
 }

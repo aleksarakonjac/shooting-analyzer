@@ -93,7 +93,7 @@ async function Body({ params, searchParams }: { params: Promise<{ id: string }>;
   const today = new Intl.DateTimeFormat('en-CA', { timeZone: profile.tz }).format(new Date());
   // Phone files belong to the signed-in shooter: offered only on their own sessions. ?inbox=<id> loads one.
   const own = profile.id === tr.shooter_id;
-  const [events, places, inbox] = await Promise.all([shooterEvents(tr.shooter_id), recentPlaces(tr.shooter_id), own ? waitingInbox() : []]);
+  const [events, places, inbox] = await Promise.all([shooterEvents(tr.shooter_id), recentPlaces(tr.shooter_id), own ? waitingInbox([tr.shooter_id]) : []]);
   const autoInbox = [(await searchParams).inbox ?? []].flat();
   return (
     <NewTrainingForm
