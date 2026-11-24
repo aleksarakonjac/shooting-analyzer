@@ -41,7 +41,10 @@ All later accounts wait on the approval page until the admin approves them (shoo
 - Apply all migrations with `supabase db push`.
 - Set the four environment variables above in the Vercel project.
 - `vercel.json` schedules `/api/cron/purge` daily at 03:00 UTC. It deletes trainings that have been in the trash
-  for more than 30 days and the stored source files that belong to them.
+  for more than 30 days and the stored source files that belong to them, uploads that were started and never finished
+  (after a day), and clubs nobody has been in for a week.
+- A club's upload link (`/ubaci#...`, from Nalog) opens on range laptops without signing in. It shows the names of the
+  club's shooters and takes files into their inbox; it reads nothing. Replacing the link in Nalog stops the old one.
 
 ## Trash and audit log
 
