@@ -74,8 +74,10 @@ export async function confirmOwnUpload(uploadId: string): Promise<ConfirmResult>
 }
 
 /** A file sent under a wrong name, given to the right shooter; the database decides who may give what to whom. */
-export async function passInboxFile(form: FormData): Promise<void> {
+export async function passInboxFile(id: string, to: string): Promise<{ ok: boolean }> {
   const supabase = await createClient();
-  await supabase.rpc('pass_inbox_file', { fid: requireUuid(form.get('id')), to_shooter: requireUuid(form.get('to')) });
+  const { error } = await supabase.rpc('pass_inbox_file', { fid: requireUuid(id), to_shooter: requireUuid(to) });
+  if (error) return { ok: false };
   revalidatePath('/', 'layout');
+  return { ok: true };
 }

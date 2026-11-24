@@ -1,8 +1,11 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 
-vi.mock('@/lib/inbox/actions', () => ({ discardInboxFileForm: vi.fn(), passInboxFile: vi.fn() }));
+const passInboxFile = vi.fn();
+vi.mock('@/lib/inbox/actions', () => ({ discardInboxFileForm: vi.fn(), passInboxFile: (...a: unknown[]) => passInboxFile(...a) }));
+const refresh = vi.fn();
+vi.mock('next/navigation', () => ({ useRouter: () => ({ refresh }) }));
 const { InboxDay } = await import('../../src/components/inbox/InboxDay');
 
 const base = { shooterId: 's1', path: 'p', createdAt: '2026-11-24T19:00:00Z', meta: null };
@@ -72,6 +75,22 @@ describe('InboxDay', () => {
     render(day({ items: more, pairs: [{ siusId: 'a', scattId: 'b' }, { siusId: 'd', scattId: 'e' }] }));
     fireEvent.click(screen.getByRole('button', { name: 'second.prnx + second.scatt-expert' }));
     expect(href('Nova sesija')).toBe('/strelci/s1/novi?inbox=d&inbox=e');
+  });
+
+  it('passes a file only after it is confirmed, and says when that failed', async () => {
+    passInboxFile.mockResolvedValueOnce({ ok: false }).mockResolvedValueOnce({ ok: true });
+    render(day());
+    const select = screen.getAllByLabelText('Prebaci strelcu')[0];
+    expect(screen.queryByRole('button', { name: 'Prebaci' })).toBeNull();
+    fireEvent.change(select, { target: { value: 's2' } });
+    expect(passInboxFile).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole('button', { name: 'Prebaci' }));
+    expect((await screen.findByRole('alert')).textContent).toBe('Fajl nije prebačen.');
+    expect(refresh).not.toHaveBeenCalled();
+    await waitFor(() => expect((screen.getByRole('button', { name: 'Prebaci' }) as HTMLButtonElement).disabled).toBe(false));
+    fireEvent.click(screen.getByRole('button', { name: 'Prebaci' }));
+    await waitFor(() => expect(refresh).toHaveBeenCalled());
+    expect(passInboxFile).toHaveBeenLastCalledWith('a', 's2');
   });
 
   it('passes a file only to the given people, and to nobody when there are none', () => {

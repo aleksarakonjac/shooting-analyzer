@@ -52,6 +52,8 @@ describe('inbox files in the training form', () => {
     await waitFor(() => expect(parseSiusFile).toHaveBeenCalled());
     await waitFor(() => expect(parseScattFile).toHaveBeenCalled());
     expect((parseSiusFile.mock.calls[0][0] as File).name).toBe('report.prnx');
+    // Together they propose which SCATT shots are the match, as when added one by one.
+    await waitFor(() => expect([...document.querySelectorAll<HTMLInputElement>('input[type=radio]')].some((r) => r.checked && r.name.includes('match-mode'))).toBe(true));
   });
 
   it('saves for the shooter whose inbox it is, then empties it', async () => {
@@ -63,10 +65,39 @@ describe('inbox files in the training form', () => {
     await waitFor(() => expect(save.disabled).toBe(false));
     fireEvent.submit(document.getElementById('new-training')!);
     await waitFor(() => expect(saveTraining).toHaveBeenCalled());
-    expect(saveTraining.mock.calls[0][0]).toMatchObject({ shooterId: 'u', disciplineId: 'air_rifle' });
+    expect(saveTraining.mock.calls[0][0]).toMatchObject({ shooterId: 'u', disciplineId: 'air_rifle', selection: { kind: 'last', n: 2 } });
     await waitFor(() => expect(discardInboxFiles).toHaveBeenCalled());
     expect([...discardInboxFiles.mock.calls[0][0]].sort()).toEqual(['a', 'b']);
     expect(uploadSource.mock.calls.map((c) => c[2])).toEqual(['sius_prnx', 'scatt']);
+  });
+
+  it('keeps in the inbox what could not be stored with the session', async () => {
+    saveTraining.mockResolvedValue({ trainingId: 't1' });
+    uploadSource.mockImplementation(async (_f: File, _id: string, kind: string) => {
+      if (kind === 'scatt') throw new Error('storage');
+      return { id: 'x', duplicate: false };
+    });
+    render(form(['a', 'b']));
+    const save = screen.getByRole('button', { name: /^Sačuvaj/ }) as HTMLButtonElement;
+    await waitFor(() => expect(parseScattFile).toHaveBeenCalled());
+    await waitFor(() => expect(save.disabled).toBe(false));
+    fireEvent.submit(document.getElementById('new-training')!);
+    await screen.findByText(/1 fajl\(ova\) nije otpremljeno/);
+    expect(discardInboxFiles.mock.calls).toEqual([[['a']]]);
+  });
+
+  it('loads the others when one file is gone, and says so', async () => {
+    download.mockImplementation(async (path: string) => (path === 'p/b' ? { data: null, error: { message: 'gone' } } : { data: new Blob(['x']), error: null }));
+    render(form(['a', 'b']));
+    await waitFor(() => expect(parseSiusFile).toHaveBeenCalled());
+    expect(await screen.findByText('Fajl iz sandučeta nije učitan.')).toBeTruthy();
+    expect(parseScattFile).not.toHaveBeenCalled();
+  });
+
+  it('says so when a file it was opened with was already taken', async () => {
+    render(form(['a', 'taken']));
+    await waitFor(() => expect(parseSiusFile).toHaveBeenCalled());
+    expect(await screen.findByText('Fajl iz sandučeta nije učitan.')).toBeTruthy();
   });
 
   it('says when a file is already gone', async () => {

@@ -13,7 +13,7 @@ const TOKEN = `ub_${'a'.repeat(64)}`;
 const OTHER = `ub_${'c'.repeat(64)}`;
 const CLUB = { name: 'Čačak', shooters: [{ id: 's1', name: 'Ana' }, { id: 's2', name: 'Boris' }] };
 const SIUS = { kind: 'sius_prnx', meta: { sius: { discipline: 'Air Rifle 60', total: 628.8, shots: 60, atMs: Date.UTC(2026, 10, 11, 18, 51) } } };
-const SCATT = { kind: 'scatt', meta: { scatt: { shots: 75, startMs: 0, endMs: 1 } } };
+const SCATT = { kind: 'scatt', meta: { scatt: { shots: 75, startMs: Date.UTC(2026, 10, 11, 17, 5), endMs: Date.UTC(2026, 10, 11, 18) } } };
 
 let confirmStatus: (uploadId: string) => number;
 const calls: { token: string | null; body: Record<string, unknown> | null }[] = [];
@@ -159,7 +159,7 @@ describe('sending', () => {
     await screen.findByText('Čačak');
     fireEvent.click(screen.getByLabelText('Boris'));
     pick('a.prnx', 'b.scatt-expert');
-    await screen.findByText('75 hitaca');
+    await screen.findByText(/75 hitaca · 11\. 11\. 2026/);
     fireEvent.click(send());
     await screen.findByText('Poslato fajlova: 2');
     expect(calls.filter((c) => c.body?.step === 'start').map((c) => c.body!.shooterId)).toEqual(['s2', 's2']);
@@ -175,13 +175,44 @@ describe('sending', () => {
     await screen.findByText('Čačak');
     fireEvent.click(screen.getByLabelText('Ana'));
     pick('a.prnx', 'b.scatt-expert');
-    await screen.findByText('75 hitaca');
+    await screen.findByText(/75 hitaca · 11\. 11\. 2026/);
     fireEvent.click(send());
     const again = await screen.findByRole('button', { name: 'Pokušaj ponovo' });
     expect(within(screen.getByText('a.prnx').closest('li')!).getByText('Poslato')).toBeTruthy();
     fireEvent.click(again);
     await screen.findByText('Poslato fajlova: 2');
     expect(calls.filter((c) => c.body?.step === 'start').map((c) => c.body!.fileName)).toEqual(['a.prnx', 'b.scatt-expert', 'b.scatt-expert']);
+  });
+
+  it('taking away the file that cannot be sent leaves nothing for the next person either', async () => {
+    confirmStatus = (id) => (id.includes('b.scatt') ? 415 : 201);
+    render(<ClubUpload />);
+    await screen.findByText('Čačak');
+    fireEvent.click(screen.getByLabelText('Ana'));
+    pick('a.prnx', 'b.scatt-expert');
+    await screen.findByText(/75 hitaca/);
+    fireEvent.click(send());
+    await screen.findByRole('button', { name: 'Pokušaj ponovo' });
+    fireEvent.click(within(screen.getByText('b.scatt-expert').closest('li')!).getByRole('button', { name: 'Ukloni' }));
+    await screen.findByText('Poslato fajlova: 1');
+    expect(screen.queryByText('a.prnx')).toBeNull();
+    expect((screen.getByLabelText('Ana') as HTMLInputElement).checked).toBe(false);
+  });
+
+  it('does not take a file dropped while it is sending', async () => {
+    let release = () => {};
+    put.mockImplementation(() => new Promise((r) => (release = () => r({ error: null }))));
+    render(<ClubUpload />);
+    await screen.findByText('Čačak');
+    fireEvent.click(screen.getByLabelText('Ana'));
+    pick('a.prnx');
+    await screen.findByText(/628.8/);
+    fireEvent.click(send());
+    await waitFor(() => expect(put).toHaveBeenCalled());
+    fireEvent.drop(screen.getByText('Prevuci SIUS i SCATT fajl ovde').closest('label')!, { dataTransfer: { files: [new File(['x'], 'late.scatt-expert')] } });
+    expect(screen.queryByText('late.scatt-expert')).toBeNull();
+    release();
+    await screen.findByText('Poslato fajlova: 1');
   });
 
   it('says when a file was already sent', async () => {
@@ -192,7 +223,8 @@ describe('sending', () => {
     pick('a.prnx');
     await screen.findByText(/628.8/);
     fireEvent.click(send());
-    await screen.findByText('Već poslato: a.prnx');
+    await screen.findByText('Već poslato ranije: 1');
+    expect(screen.queryByText(/a\.prnx/)).toBeNull();
     await waitFor(() => expect((screen.getByLabelText('Ana') as HTMLInputElement).checked).toBe(false));
   });
 });

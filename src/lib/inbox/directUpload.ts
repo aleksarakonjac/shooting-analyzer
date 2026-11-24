@@ -97,13 +97,9 @@ export async function confirmUpload(uploadId: string, deps: UploadDeps): Promise
   const path = `${up.user_id}/${deps.newId()}`;
   await deps.moveObject(up.storage_path, path);
   const sha256 = createHash('sha256').update(bytes).digest('hex');
-  let accepted: 'ok' | 'duplicate' | 'full';
-  try {
-    accepted = await deps.acceptFile({ ...up, storage_path: path, kind, bytes: bytes.length, sha256 });
-  } catch (e) {
-    await deps.removeObject(path).catch(() => {});
-    throw e;
-  }
+  // When this throws the row may be there all the same (a lost answer), so the object stays: one without a row is
+  // harmless, a row without its object is a lost file.
+  const accepted = await deps.acceptFile({ ...up, storage_path: path, kind, bytes: bytes.length, sha256 });
   if (accepted === 'ok') return { status: 201, kind };
   await deps.removeObject(path);
   return accepted === 'full' ? { status: 429, error: 'inbox full' } : { status: 409, error: 'already sent' };

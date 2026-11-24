@@ -1,6 +1,7 @@
 'use client';
 import Link from 'next/link';
-import { useState } from 'react';
+import { useState, useTransition } from 'react';
+import { useRouter } from 'next/navigation';
 import { discardInboxFileForm, passInboxFile } from '@/lib/inbox/actions';
 import type { InboxPair } from '@/lib/inbox/pairs';
 import { orderTargets } from '@/lib/inbox/targets';
@@ -63,17 +64,7 @@ export function InboxDay({ items, pairs, day, tz, newHref, sessions, passTo, cur
               </span>
             </label>
             <div className="rows__actions">
-              {passTo.length > 0 && (
-                <form action={passInboxFile}>
-                  <input type="hidden" name="id" value={i.id} />
-                  <select name="to" aria-label={t.passTo} value="" onChange={(e) => e.currentTarget.form?.requestSubmit()}>
-                    <option value="">{t.passTo}</option>
-                    {passTo.map((p) => (
-                      <option key={p.id} value={p.id}>{p.name}</option>
-                    ))}
-                  </select>
-                </form>
-              )}
+              {passTo.length > 0 && <PassOn id={i.id} to={passTo} />}
               <form action={discardInboxFileForm}>
                 <input type="hidden" name="id" value={i.id} />
                 <button type="submit" className="button--quiet">{t.discard}</button>
@@ -119,5 +110,39 @@ export function InboxDay({ items, pairs, day, tz, newHref, sessions, passTo, cur
         </>
       )}
     </div>
+  );
+}
+
+/** Giving a file to someone else cannot be taken back by the giver, so choosing a name is not yet giving. */
+function PassOn({ id, to }: { id: string; to: DropShooter[] }) {
+  const router = useRouter();
+  const [pending, start] = useTransition();
+  const [who, setWho] = useState('');
+  const [failed, setFailed] = useState(false);
+  const pass = () =>
+    start(async () => {
+      const ok = await passInboxFile(id, who).then((r) => r.ok, () => false);
+      setFailed(!ok);
+      if (ok) router.refresh();
+    });
+  return (
+    <>
+      <select
+        aria-label={t.passTo}
+        value={who}
+        disabled={pending}
+        onChange={(e) => {
+          setWho(e.target.value);
+          setFailed(false);
+        }}
+      >
+        <option value="">{t.passTo}</option>
+        {to.map((p) => (
+          <option key={p.id} value={p.id}>{p.name}</option>
+        ))}
+      </select>
+      {who && <button type="button" disabled={pending} onClick={pass}>{t.pass}</button>}
+      {failed && <span className="drop__problem" role="alert">{t.passFailed}</span>}
+    </>
   );
 }

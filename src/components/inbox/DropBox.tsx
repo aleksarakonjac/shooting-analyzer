@@ -32,14 +32,16 @@ interface Row {
 
 const ACCEPT = '.prnx,.pdf,.scatt-expert,.tcx';
 
+const when = (ms: number, tz: string) => new Date(ms).toLocaleString('sr-Latn-RS', { timeZone: tz, dateStyle: 'short', timeStyle: 'short' });
+
 /** What the app saw in a file, so the sender knows it is the right one. */
 export function metaText(kind: InboxKind, meta: InboxMeta, tz: string): string {
   if (meta && 'sius' in meta) {
     const { discipline, total, atMs } = meta.sius;
-    const time = atMs === null ? null : new Date(atMs).toLocaleString('sr-Latn-RS', { timeZone: tz, dateStyle: 'short', timeStyle: 'short' });
+    const time = atMs === null ? null : when(atMs, tz);
     return [discipline, String(total), time].filter(Boolean).join(' · ');
   }
-  if (meta && 'scatt' in meta) return t.shots(meta.scatt.shots);
+  if (meta && 'scatt' in meta) return `${t.shots(meta.scatt.shots)} · ${when(meta.scatt.startMs, tz)}`;
   return sr.inbox.kindLabel[kind];
 }
 
@@ -111,20 +113,31 @@ export function DropBox({ shooters, sender, tz, fixed = false, who: whoLabel = t
     }
     setBusy(false);
     const states = [...after.values()];
-    if (states.includes('failed')) return;
-    // Everything went: nothing of this person stays for the next one at the same computer.
+    if (!states.includes('failed')) finish(states);
+  };
+
+  /** Everything went: nothing of this person stays for the next one at the same computer. */
+  const finish = (states: State[]) => {
     const sent = states.filter((s) => s === 'sent').length;
-    const twice = rows.filter((r) => after.get(r.key) === 'duplicate').map((r) => t.twice(r.file.name));
-    setDone([...(sent ? [t.done(sent)] : []), ...twice]);
+    const twice = states.filter((s) => s === 'duplicate').length;
+    setDone([...(sent ? [t.done(sent)] : []), ...(twice ? [t.twice(twice)] : [])]);
     setRows([]);
     setWho(null);
     if (sent) onSent?.();
   };
 
+  const remove = (key: number) => {
+    const left = rows.filter((r) => r.key !== key);
+    const states = left.map((r) => r.state);
+    // What is left was all sent: the last one that could not be was just taken away.
+    if (states.length > 0 && states.every((s) => s === 'sent' || s === 'duplicate')) finish(states);
+    else setRows(left);
+  };
+
   const drop = (e: DragEvent) => {
     e.preventDefault();
     setOver(false);
-    if (e.dataTransfer.files.length) void add([...e.dataTransfer.files]);
+    if (!busy && e.dataTransfer.files.length) void add([...e.dataTransfer.files]);
   };
   const failed = rows.some((r) => r.state === 'failed');
 
@@ -188,7 +201,7 @@ export function DropBox({ shooters, sender, tz, fixed = false, who: whoLabel = t
                 {r.state === 'sent' && <span className="rows__state">{t.sent}</span>}
                 {r.state === 'duplicate' && <span className="rows__muted">{t.already}</span>}
                 {!busy && r.state !== 'sent' && r.state !== 'duplicate' && (
-                  <button type="button" className="button--quiet" onClick={() => setRows((all) => all.filter((x) => x.key !== r.key))}>{t.remove}</button>
+                  <button type="button" className="button--quiet" onClick={() => remove(r.key)}>{t.remove}</button>
                 )}
               </div>
             </li>

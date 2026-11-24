@@ -88,6 +88,17 @@ describe('confirmUpload', () => {
     expect([...s.objects.keys()]).toEqual([s.files[0].storage_path]);
   });
 
+  it('keeps the bytes when it is not known whether the file was accepted', async () => {
+    const s = setup({
+      acceptFile: async () => {
+        throw new Error('connection lost');
+      },
+    });
+    const r = await started(s);
+    await expect(confirmUpload(r.uploadId, s.deps)).rejects.toThrow('connection lost');
+    expect(s.objects.size).toBe(1);
+  });
+
   it('a full inbox at confirmation keeps nothing', async () => {
     const s = setup({ acceptFile: async () => 'full' });
     const r = await started(s);
