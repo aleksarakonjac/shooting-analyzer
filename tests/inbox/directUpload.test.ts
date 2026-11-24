@@ -5,7 +5,7 @@ import { cleanMeta, clubToken, confirmUpload, startUpload, type StartedUpload, t
 import { MAX_UPLOAD_BYTES } from '@/lib/import/uploadSource';
 
 const PRNX = new Uint8Array(readFileSync('tests/fixtures/2026-11-11T195109.prnx'));
-const SIUS = { sius: { discipline: 'Air Rifle 60', total: 628.8, shots: 60, atMs: 1 } };
+const SIUS = { sius: { discipline: 'Air Rifle 60', total: 628.8, shots: 60, atMs: Date.parse('2026-11-11T18:51:09Z') } };
 
 function setup(over: Partial<UploadDeps> = {}) {
   const uploads = new Map<string, StartedUpload>();
@@ -132,10 +132,20 @@ describe('confirmUpload', () => {
 });
 
 describe('cleanMeta', () => {
+  const T = Date.parse('2026-11-11T10:00:00Z');
   it('keeps the known shapes', () => {
     expect(cleanMeta(SIUS)).toEqual(SIUS);
-    expect(cleanMeta({ scatt: { shots: 3, startMs: 1, endMs: 2, extra: 'x' }, other: 1 })).toEqual({ scatt: { shots: 3, startMs: 1, endMs: 2 } });
+    expect(cleanMeta({ scatt: { shots: 3, startMs: T, endMs: T + 1, extra: 'x' }, other: 1 })).toEqual({ scatt: { shots: 3, startMs: T, endMs: T + 1 } });
     expect(cleanMeta({ sius: { ...SIUS.sius, atMs: null } })).toEqual({ sius: { ...SIUS.sius, atMs: null } });
+  });
+  it('drops times and counts that cannot be, which would break the pages that show them', () => {
+    for (const ms of [1e300, -1e300, 8.65e15, 0, Date.now() + 3 * 86_400_000]) {
+      expect(cleanMeta({ sius: { ...SIUS.sius, atMs: ms } })).toBeNull();
+      expect(cleanMeta({ scatt: { shots: 1, startMs: ms, endMs: T } })).toBeNull();
+      expect(cleanMeta({ scatt: { shots: 1, startMs: T, endMs: ms } })).toBeNull();
+    }
+    expect(cleanMeta({ sius: { ...SIUS.sius, shots: 1e9 } })).toBeNull();
+    expect(cleanMeta({ sius: { ...SIUS.sius, total: -1 } })).toBeNull();
   });
   it('drops everything else and caps text', () => {
     for (const bad of [null, 1, 'x', [], {}, { sius: { total: 'x' } }, { scatt: { shots: Infinity, startMs: 1, endMs: 2 } }]) expect(cleanMeta(bad)).toBeNull();

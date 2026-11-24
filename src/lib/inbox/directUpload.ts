@@ -33,7 +33,10 @@ export interface UploadDeps {
 export type StartResult = { status: 201; uploadId: string; path: string; token: string } | { status: 400 | 403 | 413 | 429; error: string };
 export type ConfirmResult = { status: 201; kind: InboxKind } | { status: 403 | 404 | 409 | 413 | 415 | 429; error: string };
 
-const num = (v: unknown): v is number => typeof v === 'number' && Number.isFinite(v);
+const between = (v: unknown, lo: number, hi: number): v is number => typeof v === 'number' && v >= lo && v <= hi;
+const count = (v: unknown): v is number => between(v, 0, 20_000);
+/** A date the pages can show: neither out of range nor more than a wrong clock's two days ahead. */
+const time = (v: unknown): v is number => between(v, Date.UTC(2000, 0, 1), Date.now() + 2 * 86_400_000);
 
 /** What a page claims about a file, reduced to the shapes we know. For display and pairing only. */
 export function cleanMeta(x: unknown): InboxMeta {
@@ -41,12 +44,12 @@ export function cleanMeta(x: unknown): InboxMeta {
   const { sius, scatt } = x as { sius?: Record<string, unknown>; scatt?: Record<string, unknown> };
   if (sius && typeof sius === 'object') {
     const { discipline, total, shots, atMs } = sius;
-    if (typeof discipline !== 'string' || !num(total) || !num(shots) || !(atMs === null || num(atMs))) return null;
-    return { sius: { discipline: discipline.slice(0, 80), total, shots, atMs: atMs as number | null } };
+    if (typeof discipline !== 'string' || !count(total) || !count(shots) || !(atMs === null || time(atMs))) return null;
+    return { sius: { discipline: discipline.slice(0, 80), total, shots, atMs } };
   }
   if (scatt && typeof scatt === 'object') {
     const { shots, startMs, endMs } = scatt;
-    return num(shots) && num(startMs) && num(endMs) ? { scatt: { shots, startMs, endMs } } : null;
+    return count(shots) && time(startMs) && time(endMs) ? { scatt: { shots, startMs, endMs } } : null;
   }
   return null;
 }

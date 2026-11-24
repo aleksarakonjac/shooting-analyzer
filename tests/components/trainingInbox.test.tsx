@@ -5,7 +5,7 @@ import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/re
 const download = vi.fn();
 vi.mock('@/lib/supabase/client', () => ({ createClient: () => ({ storage: { from: () => ({ download }) } }) }));
 vi.mock('next/navigation', () => ({ useRouter: () => ({ push: vi.fn(), refresh: vi.fn() }) }));
-const discardInboxFiles = vi.fn(async (_ids: string[]) => {});
+const discardInboxFiles = vi.fn(async (ids: string[]) => void ids);
 vi.mock('@/lib/inbox/actions', () => ({ discardInboxFiles: (ids: string[]) => discardInboxFiles(ids) }));
 const saveTraining = vi.fn();
 vi.mock('@/lib/import/saveTraining', async (orig) => ({ ...(await orig<object>()), saveTraining: (...a: unknown[]) => saveTraining(...a) }));

@@ -22,9 +22,13 @@ describe('purgeStarted', () => {
   });
 
   it('removes in batches storage takes', async () => {
-    const d = deps({ listIncoming: async () => Array.from({ length: 2500 }, (_, i) => ({ path: `incoming/${i}`, createdMs: hoursAgo(30) })) });
+    const sizes: number[] = [];
+    const d = deps({
+      listIncoming: async () => Array.from({ length: 2500 }, (_, i) => ({ path: `incoming/${i}`, createdMs: hoursAgo(30) })),
+      removeFiles: async (paths) => void sizes.push(paths.length),
+    });
     expect(await purgeStarted(d, NOW)).toEqual({ removed: 2500 });
-    expect(d.removeFiles.mock.calls.map((c) => (c as unknown as [string[]])[0].length)).toEqual([1000, 1000, 500]);
+    expect(sizes).toEqual([1000, 1000, 500]);
   });
 
   it('keeps the rows when storage fails, for the next run', async () => {

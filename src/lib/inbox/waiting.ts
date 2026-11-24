@@ -1,6 +1,7 @@
 import { linkedShooters } from '@/lib/auth/linkedShooters';
 import type { SessionProfile } from '@/lib/auth/session';
 import { createClient } from '@/lib/supabase/server';
+import { cleanMeta } from './directUpload';
 import type { InboxItem } from './types';
 
 /** Whose inbox this person works with: a shooter their own, a coach those of the linked shooters. */
@@ -19,14 +20,14 @@ export async function waitingInbox(shooterIds: string[]): Promise<InboxItem[]> {
     .select('id, user_id, kind, storage_path, file_name, meta, created_at')
     .in('user_id', shooterIds)
     .order('created_at', { ascending: false });
-  type Row = { id: string; user_id: string; kind: InboxItem['kind']; storage_path: string; file_name: string; meta: InboxItem['meta']; created_at: string };
+  type Row = { id: string; user_id: string; kind: InboxItem['kind']; storage_path: string; file_name: string; meta: unknown; created_at: string };
   return ((data ?? []) as Row[]).map((r) => ({
     id: r.id,
     shooterId: r.user_id,
     kind: r.kind,
     path: r.storage_path,
     name: r.file_name,
-    meta: r.meta,
+    meta: cleanMeta(r.meta),
     createdAt: r.created_at,
   }));
 }
