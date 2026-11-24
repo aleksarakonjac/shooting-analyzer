@@ -1,11 +1,17 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { cleanup, render, screen, waitFor } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 
 const download = vi.fn();
 vi.mock('@/lib/supabase/client', () => ({ createClient: () => ({ storage: { from: () => ({ download }) } }) }));
 vi.mock('next/navigation', () => ({ useRouter: () => ({ push: vi.fn(), refresh: vi.fn() }) }));
-vi.mock('@/lib/inbox/actions', () => ({ discardInboxFiles: vi.fn(async () => {}) }));
+const discardInboxFiles = vi.fn(async (_ids: string[]) => {});
+vi.mock('@/lib/inbox/actions', () => ({ discardInboxFiles: (ids: string[]) => discardInboxFiles(ids) }));
+const saveTraining = vi.fn();
+vi.mock('@/lib/import/saveTraining', async (orig) => ({ ...(await orig<object>()), saveTraining: (...a: unknown[]) => saveTraining(...a) }));
+vi.mock('@/lib/import/duplicates', async (orig) => ({ ...(await orig<object>()), findImported: async () => [] }));
+const uploadSource = vi.fn();
+vi.mock('@/lib/import/uploadSource', async (orig) => ({ ...(await orig<object>()), uploadSource: (...a: unknown[]) => uploadSource(...a) }));
 const parseSiusFile = vi.fn();
 const parseScattFile = vi.fn();
 vi.mock('@/lib/import/readFiles', async (orig) => ({
@@ -46,6 +52,21 @@ describe('inbox files in the training form', () => {
     await waitFor(() => expect(parseSiusFile).toHaveBeenCalled());
     await waitFor(() => expect(parseScattFile).toHaveBeenCalled());
     expect((parseSiusFile.mock.calls[0][0] as File).name).toBe('report.prnx');
+  });
+
+  it('saves for the shooter whose inbox it is, then empties it', async () => {
+    saveTraining.mockResolvedValue({ trainingId: 't1' });
+    uploadSource.mockResolvedValue({ id: 'x', duplicate: false });
+    render(form(['a', 'b']));
+    await waitFor(() => expect(parseScattFile).toHaveBeenCalled());
+    const save = screen.getByRole('button', { name: /^Sačuvaj/ }) as HTMLButtonElement;
+    await waitFor(() => expect(save.disabled).toBe(false));
+    fireEvent.submit(document.getElementById('new-training')!);
+    await waitFor(() => expect(saveTraining).toHaveBeenCalled());
+    expect(saveTraining.mock.calls[0][0]).toMatchObject({ shooterId: 'u', disciplineId: 'air_rifle' });
+    await waitFor(() => expect(discardInboxFiles).toHaveBeenCalled());
+    expect([...discardInboxFiles.mock.calls[0][0]].sort()).toEqual(['a', 'b']);
+    expect(uploadSource.mock.calls.map((c) => c[2])).toEqual(['sius_prnx', 'scatt']);
   });
 
   it('says when a file is already gone', async () => {

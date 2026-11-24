@@ -7,18 +7,21 @@ import { linkedShooters } from '@/lib/auth/linkedShooters';
 import { getSessionProfile } from '@/lib/auth/session';
 import { recentPlaces } from '@/lib/import/places';
 import { shooterEvents } from '@/lib/events';
+import { waitingInbox } from '@/lib/inbox/waiting';
 import { sr } from '@/lib/i18n/sr';
 import { HOME } from '@/lib/routes';
 
-export default function NewForShooterPage({ params }: { params: Promise<{ shooterId: string }> }) {
+type Search = { inbox?: string | string[] };
+
+export default function NewForShooterPage({ params, searchParams }: { params: Promise<{ shooterId: string }>; searchParams: Promise<Search> }) {
   return (
     <Suspense fallback={null}>
-      <Body params={params} />
+      <Body params={params} searchParams={searchParams} />
     </Suspense>
   );
 }
 
-async function Body({ params }: { params: Promise<{ shooterId: string }> }) {
+async function Body({ params, searchParams }: { params: Promise<{ shooterId: string }>; searchParams: Promise<Search> }) {
   await connection();
   const profile = await getSessionProfile();
   if (!profile || profile.role !== 'coach') redirect(HOME);
@@ -34,6 +37,8 @@ async function Body({ params }: { params: Promise<{ shooterId: string }> }) {
       title={`${sr.coach.newTitle}: ${shooter.name}`}
       places={await recentPlaces(shooter.id)}
       events={await shooterEvents(shooter.id)}
+      inbox={await waitingInbox([shooter.id])}
+      autoInbox={[(await searchParams).inbox ?? []].flat()}
       health={await healthFor(shooter.id, profile.id)}
     />
   );

@@ -13,7 +13,7 @@ import type { SourceKind } from '@/lib/import/uploadSource';
 import { sr } from '@/lib/i18n/sr';
 import { siusFromStored, type StoredSeries } from '@/lib/sessions/storedSius';
 import { createClient } from '@/lib/supabase/server';
-import { waitingInbox } from '@/lib/inbox/waiting';
+import { inboxShooterIds, waitingInbox } from '@/lib/inbox/waiting';
 
 interface Row {
   id: string;
@@ -91,9 +91,9 @@ async function Body({ params, searchParams }: { params: Promise<{ id: string }>;
     hrZone: hrRef?.zone ?? null,
   };
   const today = new Intl.DateTimeFormat('en-CA', { timeZone: profile.tz }).format(new Date());
-  // Phone files belong to the signed-in shooter: offered only on their own sessions. ?inbox=<id> loads one.
-  const own = profile.id === tr.shooter_id;
-  const [events, places, inbox] = await Promise.all([shooterEvents(tr.shooter_id), recentPlaces(tr.shooter_id), own ? waitingInbox([tr.shooter_id]) : []]);
+  // The shooter's waiting files: for the shooter, and for a coach of theirs. ?inbox=<id> loads one.
+  const inboxOf = (await inboxShooterIds(profile)).filter((id) => id === tr.shooter_id);
+  const [events, places, inbox] = await Promise.all([shooterEvents(tr.shooter_id), recentPlaces(tr.shooter_id), waitingInbox(inboxOf)]);
   const autoInbox = [(await searchParams).inbox ?? []].flat();
   return (
     <NewTrainingForm
