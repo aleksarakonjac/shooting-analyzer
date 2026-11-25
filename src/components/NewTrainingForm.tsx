@@ -9,11 +9,9 @@ import { sr } from '@/lib/i18n/sr';
 import { buildPreview, groupByPosition } from '@/lib/import/draft';
 import { defaultTrainingName, replaceTrainingData, saveTraining, type SessionKind, type SessionStage, type TrainingDraft } from '@/lib/import/saveTraining';
 import { findImported, type ImportedMatch } from '@/lib/import/duplicates';
+import { parseScattFile, parseSiusFile, siusKind } from '@/lib/import/readFiles';
 import { MAX_UPLOAD_BYTES, sha256Hex, uploadSource, type SourceKind, type SourceMeta } from '@/lib/import/uploadSource';
-import { decodeText } from '@/lib/parsers/decode';
 import type { ScattData } from '@/lib/parsers/scatt';
-import { parseSiusCsv } from '@/lib/parsers/siusCsv';
-import { looksLikePrnx } from '@/lib/parsers/siusPrnx';
 import { mergeScattData } from '@/lib/scatt/merge';
 import { parseTcx, reinterpretAsZone, type HrSample } from '@/lib/parsers/tcx';
 import { HealthPull, pullBody, type PulledInfo } from './HealthPull';
@@ -24,7 +22,7 @@ import { isFinalDiscipline } from '@/lib/finals/format';
 import { createClient } from '@/lib/supabase/client';
 import type { EventOption } from '@/lib/eventTypes';
 import { discardInboxFiles } from '@/lib/inbox/actions';
-import type { InboxItem } from '@/lib/inbox/types';
+import { isSius, type InboxItem } from '@/lib/inbox/types';
 import { FinalEntry, type FinalDraft } from './FinalEntry';
 import { Segmented } from './ui/Segmented';
 import { ManualEntry } from './entry/ManualEntry';
@@ -199,7 +197,8 @@ export function NewTrainingForm({
     setSelection(s && sc ? proposeSelection(s, sc) : undefined);
   };
 
-  const applySius = (s: ParsedSiusResult, file: File | null, sha = '', inboxId?: string, cloud?: SourceMeta) => {
+  /** `withScatt` is the SCATT data to align with, for a caller that has just added some (its state is not here yet). */
+  const applySius = (s: ParsedSiusResult, file: File | null, sha = '', inboxId?: string, cloud?: SourceMeta, withScatt = scatt) => {
     setSiusFile(file ? { file, data: s, sha, inboxId, cloud } : null);
     setManual(file ? null : s);
     setErrors((e) => ({ ...e, sius: undefined }));
@@ -207,7 +206,7 @@ export function NewTrainingForm({
     if (!dateTouched && s.reportTime) {
       setTrainedOn(new Intl.DateTimeFormat('en-CA', { timeZone: tz }).format(s.reportTime));
     }
-    repropose(s, scatt);
+    repropose(s, withScatt);
   };
 
   /** A SIUS Cloud pick: into the match (series), or into the finals grid when it is a final. */
@@ -252,8 +251,8 @@ export function NewTrainingForm({
     }
   };
 
-  /** Parses and adds SCATT files; one that is already loaded (same content) is skipped with a notice. */
-  const addScatt = async (incoming: { file: File; inboxId?: string }[]) => {
+  /** Parses and adds SCATT files; one that is already loaded (same content) is skipped with a notice. Returns all the SCATT data there is then. */
+  const addScatt = async (incoming: { file: File; inboxId?: string }[]): Promise<ScattData | undefined> => {
     try {
       const parsed = await Promise.all(incoming.map(async ({ file, inboxId }) => ({ file, inboxId, ...(await parseScattFile(file)) })));
       const next = [...scattFiles];
@@ -263,11 +262,14 @@ export function NewTrainingForm({
         else next.push(p);
       }
       setErrors((e) => ({ ...e, scatt: duplicate ? t.scattDuplicate : undefined }));
-      if (next.length === scattFiles.length) return;
+      if (next.length === scattFiles.length) return scatt;
+      const merged = mergeScattData(next.map((f) => f.data));
       setScattFiles(next);
-      repropose(sius, mergeScattData(next.map((f) => f.data)));
+      repropose(sius, merged);
+      return merged;
     } catch {
       setErrors((e) => ({ ...e, scatt: t.unreadable }));
+      return scatt;
     }
   };
 
@@ -310,40 +312,44 @@ export function NewTrainingForm({
   const [inboxLeft, setInboxLeft] = useState(inbox);
   const [inboxBusy, setInboxBusy] = useState<string | null>(null);
   const usedInbox = new Set([...scattFiles.map((f) => f.inboxId), hrLoaded?.inboxId, siusFile?.inboxId].filter(Boolean));
+  /** One file that is gone (taken meanwhile) does not stop the others. */
   const downloadInbox = async (items: InboxItem[]) => {
     const storage = createClient().storage.from('inbox');
-    return Promise.all(
+    const all = await Promise.allSettled(
       items.map(async (it) => {
         const { data, error } = await storage.download(it.path);
         if (error || !data) throw new Error(error?.message ?? 'missing');
         const type = it.kind === 'tcx' ? 'application/xml' : it.kind === 'sius_pdf' ? 'application/pdf' : 'application/octet-stream';
-        return { file: new File([data], it.name, { type }), inboxId: it.id, kind: it.kind };
+        return { file: new File([data], nameFor(it), { type }), inboxId: it.id, kind: it.kind };
       }),
     );
+    return all.flatMap((r) => (r.status === 'fulfilled' ? [r.value] : []));
   };
   const addFromInbox = async (items: InboxItem[]) => {
     if (!items.length) return;
     setInboxBusy(items[0].id);
     try {
       const loaded = await downloadInbox(items);
+      const gone = items.find((it) => !loaded.some((x) => x.inboxId === it.id));
       const scattIn = loaded.filter((x) => x.kind === 'scatt');
-      if (scattIn.length) await addScatt(scattIn);
+      const withScatt = scattIn.length ? await addScatt(scattIn) : scatt;
       // One pulse file per session: the newest one sent wins.
       const hrIn = loaded.find((x) => x.kind === 'tcx');
       if (hrIn) await addHr(hrIn.file, hrIn.inboxId);
       // Likewise one SIUS result.
-      const siusIn = loaded.find((x) => x.kind === 'sius_pdf');
+      const siusIn = loaded.find((x) => isSius(x.kind));
       if (siusIn) {
         try {
           const { parsed, sha } = await parseSiusFile(siusIn.file, tz);
-          applySius(parsed, siusIn.file, sha, siusIn.inboxId);
+          applySius(parsed, siusIn.file, sha, siusIn.inboxId, undefined, withScatt);
         } catch {
           setErrors((e) => ({ ...e, sius: t.unreadable }));
         }
       }
-    } catch {
-      const key = items[0].kind === 'tcx' ? 'hr' : items[0].kind === 'sius_pdf' ? 'sius' : 'scatt';
-      setErrors((e) => ({ ...e, [key]: sr.inbox.loadFailed }));
+      if (gone) {
+        const key = gone.kind === 'tcx' ? 'hr' : isSius(gone.kind) ? 'sius' : 'scatt';
+        setErrors((e) => ({ ...e, [key]: sr.inbox.loadFailed }));
+      }
     } finally {
       setInboxBusy(null);
     }
@@ -361,12 +367,14 @@ export function NewTrainingForm({
     const wanted = inbox.filter((it) => autoInbox.includes(it.id));
     // eslint-disable-next-line react-hooks/set-state-in-effect -- loads the files the inbox page asked for, once
     if (wanted.length) void addFromInbox(wanted);
+    // Someone else (the shooter or their coach) already used one of them.
+    if (wanted.length < autoInbox.length) setErrors((e) => ({ ...e, save: sr.inbox.loadFailed }));
     // eslint-disable-next-line react-hooks/exhaustive-deps -- once, when the form is ready
   }, [restoring]);
 
-  /** Waiting phone files of one kind, each to add here or discard. */
-  const inboxTray = (kind: InboxItem['kind']) => {
-    const left = inboxLeft.filter((it) => it.kind === kind && !usedInbox.has(it.id));
+  /** Waiting files of these kinds, each to add here or discard. */
+  const inboxTray = (kinds: InboxItem['kind'][]) => {
+    const left = inboxLeft.filter((it) => kinds.includes(it.kind) && !usedInbox.has(it.id));
     if (!left.length) return null;
     return (
       <div className="inbox__tray" aria-label={sr.inbox.waitingTitle}>
@@ -410,7 +418,7 @@ export function NewTrainingForm({
       const load = async (kind: SourceKind[]) => (await loadAll(kind))[0] ?? null;
       try {
         const [siusF, scattFs, hrF, cloudF] = await Promise.all([
-          load(['sius_csv', 'sius_pdf', 'sius_prnx']),
+          load(['sius_csv', 'sius_pdf', 'sius_prnx', 'sius_html']),
           loadAll(['scatt']),
           load(['tcx']),
           load(['sius_cloud']),
@@ -421,7 +429,7 @@ export function NewTrainingForm({
             ? await readCloudFile(cloudF, edit)
             : null;
         const siusFileF = siusF ?? (siusP ? cloudF : null);
-        const scattPs = await Promise.all(scattFs.map(parseScattFile));
+        const scattPs = await Promise.all(scattFs.map((f) => parseScattFile(f)));
         const scattLoadedAll = scattFs.map((file, i) => ({ file, data: scattPs[i].data, sha: scattPs[i].sha }));
         const scattMerged = scattPs.length ? mergeScattData(scattPs.map((p) => p.data)) : null;
         const hrP = hrF ? await parseHrFile(hrF) : null;
@@ -513,26 +521,28 @@ export function NewTrainingForm({
         const { error } = await createClient().rpc('save_final', { payload: { training_id: trainingId, ...finalDraft.payload } });
         if (error) throw new Error(error.message);
       }
-      const files: [File | undefined, SourceKind, SourceMeta?][] = [
-        [siusFile?.file, siusFile ? (siusFile.cloud ? 'sius_cloud' : siusKind(siusFile.file)) : 'sius_csv', siusFile?.cloud],
-        ...scattFiles.map((f): [File, SourceKind] => [f.file, 'scatt']),
-        [hrLoaded?.file, 'tcx'],
+      const files: [File | undefined, SourceKind, SourceMeta?, string?][] = [
+        [siusFile?.file, siusFile ? (siusFile.cloud ? 'sius_cloud' : siusKind(siusFile.file)) : 'sius_csv', siusFile?.cloud, siusFile?.inboxId],
+        ...scattFiles.map((f): [File, SourceKind, undefined, string?] => [f.file, 'scatt', undefined, f.inboxId]),
+        [hrLoaded?.file, 'tcx', undefined, hrLoaded?.inboxId],
         // A final from SIUS Cloud keeps its JSON too, so "uvezeno" and the duplicate check see it.
         ...(!edit && stage === 'finale' && finalSource ? [[finalSource.file, 'sius_cloud', finalSource.meta] as [File, SourceKind, SourceMeta]] : []),
       ];
       let failedUploads = 0;
-      for (const [file, kind, meta] of files) {
+      const stored: string[] = [];
+      for (const [file, kind, meta, inboxId] of files) {
         if (!file) continue;
         try {
           await uploadSource(file, trainingId, kind, undefined, meta);
+          if (inboxId) stored.push(inboxId);
         } catch {
           failedUploads++;
         }
       }
-      // Entered: the phone copies are no longer needed.
-      const fromInbox = [...usedInbox] as string[];
-      if (fromInbox.length) await discardInboxFiles(fromInbox).catch(() => {});
-      if (edit) {
+      // Kept with the session: the inbox copies are no longer needed. One that was not stored stays there.
+      if (stored.length) await discardInboxFiles(stored).catch(() => {});
+      // After a failed upload nothing replaced is deleted, and the message below is shown instead of the report.
+      if (edit && failedUploads === 0) {
         await dropReplacedFiles(trainingId, [siusFile?.sha, ...scattFiles.map((f) => f.sha), hrLoaded?.sha]);
         router.push(`/trening/${trainingId}`);
         router.refresh();
@@ -767,8 +777,8 @@ export function NewTrainingForm({
             label: t.tabFile,
             content: (
               <SourceCard title={t.siusTitle} error={errors.sius}>
-                <FileField label={t.siusFile} accept=".csv,.pdf,.prnx,text/csv,application/pdf" onChange={onSius} fileName={siusFile?.file.name} />
-                {inboxTray('sius_pdf')}
+                <FileField label={t.siusFile} accept=".csv,.pdf,.prnx,.html,.htm,text/csv,application/pdf,text/html" onChange={onSius} fileName={siusFile?.file.name} />
+                {inboxTray(['sius_pdf', 'sius_prnx'])}
               </SourceCard>
             ),
           },
@@ -840,11 +850,11 @@ export function NewTrainingForm({
           </p>
         ))}
         {scattFiles.length > 1 && scatt && <small>{t.scattMerged(scattFiles.length, scatt.shots.length)}</small>}
-        {inboxTray('scatt')}
+        {inboxTray(['scatt'])}
       </SourceCard>
       <SourceCard title={t.hrTitle} error={errors.hr}>
         <FileField label={t.hrFile} accept=".tcx,application/xml,text/xml" onChange={onHr} fileName={hrLoaded?.file.name} />
-        {inboxTray('tcx')}
+        {inboxTray(['tcx'])}
         <HealthPull
           status={health.status}
           isCoach={health.isCoach}
@@ -958,9 +968,8 @@ export function NewTrainingForm({
   );
 }
 
-/** Which kind of SIUS report a file is, by its name or type (the stored copy is named after its hash, with the kind's extension). */
-const siusKind = (file: File): SourceKind =>
-  /\.prnx$/i.test(file.name) ? 'sius_prnx' : /pdf/i.test(file.type + file.name) ? 'sius_pdf' : 'sius_csv';
+/** The inbox knows a file's kind from its content; a SIUS report's kind is later read from its name, so the two must agree. */
+const nameFor = (it: InboxItem) => (it.kind === 'sius_prnx' && !/\.prnx$/i.test(it.name) ? `${it.name}.prnx` : it.name);
 
 /** A stored SIUS Cloud JSON, read back for editing with the saved positions (see restoreCloudResult). */
 async function readCloudFile(file: File, edit: SessionEdit): Promise<{ parsed: ParsedSiusResult; sha: string; cloud: SourceMeta } | null> {
@@ -977,28 +986,6 @@ async function readCloudFile(file: File, edit: SessionEdit): Promise<{ parsed: P
   } catch {
     return null;
   }
-}
-
-/** Reads a SIUS CSV, PDF or print-preview (.prnx) report. */
-async function parseSiusFile(file: File, tz: string): Promise<{ parsed: ParsedSiusResult; sha: string }> {
-  const bytes = new Uint8Array(await file.arrayBuffer());
-  const sha = await sha256Hex(bytes);
-  if (looksLikePrnx(bytes, file.name)) {
-    const { parseSiusPrnx } = await import('@/lib/parsers/siusPrnx');
-    return { parsed: await parseSiusPrnx(bytes, { tz }), sha };
-  }
-  if (/\.pdf$/i.test(file.name) || String.fromCharCode(...bytes.slice(0, 4)) === '%PDF') {
-    const [{ parseSiusPdf }, { configurePdfWorker }] = await Promise.all([import('@/lib/parsers/siusPdf'), import('@/lib/parsers/browser')]);
-    configurePdfWorker();
-    return { parsed: await parseSiusPdf(bytes), sha };
-  }
-  return { parsed: parseSiusCsv(decodeText(bytes), { tz }), sha };
-}
-
-async function parseScattFile(file: File): Promise<{ data: ScattData; sha: string }> {
-  const [{ readScatt }, { scattBrowserOptions }] = await Promise.all([import('@/lib/parsers/scatt'), import('@/lib/parsers/browser')]);
-  const bytes = new Uint8Array(await file.arrayBuffer());
-  return { data: await readScatt(bytes, scattBrowserOptions), sha: await sha256Hex(bytes) };
 }
 
 async function parseHrFile(file: File): Promise<{ data: HrData; sha: string }> {

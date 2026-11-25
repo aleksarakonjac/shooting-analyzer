@@ -7,6 +7,7 @@ import { logout } from '@/lib/auth/actions';
 import { getSessionProfile } from '@/lib/auth/session';
 import { sr } from '@/lib/i18n/sr';
 import { createClient } from '@/lib/supabase/server';
+import { ClubPanel, type OwnClub } from './ClubPanel';
 import { ProfileForm } from './ProfileForm';
 import { PipRuleForm } from './PipRuleForm';
 import { PasskeyPanel } from './PasskeyPanel';
@@ -41,6 +42,10 @@ async function Body({ searchParams }: { searchParams: Promise<Search> }) {
   const pipPrefs = (data?.pip_top ?? {}) as Record<string, unknown>;
   const pipCurrent = Object.fromEntries((Object.keys(DISCIPLINES) as DisciplineId[]).map((d) => [d, pipTopFor(pipPrefs, d)])) as Record<DisciplineId, number>;
   const t = sr.account;
+  // The own club with its link, and the names of all clubs to choose from.
+  const [{ data: clubRows }, { data: clubNames }] = await Promise.all([supabase.rpc('my_club'), supabase.from('clubs').select('name').order('name')]);
+  const clubRow = ((clubRows ?? []) as { id: string; name: string; token: string; can_manage: boolean }[])[0];
+  const club: OwnClub | null = clubRow ? { id: clubRow.id, name: clubRow.name, token: clubRow.token, canManage: clubRow.can_manage } : null;
   // Phone uploads land in the shooter's own session entry; coaches enter sessions per shooter.
   let tokens: TokenRow[] | null = null;
   if (profile.role === 'shooter') {
@@ -81,6 +86,9 @@ async function Body({ searchParams }: { searchParams: Promise<Search> }) {
       <section className="account__sec" aria-labelledby="profile-title">
         <h2 id="profile-title">{t.profile}</h2>
         <ProfileForm name={(data?.display_name as string | undefined) ?? ''} tz={profile.tz} />
+      </section>
+      <section className="account__sec">
+        <ClubPanel club={club} clubs={((clubNames ?? []) as { name: string }[]).map((c) => c.name)} siteUrl={siteUrl() ?? ''} />
       </section>
       <section className="account__sec">
         <PasskeyPanel />

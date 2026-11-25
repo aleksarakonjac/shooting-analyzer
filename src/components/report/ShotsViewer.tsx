@@ -136,7 +136,7 @@ export function ShotsViewer({
     const text = cssVar('--ground', '#0b1530');
     const font = cssVar('--font-display', 'system-ui, sans-serif');
     for (const s of shown) {
-      const sure = s.confidence === 'verified' || s.confidence === 'sius';
+      const sure = s.confidence === 'verified' || s.confidence === 'sius' || s.confidence === 'sius-angle';
       g.globalAlpha = s.alpha * (s.confidence === 'arrow-only' ? 0.6 : 1);
       g.beginPath();
       g.arc(X(s.x), Y(s.y), rad, 0, 2 * Math.PI);
@@ -216,6 +216,7 @@ export function ShotsViewer({
       <p className="trace__legend trace__legend--conf">
         {/* Only the kinds this view has: a competition session (SIUS alone) shows one line, not three zeros. */}
         {count('verified') > 0 && <span><i className="conf conf--verified" aria-hidden="true" /> {t.confVerified} {count('verified')}</span>}
+        {count('sius-angle') > 0 && <span><i className="conf conf--verified" aria-hidden="true" /> {t.confAngle} {count('sius-angle')}</span>}
         {count('scatt-only') > 0 && <span><i className="conf conf--scatt" aria-hidden="true" /> {t.confScatt} {count('scatt-only')}</span>}
         {count('arrow-only') > 0 && <span><i className="conf conf--arrow" aria-hidden="true" /> {t.confArrow} {count('arrow-only')}</span>}
         {missing > 0 && <span>{t.confMissing} {missing}</span>}

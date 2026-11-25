@@ -1,11 +1,11 @@
-import { disciplineFromSiusName } from '@/lib/domain/disciplines';
-import type { ParsedSeries, ParsedSiusResult, Position } from '@/lib/domain/types';
-import { zonedWallTimeToUtcMs } from '@/lib/time/zone';
+import type { ParsedSiusResult } from '@/lib/domain/types';
+import { readArrow } from './arrow';
+import { decodeSmallPng } from './png';
+import { PAGE_STRIDE, parseReportLabels, type Arrow, type Label, type SiusReportOptions } from './siusReport';
 
 /**
  * SIUS print-preview file (.prnx): the report as the SIUS software lays it out for printing, a gzip-compressed
- * XML of positioned labels (a DevExpress "PreviewSerializer"). The numbers are read back from where each label sits:
- * a value is the label on the same row as its caption, shots are the numbers on the row of "Series N:" from left to right.
+ * XML of positioned labels (a DevExpress "PreviewSerializer"). See siusReport.ts for how the numbers are read back.
  */
 export class NotSiusPrnxError extends Error {
   constructor(message = 'Not a SIUS .prnx report') {
@@ -14,29 +14,8 @@ export class NotSiusPrnxError extends Error {
   }
 }
 
-const REPORT_TZ = 'Europe/Belgrade';
-const NUM = /^-?\d+(?:\.\d+)?$/;
-const POSITIONS: Record<string, Position> = { Kneeling: 'kneeling', Prone: 'prone', Standing: 'standing' };
 /** A report is a few hundred KB of XML; far more than this inflated means a crafted file. */
 const MAX_XML_BYTES = 64 * 1024 * 1024;
-/** Labels whose rows are the same line are at most this far apart (report units). */
-const ROW_TOLERANCE = 6;
-/** Pages are stacked so a label's order is its page first, then its place on the page. */
-const PAGE_STRIDE = 1_000_000;
-
-export interface SiusPrnxOptions {
-  /** Time zone of the laptop that wrote the report (default Europe/Belgrade). */
-  tz?: string;
-  /** Order of day and month in the report time. Detected from the numbers when omitted. */
-  dateOrder?: 'dmy' | 'mdy';
-}
-
-interface Label {
-  text: string;
-  x: number;
-  y: number;
-  w: number;
-}
 
 async function gunzipText(data: Uint8Array): Promise<string> {
   if (data[0] !== 0x1f || data[1] !== 0x8b) throw new NotSiusPrnxError();
@@ -85,109 +64,54 @@ function readLabels(xml: string): Label[] {
       const text = /\sText="([^"]*)"/.exec(attrs);
       const rect = /\sRect="([^"]*)"/.exec(attrs);
       if (!text || !rect) continue;
-      const [x, y, w] = rect[1].split(',').map(Number);
-      if (![x, y, w].every(Number.isFinite)) continue;
-      labels.push({ text: unescapeXml(text[1]).trim(), x, y: page * PAGE_STRIDE + y, w });
+      const [x, y] = rect[1].split(',').map(Number);
+      if (![x, y].every(Number.isFinite)) continue;
+      labels.push({ text: unescapeXml(text[1]).trim(), x, y: page * PAGE_STRIDE + y });
     }
   });
   return labels;
 }
 
-const sameRow = (a: Label, b: Label) => Math.abs(a.y - b.y) <= ROW_TOLERANCE;
+/** An arrow is 30 units wide and about 400 bytes; the targets and logos are far larger. */
+const MAX_ARROW_UNITS = 60;
+const MAX_ARROW_BASE64 = 20_000;
 
-/** The label right of `caption` on its row (the nearest one), when it passes `test`. */
-function valueOf(labels: Label[], caption: Label, test: (t: string) => boolean = () => true): Label | undefined {
-  return labels
-    .filter((l) => l !== caption && sameRow(l, caption) && l.x > caption.x && test(l.text))
-    .sort((a, b) => a.x - b.x)[0];
+/** The direction arrows of the preview: small PNG pictures inside the file, next to their shots. */
+async function readArrows(xml: string): Promise<Arrow[]> {
+  const found: Promise<Arrow | null>[] = [];
+  xml.split(/<Page\d+[ >]/).slice(1).forEach((body, page) => {
+    for (const [, attrs, base64] of body.matchAll(/<Item\d+\s((?:[^>"]|"[^"]*")*)>\s*<ImageEntry\s+ImageSource="img,([^"]*)"/g)) {
+      const rect = /\sRect="([^"]*)"/.exec(attrs);
+      if (!rect || base64.length > MAX_ARROW_BASE64) continue;
+      const [x, y, w, h] = rect[1].split(',').map(Number);
+      if (![x, y].every(Number.isFinite) || !(w <= MAX_ARROW_UNITS && h <= MAX_ARROW_UNITS)) continue;
+      found.push(readArrowPng(base64).then((direction) => (direction ? { x: x + w / 2, y: page * PAGE_STRIDE + y + h / 2, direction } : null)));
+    }
+  });
+  return (await Promise.all(found)).filter((a): a is Arrow => a !== null);
 }
 
-function parseReportTime(labels: Label[], opts: SiusPrnxOptions): { time: Date; ambiguous: boolean } | undefined {
-  for (const l of labels) {
-    const m = /^(\d{1,2})\/(\d{1,2})\/(\d{4}) (\d{1,2}):(\d{2}):(\d{2})$/.exec(l.text);
-    if (!m) continue;
-    const [a, b, y, h, mi, s] = m.slice(1).map(Number);
-    let order = opts.dateOrder;
-    let ambiguous = false;
-    if (!order) {
-      if (a > 12) order = 'dmy';
-      else if (b > 12) order = 'mdy';
-      else {
-        order = 'dmy';
-        ambiguous = a !== b;
-      }
-    }
-    const [d, mo] = order === 'dmy' ? [a, b] : [b, a];
-    return { time: new Date(zonedWallTimeToUtcMs(y, mo, d, h, mi, s, 0, opts.tz ?? REPORT_TZ)), ambiguous };
+async function readArrowPng(base64: string): Promise<string | null> {
+  try {
+    const img = await decodeSmallPng(Uint8Array.from(atob(base64), (c) => c.charCodeAt(0)));
+    return img && readArrow(img.data, img.width, img.height);
+  } catch {
+    return null;
   }
-  return undefined;
 }
 
 /** The layout logic on the preview's XML (exported so it can be tested without compressing a file). */
-export function parsePrnxXml(xml: string, opts: SiusPrnxOptions = {}): ParsedSiusResult {
-  const labels = readLabels(xml);
-  const byText = (re: RegExp) => labels.find((l) => re.test(l.text));
-
-  const discipline = labels.find((l) => disciplineFromSiusName(l.text))?.text ?? '';
-  const heads = labels
-    .filter((l) => /^Series (\d+):$/.test(l.text))
-    .sort((a, b) => a.y - b.y || a.x - b.x);
-  if (!discipline || heads.length === 0) throw new NotSiusPrnxError();
-
-  const positions = labels.filter((l) => l.text in POSITIONS).sort((a, b) => a.y - b.y);
-
-  const series: ParsedSeries[] = heads.map((head, i) => {
-    const end = heads[i + 1]?.y ?? Infinity;
-    // Everything that belongs to this series sits under its caption, in the same column, before the next series.
-    const block = labels.filter((l) => l.y >= head.y - ROW_TOLERANCE && l.y < end - ROW_TOLERANCE && Math.abs(l.x - head.x) <= ROW_TOLERANCE);
-    const shots = labels
-      .filter((l) => sameRow(l, head) && l.x > head.x && NUM.test(l.text))
-      .sort((a, b) => a.x - b.x)
-      .map((l) => ({ value: Number(l.text) }));
-    const total = block.find((l) => l.text === 'Series total:');
-    const mpi = block.find((l) => l.text === 'MPI:');
-    const group = block.find((l) => l.text === 'Group size:');
-    const totalText = total && valueOf(labels, total, (t) => NUM.test(t))?.text;
-    const mpiText = mpi && valueOf(labels, mpi)?.text;
-    const groupText = group && valueOf(labels, group)?.text;
-    const mpiM = mpiText ? /X:\s*(-?\d+(?:\.\d+)?)\s*mm;?\s*Y:\s*(-?\d+(?:\.\d+)?)/i.exec(mpiText) : null;
-    const groupM = groupText ? /(\d+(?:\.\d+)?)\s*mm/i.exec(groupText) : null;
-    const position = positions.filter((p) => p.y < head.y).at(-1);
-    return {
-      index: i + 1,
-      ...(position ? { position: POSITIONS[position.text] } : {}),
-      shots,
-      total: totalText ? Number(totalText) : 0,
-      ...(mpiM ? { mpi: { x: Number(mpiM[1]), y: Number(mpiM[2]) } } : {}),
-      ...(groupM ? { groupMm: Number(groupM[1]) } : {}),
-    };
-  });
-  const usable = series.filter((s) => s.shots.length > 0);
-  if (usable.length === 0) throw new NotSiusPrnxError();
-  usable.forEach((s, i) => {
-    s.index = i + 1;
-  });
-
-  const totalCaption = byText(/^Total:$/);
-  const tensCaption = byText(/^Inner tens:$/);
-  const totalValue = totalCaption && valueOf(labels, totalCaption, (t) => NUM.test(t));
-  const tensValue = tensCaption && valueOf(labels, tensCaption, (t) => NUM.test(t));
-  const time = parseReportTime(labels, opts);
-
-  return {
-    discipline,
-    disciplineId: disciplineFromSiusName(discipline),
-    reportTime: time?.time,
-    reportTimeAmbiguous: time?.ambiguous,
-    total: totalValue ? Number(totalValue.text) : Math.round(usable.reduce((a, s) => a + s.total, 0) * 10) / 10,
-    innerTens: tensValue ? Number(tensValue.text) : undefined,
-    series: usable,
-  };
+export function parsePrnxXml(xml: string, opts: SiusReportOptions = {}, arrows: Arrow[] = []): ParsedSiusResult {
+  const result = parseReportLabels(readLabels(xml), opts, arrows);
+  if (!result) throw new NotSiusPrnxError();
+  return result;
 }
 
 /** Reads a SIUS .prnx file (works in the browser and in Node 18+). */
-export async function parseSiusPrnx(data: Uint8Array, opts: SiusPrnxOptions = {}): Promise<ParsedSiusResult> {
-  return parsePrnxXml(await gunzipText(data), opts);
+export async function parseSiusPrnx(data: Uint8Array, opts: SiusReportOptions = {}): Promise<ParsedSiusResult> {
+  const xml = await gunzipText(data);
+  // Without its arrows a report is still a result.
+  return parsePrnxXml(xml, opts, await readArrows(xml).catch(() => []));
 }
 
 /** True when the bytes are a gzip stream, which is how a .prnx starts. */

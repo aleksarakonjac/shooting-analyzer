@@ -13,7 +13,7 @@ import type { SourceKind } from '@/lib/import/uploadSource';
 import { sr } from '@/lib/i18n/sr';
 import { siusFromStored, type StoredSeries } from '@/lib/sessions/storedSius';
 import { createClient } from '@/lib/supabase/server';
-import { waitingInbox } from '@/lib/inbox/waiting';
+import { inboxShooterIds, waitingInbox } from '@/lib/inbox/waiting';
 
 interface Row {
   id: string;
@@ -67,7 +67,7 @@ async function Body({ params, searchParams }: { params: Promise<{ id: string }>;
     iso ? new Intl.DateTimeFormat('en-GB', { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: tr.tz }).format(new Date(iso)) : '';
   const hrRef = Array.isArray(tr.hr_samples_ref) ? tr.hr_samples_ref[0] : tr.hr_samples_ref;
   const match = tr.matches[0] ?? null;
-  const hasSiusFile = tr.source_files.some((f) => f.kind === 'sius_csv' || f.kind === 'sius_pdf' || f.kind === 'sius_prnx');
+  const hasSiusFile = tr.source_files.some((f) => f.kind === 'sius_csv' || f.kind === 'sius_pdf' || f.kind === 'sius_prnx' || f.kind === 'sius_html');
   const edit: SessionEdit = {
     trainingId: tr.id,
     initial: {
@@ -91,9 +91,9 @@ async function Body({ params, searchParams }: { params: Promise<{ id: string }>;
     hrZone: hrRef?.zone ?? null,
   };
   const today = new Intl.DateTimeFormat('en-CA', { timeZone: profile.tz }).format(new Date());
-  // Phone files belong to the signed-in shooter: offered only on their own sessions. ?inbox=<id> loads one.
-  const own = profile.id === tr.shooter_id;
-  const [events, places, inbox] = await Promise.all([shooterEvents(tr.shooter_id), recentPlaces(tr.shooter_id), own ? waitingInbox() : []]);
+  // The shooter's waiting files: for the shooter, and for a coach of theirs. ?inbox=<id> loads one.
+  const inboxOf = (await inboxShooterIds(profile)).filter((id) => id === tr.shooter_id);
+  const [events, places, inbox] = await Promise.all([shooterEvents(tr.shooter_id), recentPlaces(tr.shooter_id), waitingInbox(inboxOf)]);
   const autoInbox = [(await searchParams).inbox ?? []].flat();
   return (
     <NewTrainingForm

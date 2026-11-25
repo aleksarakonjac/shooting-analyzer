@@ -23,7 +23,7 @@ type Doc = {
 const sr: Doc = {
   title: 'Politika privatnosti',
   updatedLabel: 'Poslednja izmena',
-  updated: '14. novembar 2026.',
+  updated: '24. novembar 2026.',
   back: 'Nazad na aplikaciju',
   switchLabel: 'Jezik',
   intro: `${APP} je aplikacija za vođenje streljačkih treninga. Ova stranica objašnjava koje podatke čuvamo, zašto i šta možete da uradite sa njima.`,
@@ -34,6 +34,7 @@ const sr: Doc = {
         <li>Nalog: ime, adresu e-pošte i tip naloga (strelac ili trener). Ako se prijavite preko Google naloga, od Googlea dobijamo samo ime i adresu e-pošte.</li>
         <li>Treninzi: sesije, serije, pogoci, beleške i rezultati koje unesete.</li>
         <li>Fajlovi koje sami otpremite: SCATT, SIUS i slični izvozi i PDF-ovi, kao i podaci o pulsu ako ih uvezete.</li>
+        <li>Klub, ako ga sami upišete: vaše ime tada vidi svako ko ima link tog kluba i može preko njega da vam pošalje fajl, ali ne može da vidi vaše fajlove i treninge.</li>
         <li>Podešavanja: vremenska zona, prikaz i passkey-i za prijavu (čuva se samo javni ključ, nikada biometrija).</li>
         <li>Evidenciju izmena (ko je i kada menjao sesiju) radi pregleda i oporavka podataka.</li>
       </ul>
@@ -144,7 +145,7 @@ const sr: Doc = {
 const en: Doc = {
   title: 'Privacy Policy',
   updatedLabel: 'Last updated',
-  updated: 'November 14, 2026',
+  updated: 'November 24, 2026',
   back: 'Back to the app',
   switchLabel: 'Language',
   intro: `${APP} is a training log for sport shooters. This page explains what data we keep, why, and what you can do with it.`,
@@ -155,6 +156,7 @@ const en: Doc = {
         <li>Account: your name, email address and account type (shooter or coach). If you sign in with Google, we receive only your name and email address from Google.</li>
         <li>Training: the sessions, series, shots, notes and scores you enter.</li>
         <li>Files you upload yourself: SCATT, SIUS and similar exports and PDFs, and heart-rate data if you import it.</li>
+        <li>Your club, if you enter one: anyone who has that club’s link then sees your name and can send you a file through it, but cannot see your files or training sessions.</li>
         <li>Settings: time zone, display preferences and sign-in passkeys (only the public key is stored, never biometrics).</li>
         <li>An audit log (who changed a session, and when) so changes can be reviewed and recovered.</li>
       </ul>

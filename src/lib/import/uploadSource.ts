@@ -1,6 +1,6 @@
 import { createClient } from '@/lib/supabase/client';
 
-export type SourceKind = 'sius_csv' | 'sius_pdf' | 'sius_prnx' | 'sius_cloud' | 'scatt' | 'tcx';
+export type SourceKind = 'sius_csv' | 'sius_pdf' | 'sius_prnx' | 'sius_html' | 'sius_cloud' | 'scatt' | 'tcx';
 
 export const MAX_UPLOAD_BYTES = 25 * 1024 * 1024;
 
@@ -16,7 +16,7 @@ export async function sha256Hex(bytes: BufferSource): Promise<string> {
   return [...new Uint8Array(digest)].map((b) => b.toString(16).padStart(2, '0')).join('');
 }
 
-const EXT: Record<SourceKind, string> = { sius_csv: 'csv', sius_pdf: 'pdf', sius_prnx: 'prnx', sius_cloud: 'json', scatt: 'scatt-expert', tcx: 'tcx' };
+const EXT: Record<SourceKind, string> = { sius_csv: 'csv', sius_pdf: 'pdf', sius_prnx: 'prnx', sius_html: 'html', sius_cloud: 'json', scatt: 'scatt-expert', tcx: 'tcx' };
 
 /** Content-addressed path inside the training's folder (the storage policies key on the folder). */
 export const storagePath = (trainingId: string, sha: string, kind: SourceKind) => `${trainingId}/${sha}.${EXT[kind]}`;

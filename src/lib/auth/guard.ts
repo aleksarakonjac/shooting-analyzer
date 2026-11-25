@@ -26,6 +26,8 @@ export function decideRoute(pathname: string, profile: SessionProfile | null, si
   if (isUnder(pathname, '/api/cron')) return { allow: true };
   // Phone uploads carry a personal token instead of a session; the route checks it.
   if (isUnder(pathname, '/api/inbox')) return { allow: true };
+  // The club's upload page carries a secret link instead of a session; the route behind it checks it.
+  if (isUnder(pathname, '/ubaci')) return { allow: true };
   // The e-mailed approval link is authorized by its own signature, so the admin needs no sign-in.
   if (isUnder(pathname, '/odobrenje')) return { allow: true };
   // Privacy policy is public: Google's consent screen and signed-out visitors must reach it.

@@ -54,6 +54,9 @@ describe('radiusBand', () => {
 describe('arrowAngle', () => {
   it('reads the eight SIUS arrows', () => {
     expect([...'→↗↑↖←↙↓↘'].map((a) => arrowAngle(a))).toEqual([0, 45, 90, 135, 180, 225, 270, 315]);
+    expect(arrowAngle('→350')).toBe(350);
+    expect(arrowAngle('↖142')).toBe(142);
+    expect(arrowAngle('•')).toBeNull();
     expect(arrowAngle('')).toBeNull();
     expect(arrowAngle(null)).toBeNull();
   });
@@ -88,6 +91,22 @@ describe('correctHit', () => {
     expect(c.x).toBeCloseTo(1.0, 6);
   });
 
+  it('a measured SIUS angle replaces the SCATT direction even when they roughly agree', () => {
+    // SCATT says straight right, SIUS measured 10 degrees.
+    const c = correctHit({ x: 0.9, y: 0 }, 10.6, true, ar, '→10');
+    expect(Math.atan2(c.y, c.x) * (180 / Math.PI)).toBeCloseTo(10, 6);
+    expect(Math.hypot(c.x, c.y)).toBeCloseTo(0.9, 6);
+    expect(c.turned).toBe(false);
+    expect(c.confidence).toBe('sius-angle');
+    expect(correctHit({ x: 0, y: 0.9 }, 10.6, true, ar, '→10').turned).toBe(true);
+  });
+
+  it('a hit SIUS put dead in the centre goes there', () => {
+    const c = correctHit({ x: 0.3, y: 0.4 }, 10.9, true, ar, '•');
+    expect(c).toMatchObject({ x: 0, y: 0, turned: false, confidence: 'sius-angle' });
+    expect(c.movedMm).toBeCloseTo(0.5, 6);
+  });
+
   it('says how sure the direction is', () => {
     expect(correctHit({ x: 0, y: 0.9 }, 10.6, true, ar, '↑').confidence).toBe('verified');
     expect(correctHit({ x: 0, y: 0.9 }, 10.6, true, ar).confidence).toBe('scatt-only');
@@ -110,6 +129,19 @@ describe('siusHitPoint', async () => {
     expect(p.confidence).toBe('arrow-only');
     expect(p.x).toBeCloseTo(0, 6);
     expect(p.y).toBeCloseTo((band.lo + band.hi) / 2, 6);
+  });
+
+  it('a measured angle places the hit exactly', () => {
+    const band = radiusBand(9.5, true, tg)!;
+    const p = siusHitPoint({ value: 9.5, x: null, y: null, direction: '↑100' }, true, tg)!;
+    expect(p.confidence).toBe('sius-angle');
+    expect(Math.atan2(p.y, p.x) * (180 / Math.PI)).toBeCloseTo(100, 6);
+    expect(Math.hypot(p.x, p.y)).toBeCloseTo((band.lo + band.hi) / 2, 6);
+  });
+
+  it('the centre mark places only a ten', () => {
+    expect(siusHitPoint({ value: 10.9, x: null, y: null, direction: '•' }, true, tg)).toEqual({ x: 0, y: 0, confidence: 'sius-angle' });
+    expect(siusHitPoint({ value: 0, x: null, y: null, direction: '•' }, true, tg)).toBeNull();
   });
 
   it('nothing to place: no coordinates and no arrow, or a miss', () => {

@@ -66,3 +66,14 @@ describe('phone inbox route', () => {
     expect(decideRoute('/api/inbox', null, false)).toEqual({ allow: true });
   });
 });
+
+describe('club upload page', () => {
+  it('opens for anyone: signed out, waiting for approval, signed in', () => {
+    expect(decideRoute('/ubaci', null, false)).toEqual({ allow: true });
+    expect(decideRoute('/ubaci', p('shooter', 'pending'), true)).toEqual({ allow: true });
+    expect(decideRoute('/ubaci', p('coach', 'active'), true)).toEqual({ allow: true });
+  });
+  it('opens nothing else that only starts the same', () => {
+    expect(decideRoute('/ubacivanje', null, false)).toEqual({ redirect: '/login' });
+  });
+});
